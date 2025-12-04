@@ -20,3 +20,5 @@ android/.gradle/
 *.log
 *.tmp
 .vscode/
+*.zip
+
