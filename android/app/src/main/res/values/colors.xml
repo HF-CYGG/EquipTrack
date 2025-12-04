@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary colors based on the web version design guidelines -->
+    <color name="teal">#008080</color> <!-- 主色调: 蓝绿色 -->
+    <color name="light_teal">#E0F8F8</color> <!-- 背景色: 淡蓝绿色 -->
+    <color name="bright_green">#BFFF00</color> <!-- 强调色: 亮绿色 -->
+    
+    <!-- Additional colors for better UI -->
+    <color name="dark_teal">#006666</color>
+    <color name="medium_teal">#4DCCCC</color>
+    <color name="soft_green">#99FF66</color>
+    
+    <!-- System colors -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="gray">#666666</color>
+    <color name="light_gray">#F5F5F5</color>
+    <color name="dark_gray">#333333</color>
+    
+    <!-- Status colors -->
+    <color name="success">#4CAF50</color>
+    <color name="warning">#FF9800</color>
+    <color name="error">#F44336</color>
+    <color name="info">#2196F3</color>
+    
+    <!-- Borrow status colors -->
+    <color name="available">#4CAF50</color> <!-- 可用 -->
+    <color name="borrowed">#FF9800</color> <!-- 已借出 -->
+    <color name="overdue">#F44336</color> <!-- 逾期 -->
+    
+    <!-- Material Design colors -->
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+</resources>

@@ -1,0 +1,93 @@
+<resources>
+    <string name="app_name">EquipTrack</string>
+    <string name="app_description">物资管理系统</string>
+    
+    <!-- Common -->
+    <string name="ok">确定</string>
+    <string name="cancel">取消</string>
+    <string name="confirm">确认</string>
+    <string name="delete">删除</string>
+    <string name="edit">编辑</string>
+    <string name="add">添加</string>
+    <string name="save">保存</string>
+    <string name="loading">加载中...</string>
+    <string name="error">错误</string>
+    <string name="success">成功</string>
+    <string name="retry">重试</string>
+    <string name="refresh">刷新</string>
+    <string name="search">搜索</string>
+    <string name="clear">清除</string>
+    
+    <!-- Auth -->
+    <string name="login">登录</string>
+    <string name="logout">退出登录</string>
+    <string name="signup">注册申请</string>
+    <string name="contact">联系方式</string>
+    <string name="password">密码</string>
+    <string name="confirm_password">确认密码</string>
+    <string name="name">姓名</string>
+    <string name="department">部门</string>
+    <string name="invitation_code">邀请码</string>
+    
+    <!-- Equipment -->
+    <string name="equipment_management">物资管理</string>
+    <string name="equipment_name">物资名称</string>
+    <string name="equipment_description">描述</string>
+    <string name="category">类别</string>
+    <string name="quantity">数量</string>
+    <string name="available_quantity">可用数量</string>
+    <string name="total_quantity">总数量</string>
+    <string name="borrow">借用</string>
+    <string name="return_item">归还</string>
+    <string name="available">可借用</string>
+    <string name="borrowed">已借出</string>
+    <string name="unavailable">暂不可借</string>
+    
+    <!-- History -->
+    <string name="borrow_history">借用记录</string>
+    <string name="borrower">借用人</string>
+    <string name="borrow_date">借用日期</string>
+    <string name="expected_return_date">预期归还日期</string>
+    <string name="actual_return_date">实际归还日期</string>
+    <string name="status">状态</string>
+    
+    <!-- Profile -->
+    <string name="profile">个人中心</string>
+    <string name="settings">设置</string>
+    <string name="about">关于</string>
+    <string name="user_role">用户角色</string>
+    
+    <!-- Status -->
+    <string name="status_returned">已归还</string>
+    <string name="status_overdue_returned">逾期归还</string>
+    <string name="status_borrowing">借用中</string>
+    <string name="status_overdue_not_returned">逾期未归还</string>
+    
+    <!-- Roles -->
+    <string name="role_super_admin">超级管理员</string>
+    <string name="role_admin">管理员</string>
+    <string name="role_advanced_user">高级用户</string>
+    <string name="role_normal_user">普通用户</string>
+    
+    <!-- Messages -->
+    <string name="login_success">登录成功</string>
+    <string name="login_failed">登录失败</string>
+    <string name="signup_success">注册申请已提交</string>
+    <string name="signup_failed">注册申请失败</string>
+    <string name="network_error">网络连接错误</string>
+    <string name="sync_success">同步成功</string>
+    <string name="sync_failed">同步失败</string>
+    
+    <!-- Validation -->
+    <string name="field_required">此字段为必填项</string>
+    <string name="invalid_contact">请输入有效的联系方式</string>
+    <string name="password_too_short">密码长度至少6位</string>
+    <string name="passwords_not_match">两次输入的密码不一致</string>
+    <string name="invalid_quantity">请输入有效的数量</string>
+    
+    <!-- Dialogs -->
+    <string name="delete_confirm_title">确认删除</string>
+    <string name="delete_confirm_message">此操作不可撤销，确定要删除吗？</string>
+    <string name="logout_confirm_title">确认退出</string>
+    <string name="logout_confirm_message">确定要退出登录吗？</string>
+</resources>

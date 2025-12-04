@@ -1,0 +1,34 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Theme.EquipTrack" parent="Theme.Material3.DayNight">
+        <!-- Customize your light theme here. -->
+        <item name="colorPrimary">@color/teal</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/light_teal</item>
+        <item name="colorOnPrimaryContainer">@color/dark_teal</item>
+        
+        <item name="colorSecondary">@color/medium_teal</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSecondaryContainer">@color/light_teal</item>
+        <item name="colorOnSecondaryContainer">@color/dark_teal</item>
+        
+        <item name="colorTertiary">@color/bright_green</item>
+        <item name="colorOnTertiary">@color/black</item>
+        
+        <item name="colorError">@color/error</item>
+        <item name="colorOnError">@color/white</item>
+        
+        <item name="colorSurface">@color/white</item>
+        <item name="colorOnSurface">@color/dark_gray</item>
+        <item name="colorSurfaceVariant">@color/light_gray</item>
+        <item name="colorOnSurfaceVariant">@color/gray</item>
+        
+        <item name="android:colorBackground">@color/light_teal</item>
+        <item name="colorOnBackground">@color/dark_gray</item>
+        
+        <item name="android:statusBarColor">@color/teal</item>
+        <item name="android:navigationBarColor">@color/white</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+    </style>
+</resources>

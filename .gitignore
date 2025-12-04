@@ -1,0 +1,22 @@
+# 排除服务器目录，因为它有独立的仓库
+server/
+
+# Android 临时构建文件
+.gradle/
+local.properties
+.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Android 模块构建文件
+android/app/build/
+android/.gradle/
+
+# 通用临时文件
+*.log
+*.tmp
+.vscode/
