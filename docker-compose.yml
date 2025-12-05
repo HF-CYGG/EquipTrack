@@ -2,7 +2,7 @@ services:
   equiptrack-server:
     build:
       context: ./server
-    image: equiptrack-server:latest
+    image: yemiao_cats/equiptrack-server:latest
     container_name: equiptrack-server
     env_file:
       - ./server/.env
