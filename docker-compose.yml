@@ -11,6 +11,7 @@ services:
     volumes:
       - ./server/data:/app/data
       - ./server/logs:/app/logs
+      - ./server/uploads:/app/uploads
       - ./server/config:/app/config
       - ./server/.env:/app/.env:ro
     restart: unless-stopped
