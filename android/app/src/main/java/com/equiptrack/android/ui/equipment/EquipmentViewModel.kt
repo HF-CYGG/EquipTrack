@@ -59,16 +59,13 @@ class EquipmentViewModel @Inject constructor(
         _searchQuery.debounce(250),
         _selectedCategoryId,
         _filterDepartmentId,
-        if (currentUser?.role == UserRole.SUPER_ADMIN) {
-            equipmentRepository.getAllItems()
-        } else {
-            equipmentRepository.getItemsByDepartment(currentUser?.departmentId ?: "")
-        }
+        equipmentRepository.getAllItems()
     ) { query, categoryId, filterDeptId, items ->
         var filteredItems = items
 
-        // 超级管理员按部门筛选
-        if (currentUser?.role == UserRole.SUPER_ADMIN && filterDeptId != null) {
+        // 按部门筛选 (前端筛选)
+        // 如果用户选择了特定部门，则只显示该部门的
+        if (filterDeptId != null) {
             filteredItems = filteredItems.filter { it.departmentId == filterDeptId }
         }
         
@@ -118,9 +115,7 @@ class EquipmentViewModel @Inject constructor(
         }
         
         // 初始加载部门数据
-        if (currentUser?.role == UserRole.SUPER_ADMIN) {
-            syncDepartments()
-        }
+        syncDepartments()
     }
 
     fun filterByDepartment(departmentId: String?) {
@@ -175,7 +170,9 @@ class EquipmentViewModel @Inject constructor(
                     // Sync items
                     launch {
                         if (user != null) {
-                            val departmentId = if (user.role == UserRole.SUPER_ADMIN) _filterDepartmentId.value else user.departmentId
+                            // 允许所有用户同步指定部门或所有部门数据
+                            // 如果未选择部门 (null)，则请求 "all" 以获取所有数据
+                            val departmentId = _filterDepartmentId.value ?: "all"
                             equipmentRepository.syncItems(user.role, departmentId).collect { result ->
                                 if (result is NetworkResult.Error) {
                                     _uiState.update { 
