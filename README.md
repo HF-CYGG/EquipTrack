@@ -1,10 +1,140 @@
 # EquipTrack - 企业级物资追踪与管理系统
 
-EquipTrack 是一套现代化的全栈物资管理解决方案，专为企业和组织设计，旨在解决设备资产管理混乱、借还记录不透明、审批流程繁琐等痛点。
+> [!TIP]
+> **EquipTrack** 是一套现代化的全栈物资管理解决方案，专为企业和组织设计，旨在解决设备资产管理混乱、借还记录不透明、审批流程繁琐等痛点。
 
-本系统由两部分组成：
-1.  **Android 移动客户端**：为一线员工和管理员提供便捷的操作界面。
-2.  **Node.js 后端服务器**：提供稳定、高效的数据接口和业务逻辑处理。
+---
+
+## 📊 系统可视化概览 (System Visualization)
+
+### 1. 🏗️ 系统架构图 (Architecture)
+本系统采用经典的前后端分离架构，通过 RESTful API 进行通信。后端采用轻量级文件存储方案，易于部署和迁移。
+
+```mermaid
+graph TD
+    User[👤 用户] -->|操作界面| Client[📱 Android 客户端]
+    Client -->|REST API (JSON)| Gateway[🌐 API 网关 / Express]
+    
+    subgraph "后端服务器 (Node.js)"
+        Gateway --> Auth[🔐 认证服务]
+        Gateway --> Inventory[📦 库存服务]
+        Gateway --> Workflow[🔄 审批流引擎]
+        Gateway --> FileMgr[📁 文件管理器]
+    end
+    
+    subgraph "数据持久层 (Local Storage)"
+        Auth <--> JSON[(📄 JSON 数据库)]
+        Inventory <--> JSON
+        Workflow <--> JSON
+        FileMgr <--> Disk[(💾 磁盘文件/图片)]
+    end
+```
+
+### 2. 🧩 核心数据模型 (ER Diagram)
+系统核心实体关系如下，展示了用户、部门、物资与借还流程的关联。
+
+```mermaid
+erDiagram
+    DEPARTMENT ||--|{ USER : "所属"
+    USER ||--o{ BORROW_APPLICATION : "申请"
+    USER ||--o{ APPROVAL_LOG : "审批操作"
+    
+    CATEGORY ||--|{ ITEM : "分类"
+    ITEM ||--o{ BORROW_APPLICATION : "被借用"
+    
+    BORROW_APPLICATION ||--|| APPROVAL_PROCESS : "触发"
+    APPROVAL_PROCESS ||--|{ APPROVAL_LOG : "包含"
+
+    USER {
+        string id PK
+        string username
+        string role "SuperAdmin/Admin/User"
+    }
+    ITEM {
+        string id PK
+        string name
+        string status "Available/Borrowed/Maintenance"
+    }
+```
+
+### 3. 🔄 物资全生命周期状态机 (Lifecycle)
+物资从录入到报废的全流程状态流转逻辑。
+
+```mermaid
+stateDiagram-v2
+    [*] --> Available: ✨ 新购录入
+    
+    state "库存中 (Available)" as Available
+    state "审批中 (Pending)" as Pending
+    state "已借出 (Borrowed)" as Borrowed
+    state "维修中 (Maintenance)" as Maintenance
+    
+    Available --> Pending: 📝 用户申请借用
+    Pending --> Borrowed: ✅ 审批通过
+    Pending --> Available: ❌ 审批拒绝/撤销
+    
+    Borrowed --> Available: 🔙 归还确认
+    
+    Available --> Maintenance: 🔧 报修
+    Borrowed --> Maintenance: 🔧 损坏报修
+    Maintenance --> Available: 🛠️ 维修完成
+    
+    Available --> [*]: 🗑️ 报废/移除
+```
+
+---
+
+## 📅 开发路线与进度 (Roadmap)
+
+```mermaid
+gantt
+    title 项目里程碑 (Project Timeline)
+    dateFormat  YYYY-MM-DD
+    axisFormat  %Y-%m
+    
+    section ✅ 第一阶段: MVP
+    需求分析 & 原型设计       :done,    p1, 2025-06-01, 30d
+    后端核心服务开发          :done,    p2, after p1, 60d
+    Android 客户端联调        :done,    p3, after p2, 45d
+    Docker & CI/CD 部署       :done,    p4, after p3, 15d
+    
+    section 🚧 第二阶段: 优化
+    通知系统与报表            :active,  p5, 2025-12-01, 45d
+    扫码借还功能              :         p6, after p5, 30d
+    
+    section 🔮 第三阶段: 演进
+    Web 管理端开发            :         p7, 2026-03-01, 90d
+    多数据库与多租户支持      :         p8, after p7, 60d
+```
+
+### ✅ 第一阶段：核心功能 MVP (Current)
+- [x] **基础设施**: Docker 容器化部署、GitHub Actions CI/CD
+- [x] **用户体系**: JWT 身份认证、RBAC 角色权限控制 (SuperAdmin, Admin, User)
+- [x] **物资管理**: 物资增删改查、图片上传、自定义分类
+- [x] **业务流程**: 借用申请、多级审批流、归还闭环
+- [x] **数据存储**: 基于 JSON 的本地文件数据库 (无需安装 MySQL/Mongo)
+
+### 🚧 第二阶段：体验优化 (In Progress)
+- [ ] **通知系统**: 审批状态变更邮件/消息推送
+- [ ] **数据报表**: 部门借用统计图表、物资利用率分析
+- [ ] **移动端升级**: 支持扫码 (QR Code) 快速借还
+
+### 🔮 第三阶段：企业级演进 (Future)
+- [ ] **Web 管理端**: 基于 React/Vue 的桌面端管理大屏
+- [ ] **数据库迁移**: 支持 SQLite/PostgreSQL 插件化切换
+- [ ] **多租户支持**: 支持多组织/多公司隔离部署
+
+---
+
+## 🛠️ 技术栈构成 (Tech Stack)
+
+| 领域 | 技术/工具 | 说明 |
+| :--- | :--- | :--- |
+| **移动端** | **Android (Kotlin)** | Jetpack Compose / XML, Retrofit, Coroutines |
+| **后端** | **Node.js (TypeScript)** | Express, Multer, JSON Web Token |
+| **存储** | **LowDB / JSON** | 轻量级本地文件存储，自动备份 |
+| **运维** | **Docker** | 容器化封装，支持 docker-compose 一键部署 |
+| **CI/CD** | **GitHub Actions** | 自动化构建与 Docker Hub 推送 |
 
 ---
 
@@ -36,31 +166,23 @@ studio-main/
 
 ---
 
-## ✨ 核心功能模块
+## ✨ 核心功能模块详情
 
-### 1. � 用户与权限管理 (User & Auth)
-*   **多角色体系**：支持三种角色权限：
-    *   **超级管理员 (Super Admin)**：拥有系统最高权限，可管理所有部门、审批所有注册。
-    *   **部门管理员 (Admin)**：管理本部门物资和人员，查看本部门借用。
-    *   **普通用户 (User)**：仅可查询物资、发起借用申请、查看个人记录。
-*   **安全认证**：基于 JWT (JSON Web Token) 的无状态身份验证。
-*   **注册审批流**：新用户注册需填写邀请码，并经由管理员审批通过后方可登录。
+### 1. 👮 用户与权限管理
+*   **多角色体系**：
+    *   **超级管理员**: 全局掌控，管理所有部门与审批。
+    *   **部门管理员**: 仅管理本部门物资与人员。
+    *   **普通用户**: 自助查询与借用。
+*   **注册审批**: 邀请码机制 + 管理员人工审核，确保内部安全。
 
-### 2. 📦 物资全生命周期管理 (Equipment)
-*   **物资录入**：支持图片上传、详细参数记录、分类归档。
-*   **状态追踪**：实时监控物资状态（`可用`、`借出`、`维修中`、`不可借`）。
-*   **分类管理**：自定义物资类别（如“IT设备”、“办公用品”等），支持颜色标签。
-*   **数据持久化**：所有数据均通过 JSON 文件本地持久化，无需安装额外数据库。
+### 2. 📦 物资数字化管理
+*   **档案管理**: 完整记录物资参数、购买日期、保修状态。
+*   **状态追踪**: 实时呈现物资流转状态（借出人、归还时间）。
+*   **可视化**: 支持多图上传，直观展示物资外观。
 
-### 3. 🔄 借还与审批流程 (Borrow & Approval)
-*   **借用申请**：用户发起借用，填写用途和归还时间。
-*   **多级审批**：根据用户角色自动路由审批任务（部门内审批或跨部门审批）。
-*   **归还流程**：用户归还物资，管理员确认入库，形成闭环。
-*   **历史记录**：完整的借还操作日志，随时可追溯。
-
-### 4. 🏢 组织架构管理 (Department)
-*   **部门维护**：灵活创建和编辑部门信息。
-*   **人员关联**：用户与部门深度绑定，实现基于部门的数据隔离与权限控制。
+### 3. 🔄 智能审批流
+*   **自动路由**: 根据申请人所属部门，自动将审批任务推送到对应管理员。
+*   **完整日志**: 记录每一步审批操作的时间、人员和备注。
 
 ---
 
@@ -70,37 +192,7 @@ studio-main/
 *   **运行环境**: Node.js v18+
 *   **包管理器**: npm 或 yarn
 
-### 方式一：本地开发/部署
-
-1.  **进入服务器目录**
-    ```bash
-    cd server
-    ```
-
-2.  **安装依赖**
-    ```bash
-    npm install
-    ```
-    *(国内用户推荐使用淘宝镜像: `npm config set registry https://registry.npmmirror.com`)*
-
-3.  **配置环境变量** (可选)
-    复制 `.env.example` 为 `.env` 并修改配置：
-    ```bash
-    cp .env.example .env
-    ```
-
-4.  **启动服务**
-    *   **开发模式 (热重载)**:
-        ```bash
-        npm run dev
-        ```
-    *   **生产模式**:
-        ```bash
-        npm run build
-        npm start
-        ```
-
-### 方式二：Docker 容器化部署 (强烈推荐)
+### 方式一：Docker 容器化部署 (强烈推荐)
 
 本项目已深度优化 Docker 支持，集成国内镜像源加速构建。
 
@@ -119,26 +211,31 @@ studio-main/
       -e TZ=Asia/Shanghai \
       -v /opt/equiptrack/data:/app/data \
       -v /opt/equiptrack/uploads:/app/uploads \
-      equiptrack-server
+      yemiao351/equiptrack-server:latest
     ```
 
-    *   **端口映射**: 将容器 3000 端口映射到主机 13000 端口。
-    *   **数据持久化挂载**: 确保重启容器后数据库和图片不丢失。
-    *   **时区设置**: 设置为中国标准时间。
+### 方式二：本地开发运行
+
+1.  **安装依赖**
+    ```bash
+    cd server
+    npm install
+    # 国内推荐: npm config set registry https://registry.npmmirror.com
+    ```
+
+2.  **启动服务**
+    ```bash
+    npm run dev   # 开发模式
+    npm run build && npm start # 生产模式
+    ```
 
 ---
 
 ## 📱 Android 客户端开发指南
 
-1.  **开发工具**: 推荐使用最新版 Android Studio (Koala 或更高)。
-2.  **编译步骤**:
-    *   打开 Android Studio，选择 `Import Project` 并指向 `android` 目录。
-    *   等待 Gradle Sync 完成。
-    *   连接真机或启动模拟器。
-    *   点击 Run 按钮 (绿色三角形) 即可安装运行。
-3.  **API 地址配置**:
-    *   请确保 Android 设备与后端服务器在同一局域网，或后端已部署到公网。
-    *   在 App 代码配置中修改 `BASE_URL` 指向你的服务器地址。
+1.  **工具**: Android Studio (Koala+)
+2.  **运行**: 导入 `android` 目录，Sync Gradle，连接真机运行。
+3.  **配置**: 修改 `BASE_URL` 指向你的服务器 IP (如 `http://192.168.1.100:3000/api/`)。
 
 ---
 
@@ -146,5 +243,5 @@ studio-main/
 
 欢迎提交 Issue 或 Pull Request 来改进本项目。
 
-*   **API 文档**: 详见 [API_SPEC.md](./API_SPEC.md)
+*   **API 文档**: [API_SPEC.md](./API_SPEC.md)
 *   **维护者**: EquipTrack Team
