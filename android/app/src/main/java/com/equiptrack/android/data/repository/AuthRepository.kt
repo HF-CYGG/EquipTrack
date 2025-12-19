@@ -41,58 +41,46 @@ class AuthRepository @Inject constructor(
     
     suspend fun login(contact: String, password: String): Flow<NetworkResult<User>> = flow {
         emit(NetworkResult.Loading())
-        // In local debug mode, prefer local authentication first for speed
-        if (settingsRepository.isLocalDebug()) {
-            val localUserFast = userDao.authenticateUser(contact, password)
-            if (localUserFast != null) {
-                saveUserSession(localUserFast)
-                emit(NetworkResult.Success(localUserFast))
-                return@flow
-            }
+        val remoteResult = try {
+            safeApiCall { apiService.login(LoginRequest(contact, password)) }
+        } catch (e: Exception) {
+            NetworkResult.Error("网络错误: ${e.message}")
         }
-        try {
-            // Try remote login first
-            val result = safeApiCall {
-                apiService.login(LoginRequest(contact, password))
-            }
-            
-            when (result) {
-                is NetworkResult.Success -> {
-                    val user = result.data?.user
-                    val token = result.data?.token
-                    Log.d(TAG, "Login success. User: ${user?.name}, Token present: ${token != null}")
-                    if (user != null) {
-                        // Save user to local database
-                        userDao.insertUser(user)
-                        // Save login state
-                        saveUserSession(user, token)
-                        emit(NetworkResult.Success(user))
-                    } else {
-                        emit(NetworkResult.Error("登录失败：用户信息无效"))
-                    }
+
+        when (remoteResult) {
+            is NetworkResult.Success -> {
+                val user = remoteResult.data?.user
+                val token = remoteResult.data?.token
+                Log.d(TAG, "Login success. User: ${user?.name}, Token present: ${token != null}")
+                if (user != null) {
+                    userDao.insertUser(user)
+                    saveUserSession(user, token)
+                    emit(NetworkResult.Success(user))
+                } else {
+                    emit(NetworkResult.Error("登录失败：用户信息无效"))
                 }
-                is NetworkResult.Error -> {
-                    // Try local authentication as fallback
+            }
+            is NetworkResult.Error -> {
+                val message = remoteResult.message ?: "登录失败"
+                val canFallbackToLocal = message.contains("无法连接") ||
+                    message.contains("连接超时") ||
+                    message.contains("无法解析") ||
+                    message.startsWith("网络错误")
+
+                if (canFallbackToLocal) {
                     val localUser = userDao.authenticateUser(contact, password)
                     if (localUser != null) {
                         saveUserSession(localUser)
                         emit(NetworkResult.Success(localUser))
                     } else {
-                        emit(NetworkResult.Error(result.message ?: "登录失败"))
+                        emit(NetworkResult.Error(message))
                     }
-                }
-                is NetworkResult.Loading -> {
-                    emit(NetworkResult.Loading())
+                } else {
+                    emit(NetworkResult.Error(message))
                 }
             }
-        } catch (e: Exception) {
-            // Fallback to local authentication
-            val localUser = userDao.authenticateUser(contact, password)
-            if (localUser != null) {
-                saveUserSession(localUser)
-                emit(NetworkResult.Success(localUser))
-            } else {
-                emit(NetworkResult.Error("登录失败：${e.message}"))
+            is NetworkResult.Loading -> {
+                emit(NetworkResult.Loading())
             }
         }
     }

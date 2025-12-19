@@ -40,6 +40,9 @@ suspend fun <T> safeApiCall(apiCall: suspend () -> Response<T>): NetworkResult<T
                     // 但通常 errorBody 可能是 HTML (nginx error page)，所以还是保守一点只解析 JSON
                 }
             }
+            if (response.code() == 401) {
+                errorMessage = "登录已过期，请重新登录"
+            }
             NetworkResult.Error(errorMessage)
         }
     } catch (e: Exception) {

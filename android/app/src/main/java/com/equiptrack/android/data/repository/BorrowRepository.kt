@@ -333,6 +333,11 @@ class BorrowRepository @Inject constructor(
             emit(NetworkResult.Success(snapshot))
             return@flow
         }
+        val token = authRepository.getAuthToken()
+        if (token.isNullOrBlank()) {
+            emit(NetworkResult.Error("登录状态缺少令牌，请退出后重新登录"))
+            return@flow
+        }
         val result = safeApiCall {
             apiService.getBorrowHistory(
                 userRole = userRole.displayName,

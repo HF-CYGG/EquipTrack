@@ -149,15 +149,11 @@ class DepartmentRepository @Inject constructor(
     }
     
     suspend fun isDepartmentNameExists(name: String, excludeId: String? = null): Boolean {
-        val departments = departmentDao.getAllDepartments()
         return try {
-            val departmentList = mutableListOf<Department>()
-            departments.collect { list ->
-                departmentList.clear()
-                departmentList.addAll(list)
-            }
+            val trimmedName = name.trim()
+            val departmentList = departmentDao.getAllDepartments().first()
             departmentList.any { dept ->
-                dept.name.equals(name.trim(), ignoreCase = true) && dept.id != excludeId
+                dept.name.equals(trimmedName, ignoreCase = true) && dept.id != excludeId
             }
         } catch (e: Exception) {
             false

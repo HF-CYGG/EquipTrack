@@ -41,6 +41,10 @@ class AuthInterceptor @Inject constructor(
             
         Log.d(TAG, "Request headers: ${newRequest.headers}")
 
-        return chain.proceed(newRequest)
+        val response = chain.proceed(newRequest)
+        if (response.code == 401) {
+            sharedPreferences.edit().clear().apply()
+        }
+        return response
     }
 }
