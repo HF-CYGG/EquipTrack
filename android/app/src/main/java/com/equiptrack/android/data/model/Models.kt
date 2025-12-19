@@ -41,6 +41,7 @@ data class EquipmentItem(
     val departmentId: String,
     val description: String,
     val image: String? = null,
+    val imageFull: String? = null,
     val quantity: Int,
     val availableQuantity: Int,
     val borrowPhoto: String? = null, // Data URI for the photo taken on borrow

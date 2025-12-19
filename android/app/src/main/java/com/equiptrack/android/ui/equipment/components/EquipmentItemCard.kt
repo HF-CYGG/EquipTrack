@@ -1,6 +1,7 @@
 package com.equiptrack.android.ui.equipment.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -10,11 +11,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.equiptrack.android.data.model.Category
 import com.equiptrack.android.data.model.EquipmentItem
@@ -37,8 +41,41 @@ fun EquipmentItemCard(
     val category = categories.find { it.id == item.categoryId }
     val isAvailable = item.availableQuantity > 0
     
-    val imageUrl = remember(item.image, serverUrl) {
+    var showImageDialog by remember { mutableStateOf(false) }
+
+    val imageThumbnailUrl = remember(item.image, serverUrl) {
         UrlUtils.resolveImageUrl(serverUrl, item.image)
+    }
+    val imageFullUrl = remember(item.imageFull, item.image, serverUrl) {
+        UrlUtils.resolveImageUrl(serverUrl, item.imageFull ?: item.image)
+    }
+
+    if (showImageDialog && !imageFullUrl.isNullOrEmpty()) {
+        Dialog(
+            onDismissRequest = { showImageDialog = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.8f))
+                    .clickable { showImageDialog = false },
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = imageFullUrl,
+                    contentDescription = item.name,
+                    modifier = Modifier
+                        .fillMaxWidth(0.95f)
+                        .fillMaxHeight(0.8f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surface),
+                    contentScale = ContentScale.Fit,
+                    error = rememberVectorPainter(Icons.Default.BrokenImage),
+                    placeholder = rememberVectorPainter(Icons.Default.Image)
+                )
+            }
+        }
     }
 
     Card(
@@ -65,9 +102,11 @@ fun EquipmentItemCard(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         AsyncImage(
-                            model = imageUrl,
+                            model = imageThumbnailUrl,
                             contentDescription = item.name,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clickable(enabled = !imageFullUrl.isNullOrEmpty()) { showImageDialog = true },
                             contentScale = ContentScale.Crop,
                             error = rememberVectorPainter(Icons.Default.BrokenImage),
                             placeholder = rememberVectorPainter(Icons.Default.Image)

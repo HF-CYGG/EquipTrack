@@ -459,7 +459,8 @@ fun AddEditItemDialog(
                                     departmentId = item?.departmentId ?: departmentId,
                                     quantity = quantity.toIntOrNull() ?: 0,
                                     availableQuantity = availableQuantity.toIntOrNull() ?: 0,
-                                    image = imageUri?.toString() ?: item?.image ?: ""
+                                    image = imageUri?.toString() ?: item?.image ?: "",
+                                    imageFull = if (imageUri != null) null else item?.imageFull
                                 )
                                 onConfirm(newItem)
                             },

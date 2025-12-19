@@ -1,5 +1,6 @@
 package com.equiptrack.android.ui.history.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,12 +20,14 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import com.equiptrack.android.data.model.BorrowHistoryEntry
 import com.equiptrack.android.data.model.BorrowStatus
 import com.equiptrack.android.ui.theme.*
 import com.equiptrack.android.ui.components.AnimatedButton
 import com.equiptrack.android.ui.components.AnimatedOutlinedButton
+import com.equiptrack.android.utils.CameraUtils
 import com.equiptrack.android.utils.UrlUtils
 import java.text.SimpleDateFormat
 import java.util.*
@@ -59,18 +62,48 @@ fun HistoryEntryCard(
                     .clickable { showImageDialog = false },
                 contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = UrlUtils.resolveImageUrl(serverUrl, entry.returnPhoto),
-                    contentDescription = "归还凭证",
-                    modifier = Modifier
-                        .fillMaxWidth(0.95f)
-                        .fillMaxHeight(0.8f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surface), // Background for image area
-                    contentScale = ContentScale.Fit,
-                    error = rememberVectorPainter(Icons.Default.BrokenImage), // Show error icon if fails
-                    placeholder = rememberVectorPainter(Icons.Default.Image) // Show placeholder while loading
-                )
+                val photo = entry.returnPhoto
+                if (photo.startsWith("data:image")) {
+                    val bitmap = remember(photo) { CameraUtils.base64ToBitmap(photo) }
+                    if (bitmap != null) {
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = "归还凭证",
+                            modifier = Modifier
+                                .fillMaxWidth(0.95f)
+                                .fillMaxHeight(0.8f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surface),
+                            contentScale = ContentScale.Fit
+                        )
+                    } else {
+                        AsyncImage(
+                            model = UrlUtils.resolveImageUrl(serverUrl, photo),
+                            contentDescription = "归还凭证",
+                            modifier = Modifier
+                                .fillMaxWidth(0.95f)
+                                .fillMaxHeight(0.8f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surface),
+                            contentScale = ContentScale.Fit,
+                            error = rememberVectorPainter(Icons.Default.BrokenImage),
+                            placeholder = rememberVectorPainter(Icons.Default.Image)
+                        )
+                    }
+                } else {
+                    AsyncImage(
+                        model = UrlUtils.resolveImageUrl(serverUrl, photo),
+                        contentDescription = "归还凭证",
+                        modifier = Modifier
+                            .fillMaxWidth(0.95f)
+                            .fillMaxHeight(0.8f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surface),
+                        contentScale = ContentScale.Fit,
+                        error = rememberVectorPainter(Icons.Default.BrokenImage),
+                        placeholder = rememberVectorPainter(Icons.Default.Image)
+                    )
+                }
             }
         }
     }
@@ -215,7 +248,7 @@ fun HistoryEntryCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = dateFormat.format(entry.returnDate!!),
+                            text = dateFormat.format(entry.returnDate),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.2

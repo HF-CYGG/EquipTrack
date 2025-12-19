@@ -327,27 +327,119 @@ class EquipmentViewModel @Inject constructor(
         }
     }
 
-    private fun compressImage(context: Context, file: File): File? {
-        try {
-             val bitmap = android.graphics.BitmapFactory.decodeFile(file.absolutePath)
-             var quality = 90
-             val stream = java.io.ByteArrayOutputStream()
-             bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, quality, stream)
-             
-             while (stream.toByteArray().size > 1 * 1024 * 1024 && quality > 10) {
-                 stream.reset()
-                 quality -= 10
-                 bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, quality, stream)
-             }
-             
-             val compressedFile = File(context.cacheDir, "compressed_${System.currentTimeMillis()}.jpg")
-             val outputStream = FileOutputStream(compressedFile)
-             outputStream.write(stream.toByteArray())
-             outputStream.close()
-             return compressedFile
+    private suspend fun uploadItemImages(context: Context, uri: Uri): Pair<String, String>? {
+        return try {
+            val originalFile = getFileFromUri(context, uri) ?: run {
+                _uiState.value = _uiState.value.copy(errorMessage = "无法读取图片文件")
+                return null
+            }
+
+            val fileSize = originalFile.length()
+            val maxFileSize = 10 * 1024 * 1024
+            if (fileSize > maxFileSize) {
+                _uiState.value = _uiState.value.copy(errorMessage = "图片大小超过10MB限制")
+                return null
+            }
+
+            val thumbnailFile = createResizedJpegFile(
+                context = context,
+                sourceFile = originalFile,
+                maxDimension = 360,
+                maxBytes = 280 * 1024
+            ) ?: run {
+                _uiState.value = _uiState.value.copy(errorMessage = "图片压缩失败")
+                return null
+            }
+
+            val fullFile = createResizedJpegFile(
+                context = context,
+                sourceFile = originalFile,
+                maxDimension = 1600,
+                maxBytes = 1 * 1024 * 1024
+            ) ?: run {
+                _uiState.value = _uiState.value.copy(errorMessage = "图片压缩失败")
+                return null
+            }
+
+            val thumbResult = equipmentRepository.uploadImage(thumbnailFile, "item_thumb")
+            if (thumbResult !is NetworkResult.Success) {
+                _uiState.value = _uiState.value.copy(errorMessage = "图片上传失败: ${thumbResult.message}")
+                return null
+            }
+            val fullResult = equipmentRepository.uploadImage(fullFile, "item_full")
+            if (fullResult !is NetworkResult.Success) {
+                _uiState.value = _uiState.value.copy(errorMessage = "图片上传失败: ${fullResult.message}")
+                return null
+            }
+
+            val thumbUrl = thumbResult.data ?: return null
+            val fullUrl = fullResult.data ?: return null
+            Pair(thumbUrl, fullUrl)
         } catch (e: Exception) {
-             e.printStackTrace()
-             return null
+            e.printStackTrace()
+            _uiState.value = _uiState.value.copy(errorMessage = "图片处理出错: ${e.message}")
+            null
+        }
+    }
+
+    private fun compressImage(context: Context, file: File): File? {
+        return createResizedJpegFile(
+            context = context,
+            sourceFile = file,
+            maxDimension = 1600,
+            maxBytes = 1 * 1024 * 1024
+        )
+    }
+
+    private fun createResizedJpegFile(
+        context: Context,
+        sourceFile: File,
+        maxDimension: Int,
+        maxBytes: Int
+    ): File? {
+        return try {
+            val boundsOptions = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            android.graphics.BitmapFactory.decodeFile(sourceFile.absolutePath, boundsOptions)
+            val srcWidth = boundsOptions.outWidth.coerceAtLeast(1)
+            val srcHeight = boundsOptions.outHeight.coerceAtLeast(1)
+
+            val largest = maxOf(srcWidth, srcHeight)
+            val sampleSize = if (largest <= maxDimension) 1 else {
+                var s = 1
+                while (largest / s > maxDimension) s *= 2
+                s.coerceAtLeast(1)
+            }
+
+            val decodeOptions = android.graphics.BitmapFactory.Options().apply {
+                inSampleSize = sampleSize
+            }
+            val decoded = android.graphics.BitmapFactory.decodeFile(sourceFile.absolutePath, decodeOptions) ?: return null
+
+            val decodedLargest = maxOf(decoded.width, decoded.height).coerceAtLeast(1)
+            val scale = if (decodedLargest <= maxDimension) 1f else maxDimension.toFloat() / decodedLargest.toFloat()
+            val targetW = (decoded.width * scale).toInt().coerceAtLeast(1)
+            val targetH = (decoded.height * scale).toInt().coerceAtLeast(1)
+
+            val resized = if (scale == 1f) decoded else android.graphics.Bitmap.createScaledBitmap(decoded, targetW, targetH, true).also {
+                if (it !== decoded) decoded.recycle()
+            }
+
+            var quality = 92
+            val stream = java.io.ByteArrayOutputStream()
+            resized.compress(android.graphics.Bitmap.CompressFormat.JPEG, quality, stream)
+            while (stream.size() > maxBytes && quality > 20) {
+                stream.reset()
+                quality -= 8
+                resized.compress(android.graphics.Bitmap.CompressFormat.JPEG, quality, stream)
+            }
+            resized.recycle()
+
+            val outFile = File(context.cacheDir, "img_${System.currentTimeMillis()}_${maxDimension}.jpg")
+            FileOutputStream(outFile).use { it.write(stream.toByteArray()) }
+            outFile
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
     }
 
@@ -375,14 +467,13 @@ class EquipmentViewModel @Inject constructor(
             val imageUri = item.image
             
             if (!imageUri.isNullOrEmpty() && (imageUri.startsWith("content://") || imageUri.startsWith("file://"))) {
-                 val uploadedUrl = uploadImage(context, Uri.parse(imageUri), "item")
-                 if (uploadedUrl != null) {
-                     itemToSave = item.copy(image = uploadedUrl)
-                 } else {
-                     // Error message already set in uploadImage
-                     _uiState.value = _uiState.value.copy(isLoading = false)
-                     return@launch
-                 }
+                val uploaded = uploadItemImages(context, Uri.parse(imageUri))
+                if (uploaded != null) {
+                    itemToSave = item.copy(image = uploaded.first, imageFull = uploaded.second)
+                } else {
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                    return@launch
+                }
             }
 
             equipmentRepository.createItem(itemToSave).collect { result ->
@@ -416,14 +507,13 @@ class EquipmentViewModel @Inject constructor(
             val imageUri = item.image
             
             if (!imageUri.isNullOrEmpty() && (imageUri.startsWith("content://") || imageUri.startsWith("file://"))) {
-                 val uploadedUrl = uploadImage(context, Uri.parse(imageUri), "item")
-                 if (uploadedUrl != null) {
-                     itemToSave = item.copy(image = uploadedUrl)
-                 } else {
-                     // Error message already set in uploadImage
-                     _uiState.value = _uiState.value.copy(isLoading = false)
-                     return@launch
-                 }
+                val uploaded = uploadItemImages(context, Uri.parse(imageUri))
+                if (uploaded != null) {
+                    itemToSave = item.copy(image = uploaded.first, imageFull = uploaded.second)
+                } else {
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                    return@launch
+                }
             }
 
             equipmentRepository.updateItem(itemToSave).collect { result ->

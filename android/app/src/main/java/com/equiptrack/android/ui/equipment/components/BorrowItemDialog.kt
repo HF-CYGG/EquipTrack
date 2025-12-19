@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -37,6 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import coil.compose.AsyncImage
 import com.equiptrack.android.data.model.Borrower
 import com.equiptrack.android.data.model.BorrowRequest
 import com.equiptrack.android.data.model.EquipmentItem
@@ -45,6 +47,7 @@ import com.equiptrack.android.ui.components.AnimatedButton
 import com.equiptrack.android.ui.components.AnimatedOutlinedButton
 import com.equiptrack.android.ui.components.CameraCapture
 import com.equiptrack.android.utils.CameraUtils
+import com.equiptrack.android.utils.UrlUtils
 import com.vanpra.composematerialdialogs.MaterialDialog
 import com.vanpra.composematerialdialogs.datetime.date.datepicker
 import com.vanpra.composematerialdialogs.datetime.time.timepicker
@@ -56,6 +59,7 @@ import java.util.*
 @Composable
 fun BorrowItemDialog(
     item: EquipmentItem,
+    serverUrl: String,
     onDismiss: () -> Unit,
     onConfirm: (BorrowRequest) -> Unit,
     currentUser: User? = null
@@ -249,12 +253,26 @@ fun BorrowItemDialog(
                                 color = MaterialTheme.colorScheme.primaryContainer
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        Icons.Default.Inventory2,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(24.dp) // Reduced icon size
-                                    )
+                                    val previewUrl = remember(item.image, serverUrl) {
+                                        UrlUtils.resolveImageUrl(serverUrl, item.image)
+                                    }
+                                    if (!previewUrl.isNullOrEmpty()) {
+                                        AsyncImage(
+                                            model = previewUrl,
+                                            contentDescription = item.name,
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop,
+                                            error = rememberVectorPainter(Icons.Default.BrokenImage),
+                                            placeholder = rememberVectorPainter(Icons.Outlined.Image)
+                                        )
+                                    } else {
+                                        Icon(
+                                            Icons.Default.Inventory2,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(24.dp) // Reduced icon size
+                                        )
+                                    }
                                 }
                             }
                             

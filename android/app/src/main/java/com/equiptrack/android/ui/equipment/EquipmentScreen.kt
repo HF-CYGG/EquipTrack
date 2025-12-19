@@ -38,6 +38,7 @@ import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.equiptrack.android.data.model.Category
+import com.equiptrack.android.data.model.Department
 import com.equiptrack.android.data.model.EquipmentItem
 import com.equiptrack.android.data.model.User
 import com.equiptrack.android.ui.equipment.components.AddEditItemDialog
@@ -52,7 +53,6 @@ import com.equiptrack.android.ui.components.AnimatedFloatingActionButton
 import com.equiptrack.android.ui.components.AnimatedIconButton
 import com.equiptrack.android.ui.components.AnimatedSmallFloatingActionButton
 import com.equiptrack.android.ui.components.EquipmentListSkeleton
-import com.equiptrack.android.ui.components.DepartmentFilter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,13 +60,88 @@ fun CategoryChipsRow(
     categories: List<Category>,
     selectedCategoryId: String?,
     onCategorySelected: (String?) -> Unit,
+    departments: List<Department>,
+    selectedDepartmentId: String?,
+    onDepartmentSelected: (String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var deptMenuExpanded by remember { mutableStateOf(false) }
+    val currentDeptName = remember(departments, selectedDepartmentId) {
+        departments.find { it.id == selectedDepartmentId }?.name ?: "所有部门"
+    }
+
     LazyRow(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        item {
+            Box {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    onClick = { deptMenuExpanded = true }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Business,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "部门：$currentDeptName",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Icon(
+                            Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                DropdownMenu(
+                    expanded = deptMenuExpanded,
+                    onDismissRequest = { deptMenuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("所有部门") },
+                        onClick = {
+                            onDepartmentSelected(null)
+                            deptMenuExpanded = false
+                        },
+                        leadingIcon = {
+                            if (selectedDepartmentId == null) {
+                                Icon(Icons.Default.Check, contentDescription = null)
+                            }
+                        }
+                    )
+                    Divider()
+                    departments.forEach { dept ->
+                        DropdownMenuItem(
+                            text = { Text(dept.name) },
+                            onClick = {
+                                onDepartmentSelected(dept.id)
+                                deptMenuExpanded = false
+                            },
+                            leadingIcon = {
+                                if (dept.id == selectedDepartmentId) {
+                                    Icon(Icons.Default.Check, contentDescription = null)
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
         item {
             FilterChip(
                 selected = selectedCategoryId == null,
@@ -132,7 +207,6 @@ fun EquipmentScreen(
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     var showSearch by remember { mutableStateOf(false) }
     var fabExpanded by remember { mutableStateOf(false) }
-    var deptMenuExpanded by remember { mutableStateOf(false) }
     // removed duplicate toastState declaration
     
     val pullRefreshState = rememberPullRefreshState(
@@ -176,90 +250,6 @@ fun EquipmentScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Header Row with Title and Department Selector
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "物资列表",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-
-                // Department Dropdown (Global for all users)
-                Box {
-                    val currentDeptName = departments.find { it.id == filterDepartmentId }?.name ?: "所有部门"
-                    
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        onClick = { deptMenuExpanded = true }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Business, // Use Business icon or similar
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = currentDeptName,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Icon(
-                                Icons.Default.ArrowDropDown,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    DropdownMenu(
-                        expanded = deptMenuExpanded,
-                        onDismissRequest = { deptMenuExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("所有部门") },
-                            onClick = {
-                                viewModel.filterByDepartment(null)
-                                deptMenuExpanded = false
-                            },
-                            leadingIcon = {
-                                if (filterDepartmentId == null) {
-                                    Icon(Icons.Default.Check, contentDescription = null)
-                                }
-                            }
-                        )
-                        Divider()
-                        departments.forEach { dept ->
-                            DropdownMenuItem(
-                                text = { Text(dept.name) },
-                                onClick = {
-                                    viewModel.filterByDepartment(dept.id)
-                                    deptMenuExpanded = false
-                                },
-                                leadingIcon = {
-                                    if (dept.id == filterDepartmentId) {
-                                        Icon(Icons.Default.Check, contentDescription = null)
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
             // 搜索栏 - 带滑动展开动画
             AnimatedVisibility(
                 visible = showSearch,
@@ -365,7 +355,10 @@ fun EquipmentScreen(
             CategoryChipsRow(
                 categories = categories,
                 selectedCategoryId = selectedCategoryId,
-                onCategorySelected = { viewModel.selectCategory(it) }
+                onCategorySelected = { viewModel.selectCategory(it) },
+                departments = departments,
+                selectedDepartmentId = filterDepartmentId,
+                onDepartmentSelected = { viewModel.filterByDepartment(it) }
             )
             
             // Loading indicator
@@ -555,6 +548,7 @@ fun EquipmentScreen(
     if (uiState.showBorrowDialog && uiState.selectedItem != null) {
         BorrowItemDialog(
             item = uiState.selectedItem!!,
+            serverUrl = serverUrl,
             onDismiss = { viewModel.hideBorrowDialog() },
             onConfirm = { borrowRequest ->
                 viewModel.borrowItem(uiState.selectedItem!!.id, borrowRequest)
