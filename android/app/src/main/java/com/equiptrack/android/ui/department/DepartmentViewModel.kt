@@ -11,6 +11,7 @@ import com.equiptrack.android.data.repository.DepartmentRepository
 import com.equiptrack.android.data.repository.UserRepository
 import com.equiptrack.android.data.repository.EquipmentRepository
 import com.equiptrack.android.data.settings.SettingsRepository
+import com.equiptrack.android.utils.UrlUtils
 import com.equiptrack.android.utils.NetworkResult
 import com.equiptrack.android.permission.PermissionChecker
 import com.equiptrack.android.permission.PermissionType
@@ -103,6 +104,7 @@ class DepartmentViewModel @Inject constructor(
 
     fun refreshDepartments() {
         _isRefreshing.value = true
+        UrlUtils.bumpRefreshEpoch()
         syncDepartments()
     }
 

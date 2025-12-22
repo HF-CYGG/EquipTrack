@@ -4,6 +4,13 @@ import android.util.Log
 import java.net.URI
 
 object UrlUtils {
+    @Volatile
+    private var refreshEpoch: Long = 0L
+
+    fun bumpRefreshEpoch() {
+        refreshEpoch = System.currentTimeMillis()
+    }
+
     fun resolveImageUrl(baseUrl: String, imagePath: String?): String? {
         if (imagePath.isNullOrEmpty()) return null
         
@@ -14,7 +21,12 @@ object UrlUtils {
         
         // Check if it's already a full URL
         if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
-            return imagePath
+            return if (refreshEpoch > 0L) {
+                val sep = if (imagePath.contains("?")) "&" else "?"
+                "$imagePath${sep}v=$refreshEpoch"
+            } else {
+                imagePath
+            }
         }
 
         // Check if it's a data URI (Base64)
@@ -46,8 +58,11 @@ object UrlUtils {
         }
         
         val cleanPath = if (imagePath.startsWith("/")) imagePath else "/$imagePath"
-        
-        val fullUrl = "$cleanBase$cleanPath"
+        var fullUrl = "$cleanBase$cleanPath"
+        if (refreshEpoch > 0L) {
+            val sep = if (fullUrl.contains("?")) "&" else "?"
+            fullUrl = "$fullUrl${sep}v=$refreshEpoch"
+        }
         Log.d("UrlUtils", "Resolved image URL: $fullUrl")
         return fullUrl
     }
