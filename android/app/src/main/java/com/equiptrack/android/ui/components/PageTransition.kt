@@ -226,3 +226,47 @@ fun PageSwitchTransition(
         content(page)
     }
 }
+
+@Composable
+fun AnimatedListItem(
+    enabled: Boolean,
+    listAnimationType: String,
+    index: Int = 0,
+    content: @Composable () -> Unit
+) {
+    if (!enabled) {
+        content()
+        return
+    }
+    
+    val transitionState = remember { MutableTransitionState(false).apply { targetState = true } }
+    
+    // Calculate staggered delay based on index
+    // Limit delay to first 10 items to avoid long waits for large lists
+    val delay = (index % 10) * 50
+    
+    val enterTransition = when (listAnimationType) {
+        "Fade" -> fadeIn(
+            animationSpec = tween(durationMillis = 300, delayMillis = delay)
+        ) + expandVertically(
+            animationSpec = tween(durationMillis = 300, delayMillis = delay)
+        )
+        "Slide" -> slideInHorizontally(
+            initialOffsetX = { fullWidth -> fullWidth },
+            animationSpec = tween(durationMillis = 350, delayMillis = delay, easing = FastOutSlowInEasing)
+        ) + fadeIn(
+            animationSpec = tween(durationMillis = 300, delayMillis = delay)
+        )
+        else -> fadeIn(
+            animationSpec = tween(durationMillis = 300, delayMillis = delay)
+        )
+    }
+    
+    AnimatedVisibility(
+        visibleState = transitionState,
+        enter = enterTransition,
+        exit = ExitTransition.None
+    ) {
+        content()
+    }
+}

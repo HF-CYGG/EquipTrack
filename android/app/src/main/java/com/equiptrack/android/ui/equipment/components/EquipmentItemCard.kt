@@ -1,5 +1,6 @@
 package com.equiptrack.android.ui.equipment.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -36,7 +37,12 @@ fun EquipmentItemCard(
     serverUrl: String,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onBorrow: () -> Unit
+    onBorrow: () -> Unit,
+    compact: Boolean = false,
+    cornerRadius: Float = 12f,
+    equipmentImageRatio: String = "Square",
+    cardMaterial: String = "Solid",
+    tagStyle: String = "Solid"
 ) {
     val category = categories.find { it.id == item.categoryId }
     val isAvailable = item.availableQuantity > 0
@@ -78,28 +84,97 @@ fun EquipmentItemCard(
         }
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp), // Reduced elevation
-        colors = CardDefaults.cardColors(
+    val cardPadding = if (compact) 8.dp else 12.dp
+    val baseImageHeight = if (compact) 64.dp else 80.dp
+    val innerSpacing = if (compact) 8.dp else 12.dp
+    val sectionSpacing = if (compact) 8.dp else 12.dp
+
+    val imageWidth = when (equipmentImageRatio) {
+        "Wide" -> baseImageHeight * (16f / 9f)
+        "Tall" -> baseImageHeight * (3f / 4f)
+        else -> baseImageHeight
+    }
+    val imageHeight = when (equipmentImageRatio) {
+        "Tall" -> baseImageHeight * (4f / 3f)
+        else -> baseImageHeight
+    }
+
+    val cardShape = RoundedCornerShape(cornerRadius.dp)
+    val cardColors = when (cardMaterial) {
+        "Glass" -> CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+        )
+        "Outline" -> CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)
+        )
+        else -> CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
+    }
+    val cardElevation = when (cardMaterial) {
+        "Glass" -> CardDefaults.cardElevation(defaultElevation = 4.dp)
+        "Outline" -> CardDefaults.cardElevation(defaultElevation = 0.dp)
+        else -> CardDefaults.cardElevation(defaultElevation = 2.dp)
+    }
+    val cardBorder = if (cardMaterial == "Outline") {
+        BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f))
+    } else null
+
+    val statusColor = when {
+        item.availableQuantity == 0 -> Error
+        item.availableQuantity < item.quantity -> Warning
+        else -> Available
+    }
+    val statusBackground: Color
+    val statusContentColor: Color
+    val statusBorder: BorderStroke?
+    val statusElevation: androidx.compose.ui.unit.Dp
+
+    when (tagStyle) {
+        "Outline" -> {
+            statusBackground = Color.Transparent
+            statusContentColor = statusColor
+            statusBorder = BorderStroke(1.dp, statusColor)
+            statusElevation = 0.dp
+        }
+        "Soft" -> {
+            statusBackground = statusColor.copy(alpha = 0.18f)
+            statusContentColor = statusColor
+            statusBorder = null
+            statusElevation = 0.dp
+        }
+        else -> {
+            statusBackground = statusColor
+            statusContentColor = White
+            statusBorder = null
+            statusElevation = 1.dp
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = cardElevation,
+        colors = cardColors,
+        shape = cardShape,
+        border = cardBorder
     ) {
         Column(
-            modifier = Modifier.padding(12.dp) // Reduced padding from 20.dp
+            modifier = Modifier.padding(cardPadding)
         ) {
             // Header with image and basic info
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp), // Reduced spacing
+                horizontalArrangement = Arrangement.spacedBy(innerSpacing),
                 verticalAlignment = Alignment.Top
             ) {
                 // Item image with enhanced styling
                 if (!item.image.isNullOrEmpty()) {
                     Card(
-                        modifier = Modifier.size(80.dp), // Reduced size from 100.dp
+                        modifier = Modifier
+                            .width(imageWidth)
+                            .height(imageHeight),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = cardShape
                     ) {
                         AsyncImage(
                             model = imageThumbnailUrl,
@@ -115,9 +190,11 @@ fun EquipmentItemCard(
                 } else {
                     // Placeholder for items without image
                     Card(
-                        modifier = Modifier.size(80.dp), // Reduced size from 100.dp
+                        modifier = Modifier
+                            .width(imageWidth)
+                            .height(imageHeight),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = cardShape,
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant
                         )
@@ -129,7 +206,7 @@ fun EquipmentItemCard(
                             Icon(
                                 Icons.Default.Inventory,
                                 contentDescription = null,
-                                modifier = Modifier.size(32.dp), // Reduced icon size
+                                modifier = Modifier.size(32.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             )
                         }
@@ -139,7 +216,7 @@ fun EquipmentItemCard(
                 // Item info
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp) // Reduced spacing
+                    verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 4.dp)
                 ) {
                     Text(
                         text = item.name,
@@ -193,9 +270,9 @@ fun EquipmentItemCard(
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(12.dp)) // Reduced spacing
-            
+
+            Spacer(modifier = Modifier.height(sectionSpacing))
+
             // Enhanced quantity and status section
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -207,7 +284,7 @@ fun EquipmentItemCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp), // Reduced padding
+                        .padding(if (compact) 8.dp else 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -287,9 +364,9 @@ fun EquipmentItemCard(
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(12.dp)) // Reduced spacing
-            
+
+            Spacer(modifier = Modifier.height(sectionSpacing))
+
             // Enhanced action buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -299,7 +376,9 @@ fun EquipmentItemCard(
                 if (isAvailable) {
                     Button(
                         onClick = onBorrow,
-                        modifier = Modifier.weight(1f).height(40.dp), // Reduced height
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(if (compact) 36.dp else 40.dp),
                         shape = RoundedCornerShape(12.dp),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)
                     ) {
@@ -319,7 +398,9 @@ fun EquipmentItemCard(
                     OutlinedButton(
                         onClick = { },
                         enabled = false,
-                        modifier = Modifier.weight(1f).height(40.dp), // Reduced height
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(if (compact) 36.dp else 40.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
@@ -333,7 +414,7 @@ fun EquipmentItemCard(
                 if (canManage) {
                      AnimatedOutlinedButton(
                         onClick = onEdit,
-                        modifier = Modifier.height(40.dp), // Reduced height
+                        modifier = Modifier.height(if (compact) 36.dp else 40.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = MaterialTheme.colorScheme.primary
                         )
@@ -347,7 +428,7 @@ fun EquipmentItemCard(
                     
                     AnimatedOutlinedButton(
                         onClick = onDelete,
-                        modifier = Modifier.height(40.dp), // Reduced height
+                        modifier = Modifier.height(if (compact) 36.dp else 40.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = MaterialTheme.colorScheme.error
                         )

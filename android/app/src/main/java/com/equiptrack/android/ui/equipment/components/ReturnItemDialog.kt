@@ -29,6 +29,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -49,9 +51,11 @@ fun ReturnItemDialog(
     adminName: String? = null,
     currentUserRole: com.equiptrack.android.data.model.UserRole? = null,
     onDismiss: () -> Unit,
-    onConfirm: (ReturnRequest) -> Unit
+    onConfirm: (ReturnRequest) -> Unit,
+    hapticEnabled: Boolean = true
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     
     var capturedImageUri by remember { mutableStateOf<Uri?>(null) }
     var photoBase64 by remember { mutableStateOf<String?>(null) }
@@ -421,6 +425,10 @@ fun ReturnItemDialog(
                                 if (isPhotoRequired && photoBase64.isNullOrBlank()) {
                                     photoError = "请拍照记录归还状态"
                                     return@AnimatedButton
+                                }
+                                
+                                if (hapticEnabled) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 }
                                 
                                 val returnRequest = ReturnRequest(

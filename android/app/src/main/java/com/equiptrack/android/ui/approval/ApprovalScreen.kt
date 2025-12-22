@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -30,12 +31,15 @@ import com.equiptrack.android.ui.components.AnimatedIconButton
 import com.equiptrack.android.ui.components.AnimatedTextButton
 import com.equiptrack.android.ui.components.AnimatedFloatingActionButton
 import com.equiptrack.android.ui.components.ApprovalListSkeleton
+import com.equiptrack.android.ui.components.AnimatedListItem
+import com.equiptrack.android.ui.navigation.NavigationViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun ApprovalScreen(
     viewModel: ApprovalViewModel = hiltViewModel()
 ) {
+    val navVm: NavigationViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val toastState = rememberToastState()
     
@@ -61,6 +65,9 @@ fun ApprovalScreen(
         }
     }
     val filteredRequests by viewModel.filteredRequests.collectAsStateWithLifecycle()
+    val settingsRepository = navVm.settingsRepository
+    val lowPerformanceMode by remember { mutableStateOf(settingsRepository.isLowPerformanceMode()) }
+    val listAnimationType by remember { mutableStateOf(settingsRepository.getListAnimationType()) }
     
     var showSearch by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -152,6 +159,7 @@ fun ApprovalScreen(
                 if (uiState.isLoading) {
                     ApprovalListSkeleton()
                 } else {
+                    val enableAnimations = !lowPerformanceMode && listAnimationType != "None"
                     LazyColumn(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -190,13 +198,19 @@ fun ApprovalScreen(
                                 }
                             }
                         } else {
-                            items(filteredRequests) { request ->
-                                RegistrationRequestCard(
-                                    request = request,
-                                    canApprove = viewModel.canApproveRequests(),
-                                    onApprove = { viewModel.showApproveDialog(request) },
-                                    onReject = { viewModel.showRejectDialog(request) }
-                                )
+                            itemsIndexed(filteredRequests) { index, request ->
+                                AnimatedListItem(
+                                    enabled = enableAnimations,
+                                    listAnimationType = listAnimationType,
+                                    index = index
+                                ) {
+                                    RegistrationRequestCard(
+                                        request = request,
+                                        canApprove = viewModel.canApproveRequests(),
+                                        onApprove = { viewModel.showApproveDialog(request) },
+                                        onReject = { viewModel.showRejectDialog(request) }
+                                    )
+                                }
                             }
                         }
                     }

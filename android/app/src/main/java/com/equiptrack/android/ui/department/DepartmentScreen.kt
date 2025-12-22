@@ -1,8 +1,16 @@
 package com.equiptrack.android.ui.department
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.with
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -18,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.equiptrack.android.ui.department.components.AddEditDepartmentDialog
 import com.equiptrack.android.ui.department.components.DepartmentCard
 import com.equiptrack.android.ui.department.components.DepartmentDetailsView
+import com.equiptrack.android.ui.department.components.HierarchicalDepartmentTree
 import com.equiptrack.android.ui.equipment.components.DeleteConfirmDialog
 import com.equiptrack.android.ui.components.ToastMessage
 import com.equiptrack.android.ui.components.ToastType
@@ -27,12 +36,13 @@ import com.equiptrack.android.ui.components.AnimatedSmallFloatingActionButton
 import com.equiptrack.android.ui.components.AnimatedTextButton
 import com.equiptrack.android.ui.components.AnimatedOutlinedButton
 import com.equiptrack.android.ui.components.AnimatedIconButton
+import com.equiptrack.android.ui.components.AnimatedListItem
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class, ExperimentalAnimationApi::class)
 @Composable
 fun DepartmentScreen(
     viewModel: DepartmentViewModel = hiltViewModel()
@@ -125,72 +135,120 @@ fun DepartmentScreen(
                     }
                 }
                 
-                if (currentTab == 0) {
-                    // 全局视图：部门列表
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        if (filteredDepartments.isEmpty() && !uiState.isLoading) {
-                            item {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                    )
-                                ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(24.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
+                AnimatedContent(
+                    targetState = currentTab,
+                    transitionSpec = {
+                        if (targetState > initialState) {
+                            slideInHorizontally { width -> width } + fadeIn() with
+                                    slideOutHorizontally { width -> -width } + fadeOut()
+                        } else {
+                            slideInHorizontally { width -> -width } + fadeIn() with
+                                    slideOutHorizontally { width -> width } + fadeOut()
+                        }
+                    },
+                    label = "TabTransition"
+                ) { targetTab ->
+                    if (targetTab == 0) {
+                        // 全局视图：部门列表
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (filteredDepartments.isEmpty() && !uiState.isLoading) {
+                                item {
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                        )
                                     ) {
-                                        Icon(
-                                            Icons.Default.Business,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(48.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        Text(
-                                            text = if (searchQuery.isNotEmpty()) "未找到匹配的部门" else "暂无部门",
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        if (searchQuery.isEmpty() && viewModel.canManageDepartments()) {
-                                            Spacer(modifier = Modifier.height(8.dp))
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(24.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Business,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(48.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Spacer(modifier = Modifier.height(16.dp))
                                             Text(
-                                                text = "点击右上角的 + 按钮添加部门",
-                                                style = MaterialTheme.typography.bodyMedium,
+                                                text = if (searchQuery.isNotEmpty()) "未找到匹配的部门" else "暂无部门",
+                                                style = MaterialTheme.typography.bodyLarge,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            if (searchQuery.isEmpty() && viewModel.canManageDepartments()) {
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Text(
+                                                    text = "点击右上角的 + 按钮添加部门",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                if (searchQuery.isEmpty()) {
+                                    item {
+                                        Card(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                                        ) {
+                                            Column(modifier = Modifier.padding(16.dp)) {
+                                                Text(
+                                                    "组织架构视图",
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.padding(bottom = 8.dp)
+                                                )
+                                                HierarchicalDepartmentTree(
+                                                    departments = filteredDepartments,
+                                                    selectedDepartmentId = null,
+                                                    onSelect = { deptId ->
+                                                        viewModel.selectDepartment(deptId)
+                                                        currentTab = 1
+                                                    },
+                                                    onEdit = { dept -> viewModel.showEditDialog(dept) },
+                                                    onDelete = { dept -> viewModel.showDeleteDialog(dept) }
+                                                )
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    itemsIndexed(filteredDepartments) { index, department ->
+                                        AnimatedListItem(
+                                            enabled = true,
+                                            listAnimationType = "Slide",
+                                            index = index
+                                        ) {
+                                            DepartmentCard(
+                                                department = department,
+                                                canManage = viewModel.canManageDepartments(),
+                                                onEdit = { viewModel.showEditDialog(department) },
+                                                onDelete = { viewModel.showDeleteDialog(department) }
                                             )
                                         }
                                     }
                                 }
                             }
-                        } else {
-                            items(filteredDepartments) { department ->
-                                DepartmentCard(
-                                    department = department,
-                                    canManage = viewModel.canManageDepartments(),
-                                    onEdit = { viewModel.showEditDialog(department) },
-                                    onDelete = { viewModel.showDeleteDialog(department) }
-                                )
+                        }
+                    } else {
+                        // 部门详情视图
+                        DepartmentDetailsView(
+                            selectedDepartmentId = selectedDeptId,
+                            departments = filteredDepartments,
+                            users = departmentUsers,
+                            items = departmentItems,
+                            canManage = viewModel.canManageDepartments(), // Or logic for specific dept
+                            onSelectDepartment = { viewModel.selectDepartment(it) },
+                            onUpdateUserRole = { userId, role ->
+                                viewModel.updateUserRole(userId, role)
                             }
-                        }
+                        )
                     }
-                } else {
-                    // 部门详情视图
-                    DepartmentDetailsView(
-                        selectedDepartmentId = selectedDeptId,
-                        departments = filteredDepartments,
-                        users = departmentUsers,
-                        items = departmentItems,
-                        canManage = viewModel.canManageDepartments(), // Or logic for specific dept
-                        onSelectDepartment = { viewModel.selectDepartment(it) },
-                        onUpdateUserRole = { userId, role ->
-                            viewModel.updateUserRole(userId, role)
-                        }
-                    )
                 }
             }
         
@@ -274,41 +332,3 @@ fun DepartmentScreen(
     }
 }
 
-@Composable
-private fun OrganizationTree(
-    departments: List<com.equiptrack.android.data.model.Department>,
-    canManage: Boolean,
-    onSelect: (String) -> Unit
-) {
-    val groups = remember(departments) {
-        departments.groupBy { dept ->
-            dept.name.firstOrNull()?.uppercaseChar() ?: '#'
-        }.toSortedMap()
-    }
-
-    groups.forEach { (initial, list) ->
-        Text("分组：$initial", fontWeight = FontWeight.SemiBold)
-        Spacer(Modifier.height(4.dp))
-        list.forEach { dept ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(dept.name)
-                    Text("ID：${dept.id}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AnimatedTextButton(onClick = { onSelect(dept.id) }) { Text("查看") }
-                    if (canManage) {
-                        // 未来接入层级与结构维护入口（仅展示按钮骨架）
-                        AnimatedOutlinedButton(onClick = { /* TODO: 打开结构维护 */ }) { Text("维护结构") }
-                    }
-                }
-            }
-            Divider()
-        }
-        Spacer(Modifier.height(8.dp))
-    }
-}

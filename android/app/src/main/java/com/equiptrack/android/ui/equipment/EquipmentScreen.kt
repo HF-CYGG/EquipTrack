@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -37,6 +38,7 @@ import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.equiptrack.android.ui.navigation.NavigationViewModel
 import com.equiptrack.android.data.model.Category
 import com.equiptrack.android.data.model.Department
 import com.equiptrack.android.data.model.EquipmentItem
@@ -49,10 +51,12 @@ import com.equiptrack.android.ui.equipment.components.BorrowItemDialog
 import com.equiptrack.android.ui.components.ToastMessage
 import com.equiptrack.android.ui.components.ToastType
 import com.equiptrack.android.ui.components.rememberToastState
+import com.equiptrack.android.ui.components.ConfettiOverlay
 import com.equiptrack.android.ui.components.AnimatedFloatingActionButton
 import com.equiptrack.android.ui.components.AnimatedIconButton
 import com.equiptrack.android.ui.components.AnimatedSmallFloatingActionButton
 import com.equiptrack.android.ui.components.EquipmentListSkeleton
+import com.equiptrack.android.ui.components.AnimatedListItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -192,6 +196,7 @@ fun EquipmentScreen(
     viewModel: EquipmentViewModel = hiltViewModel(),
     onNavigateToDetail: (String) -> Unit
 ) {
+    val navVm: NavigationViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val filteredItems by viewModel.filteredItems.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
@@ -207,7 +212,17 @@ fun EquipmentScreen(
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     var showSearch by remember { mutableStateOf(false) }
     var fabExpanded by remember { mutableStateOf(false) }
-    // removed duplicate toastState declaration
+    val settingsRepository = navVm.settingsRepository
+    val isCompactList by remember { mutableStateOf(settingsRepository.isEquipmentListCompact()) }
+    val listAnimationType by remember { mutableStateOf(settingsRepository.getListAnimationType()) }
+    val cornerRadius by remember { mutableStateOf(settingsRepository.getCornerRadius()) }
+    val equipmentImageRatio by remember { mutableStateOf(settingsRepository.getEquipmentImageRatio()) }
+    val cardMaterial by remember { mutableStateOf(settingsRepository.getCardMaterial()) }
+    val tagStyle by remember { mutableStateOf(settingsRepository.getTagStyle()) }
+    val hapticEnabled by remember { mutableStateOf(settingsRepository.isHapticEnabled()) }
+    val confettiEnabled by remember { mutableStateOf(settingsRepository.isConfettiEnabled()) }
+    val lowPerformanceMode by remember { mutableStateOf(settingsRepository.isLowPerformanceMode()) }
+    var showConfetti by remember { mutableStateOf(false) }
     
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
@@ -231,6 +246,9 @@ fun EquipmentScreen(
         }
         uiState.successMessage?.let { message ->
             toastState.showSuccess(message)
+            if (confettiEnabled && !lowPerformanceMode && message.contains("借用")) {
+                showConfetti = true
+            }
             viewModel.clearMessages()
         }
     }
@@ -363,69 +381,79 @@ fun EquipmentScreen(
                     itemCount = 6
                 )
             } else {
-                // Items list
+                val enableAnimations = !lowPerformanceMode && listAnimationType != "None"
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                if (filteredItems.isEmpty() && !uiState.isLoading) {
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(24.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
+                    if (filteredItems.isEmpty() && !uiState.isLoading) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
                             ) {
-                                Icon(
-                                    Icons.Default.Inventory,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(48.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = when {
-                                        searchQuery.isNotEmpty() -> "没有找到匹配的物资"
-                                        selectedCategoryId != null -> "该分类下暂无物资"
-                                        else -> "暂无物资"
-                                    },
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                if (searchQuery.isEmpty() && selectedCategoryId == null && viewModel.canManageItems()) {
-                                    Spacer(modifier = Modifier.height(8.dp))
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        Icons.Default.Inventory,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(48.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
                                     Text(
-                                        text = "点击右上角的 + 按钮添加物资",
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        text = when {
+                                            searchQuery.isNotEmpty() -> "没有找到匹配的物资"
+                                            selectedCategoryId != null -> "该分类下暂无物资"
+                                            else -> "暂无物资"
+                                        },
+                                        style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                    if (searchQuery.isEmpty() && selectedCategoryId == null && viewModel.canManageItems()) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = "点击右上角的 + 按钮添加物资",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
-                } else {
-                    items(filteredItems) { item ->
-                        EquipmentItemCard(
-                            item = item,
-                            categories = categories,
-                            canManage = viewModel.canManageItems(),
-                            serverUrl = serverUrl,
-                            onEdit = { viewModel.showEditDialog(item) },
-                            onDelete = { viewModel.showDeleteDialog(item) },
-                            onBorrow = { viewModel.showBorrowDialog(item) }
-                        )
+                    } else {
+                        itemsIndexed(filteredItems, key = { _, item -> item.id }) { index, item ->
+                            AnimatedListItem(
+                                enabled = enableAnimations,
+                                listAnimationType = listAnimationType,
+                                index = index
+                            ) {
+                                EquipmentItemCard(
+                                    item = item,
+                                    categories = categories,
+                                    canManage = viewModel.canManageItems(),
+                                    serverUrl = serverUrl,
+                                    onEdit = { viewModel.showEditDialog(item) },
+                                    onDelete = { viewModel.showDeleteDialog(item) },
+                                    onBorrow = { viewModel.showBorrowDialog(item) },
+                                    compact = isCompactList,
+                                    cornerRadius = cornerRadius,
+                                    equipmentImageRatio = equipmentImageRatio,
+                                    cardMaterial = cardMaterial,
+                                    tagStyle = tagStyle
+                                )
+                            }
+                        }
                     }
                 }
-            }
-        }
         }
     }
-    
+
     // 右下角统一浮动菜单（添加 / 刷新 / 搜索）
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -541,6 +569,7 @@ fun EquipmentScreen(
     }
     
     if (uiState.showBorrowDialog && uiState.selectedItem != null) {
+        val effectiveHaptic = hapticEnabled && !lowPerformanceMode
         BorrowItemDialog(
             item = uiState.selectedItem!!,
             serverUrl = serverUrl,
@@ -548,19 +577,27 @@ fun EquipmentScreen(
             onConfirm = { borrowRequest ->
                 viewModel.borrowItem(uiState.selectedItem!!.id, borrowRequest)
             },
-            currentUser = viewModel.getCurrentUser()
+            currentUser = viewModel.getCurrentUser(),
+            hapticEnabled = effectiveHaptic
         )
     }
     
     // Toast message overlay
     Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.TopCenter
+        modifier = Modifier.fillMaxSize()
     ) {
         ToastMessage(
             toastData = toastState.currentToast,
             onDismiss = { toastState.dismiss() },
-            modifier = Modifier.padding(top = 16.dp)
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 16.dp)
+        )
+        ConfettiOverlay(
+            visible = showConfetti,
+            modifier = Modifier.align(Alignment.Center),
+            onFinished = { showConfetti = false }
         )
     }
+}
 }

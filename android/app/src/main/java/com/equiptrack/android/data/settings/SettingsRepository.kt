@@ -17,7 +17,19 @@ data class ThemeOverrides(
     val backgroundUri: String? = null,
     val backgroundDimAlpha: Float? = null,
     val backgroundContentScale: String? = null,
-    val backgroundBlurRadius: Int? = null
+    val backgroundBlurRadius: Int? = null,
+    val cardOpacity: Float? = null,
+    val cardMaterial: String? = null,
+    val noiseEnabled: Boolean? = null,
+    val cornerRadius: Float? = null,
+    val dynamicColorEnabled: Boolean? = null,
+    val darkModeStrategy: String? = null,
+    val equipmentImageRatio: String? = null,
+    val listAnimationType: String? = null,
+    val hapticEnabled: Boolean? = null,
+    val confettiEnabled: Boolean? = null,
+    val tagStyle: String? = null,
+    val lowPerformanceMode: Boolean? = null
 )
 
 @Singleton
@@ -34,7 +46,19 @@ class SettingsRepository @Inject constructor(
             backgroundUri = null,
             backgroundDimAlpha = null,
             backgroundContentScale = null,
-            backgroundBlurRadius = null
+            backgroundBlurRadius = null,
+            cardOpacity = null,
+            cardMaterial = null,
+            noiseEnabled = null,
+            cornerRadius = null,
+            dynamicColorEnabled = null,
+            darkModeStrategy = null,
+            equipmentImageRatio = null,
+            listAnimationType = null,
+            hapticEnabled = null,
+            confettiEnabled = null,
+            tagStyle = null,
+            lowPerformanceMode = null
         )
     )
 
@@ -48,14 +72,43 @@ class SettingsRepository @Inject constructor(
 
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { shared, key ->
         when (key) {
-            KEY_PRIMARY_COLOR, KEY_ACCENT_COLOR, KEY_BACKGROUND_URI, KEY_BACKGROUND_DIM_ALPHA, KEY_BACKGROUND_CONTENT_SCALE, KEY_BACKGROUND_BLUR_RADIUS -> {
+            KEY_PRIMARY_COLOR,
+            KEY_ACCENT_COLOR,
+            KEY_BACKGROUND_URI,
+            KEY_BACKGROUND_DIM_ALPHA,
+            KEY_BACKGROUND_CONTENT_SCALE,
+            KEY_BACKGROUND_BLUR_RADIUS,
+            KEY_CARD_OPACITY,
+            KEY_CARD_MATERIAL,
+            KEY_NOISE_ENABLED,
+            KEY_CORNER_RADIUS,
+            KEY_DYNAMIC_COLOR_ENABLED,
+            KEY_DARK_MODE_STRATEGY,
+            KEY_EQUIPMENT_IMAGE_RATIO,
+            KEY_LIST_ANIMATION_TYPE,
+            KEY_HAPTIC_ENABLED,
+            KEY_CONFETTI_ENABLED,
+            KEY_TAG_STYLE,
+            KEY_LOW_PERFORMANCE_MODE -> {
                 _themeOverridesFlow.value = ThemeOverrides(
                     primaryColorHex = shared.getString(KEY_PRIMARY_COLOR, null),
                     accentColorHex = shared.getString(KEY_ACCENT_COLOR, null),
                     backgroundUri = shared.getString(KEY_BACKGROUND_URI, null),
                     backgroundDimAlpha = runCatching { shared.getFloat(KEY_BACKGROUND_DIM_ALPHA, -1f) }.getOrNull()?.takeIf { it >= 0f },
                     backgroundContentScale = shared.getString(KEY_BACKGROUND_CONTENT_SCALE, null),
-                    backgroundBlurRadius = shared.getInt(KEY_BACKGROUND_BLUR_RADIUS, 0)
+                    backgroundBlurRadius = shared.getInt(KEY_BACKGROUND_BLUR_RADIUS, 0),
+                    cardOpacity = runCatching { shared.getFloat(KEY_CARD_OPACITY, -1f) }.getOrNull()?.takeIf { it in 0f..1f },
+                    cardMaterial = shared.getString(KEY_CARD_MATERIAL, null),
+                    noiseEnabled = runCatching { shared.getBoolean(KEY_NOISE_ENABLED, false) }.getOrNull(),
+                    cornerRadius = runCatching { shared.getFloat(KEY_CORNER_RADIUS, -1f) }.getOrNull()?.takeIf { it >= 0f },
+                    dynamicColorEnabled = runCatching { shared.getBoolean(KEY_DYNAMIC_COLOR_ENABLED, true) }.getOrNull(),
+                    darkModeStrategy = shared.getString(KEY_DARK_MODE_STRATEGY, null),
+                    equipmentImageRatio = shared.getString(KEY_EQUIPMENT_IMAGE_RATIO, null),
+                    listAnimationType = shared.getString(KEY_LIST_ANIMATION_TYPE, null),
+                    hapticEnabled = runCatching { shared.getBoolean(KEY_HAPTIC_ENABLED, true) }.getOrNull(),
+                    confettiEnabled = runCatching { shared.getBoolean(KEY_CONFETTI_ENABLED, false) }.getOrNull(),
+                    tagStyle = shared.getString(KEY_TAG_STYLE, null),
+                    lowPerformanceMode = runCatching { shared.getBoolean(KEY_LOW_PERFORMANCE_MODE, false) }.getOrNull()
                 )
             }
             KEY_SERVER_URL -> {
@@ -74,7 +127,19 @@ class SettingsRepository @Inject constructor(
             backgroundUri = prefs.getString(KEY_BACKGROUND_URI, null),
             backgroundDimAlpha = runCatching { prefs.getFloat(KEY_BACKGROUND_DIM_ALPHA, -1f) }.getOrNull()?.takeIf { it >= 0f },
             backgroundContentScale = prefs.getString(KEY_BACKGROUND_CONTENT_SCALE, null),
-            backgroundBlurRadius = prefs.getInt(KEY_BACKGROUND_BLUR_RADIUS, 0)
+            backgroundBlurRadius = prefs.getInt(KEY_BACKGROUND_BLUR_RADIUS, 0),
+            cardOpacity = runCatching { prefs.getFloat(KEY_CARD_OPACITY, -1f) }.getOrNull()?.takeIf { it in 0f..1f },
+            cardMaterial = prefs.getString(KEY_CARD_MATERIAL, null),
+            noiseEnabled = runCatching { prefs.getBoolean(KEY_NOISE_ENABLED, false) }.getOrNull(),
+            cornerRadius = runCatching { prefs.getFloat(KEY_CORNER_RADIUS, -1f) }.getOrNull()?.takeIf { it >= 0f },
+            dynamicColorEnabled = runCatching { prefs.getBoolean(KEY_DYNAMIC_COLOR_ENABLED, true) }.getOrNull(),
+            darkModeStrategy = prefs.getString(KEY_DARK_MODE_STRATEGY, null),
+            equipmentImageRatio = prefs.getString(KEY_EQUIPMENT_IMAGE_RATIO, null),
+            listAnimationType = prefs.getString(KEY_LIST_ANIMATION_TYPE, null),
+            hapticEnabled = runCatching { prefs.getBoolean(KEY_HAPTIC_ENABLED, true) }.getOrNull(),
+            confettiEnabled = runCatching { prefs.getBoolean(KEY_CONFETTI_ENABLED, false) }.getOrNull(),
+            tagStyle = prefs.getString(KEY_TAG_STYLE, null),
+            lowPerformanceMode = runCatching { prefs.getBoolean(KEY_LOW_PERFORMANCE_MODE, false) }.getOrNull()
         )
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
     }
@@ -91,6 +156,19 @@ class SettingsRepository @Inject constructor(
         private const val KEY_BACKGROUND_DIM_ALPHA = "background_dim_alpha"
         private const val KEY_BACKGROUND_CONTENT_SCALE = "background_content_scale"
         private const val KEY_BACKGROUND_BLUR_RADIUS = "background_blur_radius"
+        private const val KEY_CARD_OPACITY = "card_opacity"
+        private const val KEY_EQUIPMENT_LIST_COMPACT = "equipment_list_compact"
+        private const val KEY_CARD_MATERIAL = "card_material"
+        private const val KEY_NOISE_ENABLED = "noise_enabled"
+        private const val KEY_CORNER_RADIUS = "corner_radius"
+        private const val KEY_DYNAMIC_COLOR_ENABLED = "dynamic_color_enabled"
+        private const val KEY_DARK_MODE_STRATEGY = "dark_mode_strategy"
+        private const val KEY_EQUIPMENT_IMAGE_RATIO = "equipment_image_ratio"
+        private const val KEY_LIST_ANIMATION_TYPE = "list_animation_type"
+        private const val KEY_HAPTIC_ENABLED = "haptic_enabled"
+        private const val KEY_CONFETTI_ENABLED = "confetti_enabled"
+        private const val KEY_TAG_STYLE = "tag_style"
+        private const val KEY_LOW_PERFORMANCE_MODE = "low_performance_mode"
     }
 
     fun getServerUrl(): String? = prefs.getString(KEY_SERVER_URL, null)
@@ -183,5 +261,72 @@ class SettingsRepository @Inject constructor(
         val editor = prefs.edit()
         editor.putInt(KEY_BACKGROUND_BLUR_RADIUS, radius.coerceIn(0, 25))
         editor.apply()
+    }
+
+    fun getCardOpacity(): Float = prefs.getFloat(KEY_CARD_OPACITY, 1f)
+    fun setCardOpacity(opacity: Float) {
+        val editor = prefs.edit()
+        editor.putFloat(KEY_CARD_OPACITY, opacity.coerceIn(0.3f, 1f))
+        editor.apply()
+    }
+
+    fun isEquipmentListCompact(): Boolean = prefs.getBoolean(KEY_EQUIPMENT_LIST_COMPACT, false)
+    fun setEquipmentListCompact(compact: Boolean) {
+        prefs.edit().putBoolean(KEY_EQUIPMENT_LIST_COMPACT, compact).apply()
+    }
+
+    fun getCardMaterial(): String = prefs.getString(KEY_CARD_MATERIAL, "Solid") ?: "Solid"
+    fun setCardMaterial(material: String) {
+        prefs.edit().putString(KEY_CARD_MATERIAL, material).apply()
+    }
+
+    fun isNoiseEnabled(): Boolean = prefs.getBoolean(KEY_NOISE_ENABLED, false)
+    fun setNoiseEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_NOISE_ENABLED, enabled).apply()
+    }
+
+    fun getCornerRadius(): Float = prefs.getFloat(KEY_CORNER_RADIUS, 12f)
+    fun setCornerRadius(radius: Float) {
+        prefs.edit().putFloat(KEY_CORNER_RADIUS, radius.coerceIn(0f, 30f)).apply()
+    }
+
+    fun isDynamicColorEnabled(): Boolean = prefs.getBoolean(KEY_DYNAMIC_COLOR_ENABLED, true)
+    fun setDynamicColorEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_DYNAMIC_COLOR_ENABLED, enabled).apply()
+    }
+
+    fun getDarkModeStrategy(): String = prefs.getString(KEY_DARK_MODE_STRATEGY, "DarkGrey") ?: "DarkGrey"
+    fun setDarkModeStrategy(strategy: String) {
+        prefs.edit().putString(KEY_DARK_MODE_STRATEGY, strategy).apply()
+    }
+
+    fun getEquipmentImageRatio(): String = prefs.getString(KEY_EQUIPMENT_IMAGE_RATIO, "Square") ?: "Square"
+    fun setEquipmentImageRatio(ratio: String) {
+        prefs.edit().putString(KEY_EQUIPMENT_IMAGE_RATIO, ratio).apply()
+    }
+
+    fun getListAnimationType(): String = prefs.getString(KEY_LIST_ANIMATION_TYPE, "None") ?: "None"
+    fun setListAnimationType(type: String) {
+        prefs.edit().putString(KEY_LIST_ANIMATION_TYPE, type).apply()
+    }
+
+    fun isHapticEnabled(): Boolean = prefs.getBoolean(KEY_HAPTIC_ENABLED, true)
+    fun setHapticEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_HAPTIC_ENABLED, enabled).apply()
+    }
+
+    fun isConfettiEnabled(): Boolean = prefs.getBoolean(KEY_CONFETTI_ENABLED, false)
+    fun setConfettiEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_CONFETTI_ENABLED, enabled).apply()
+    }
+
+    fun getTagStyle(): String = prefs.getString(KEY_TAG_STYLE, "Solid") ?: "Solid"
+    fun setTagStyle(style: String) {
+        prefs.edit().putString(KEY_TAG_STYLE, style).apply()
+    }
+
+    fun isLowPerformanceMode(): Boolean = prefs.getBoolean(KEY_LOW_PERFORMANCE_MODE, false)
+    fun setLowPerformanceMode(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_LOW_PERFORMANCE_MODE, enabled).apply()
     }
 }

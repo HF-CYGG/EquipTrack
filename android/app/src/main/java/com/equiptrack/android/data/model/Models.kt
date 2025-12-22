@@ -13,7 +13,8 @@ import com.google.gson.annotations.SerializedName
 data class Department(
     @PrimaryKey
     val id: String,
-    val name: String
+    val name: String,
+    val parentId: String? = null
 ) : Parcelable
 
 @Parcelize

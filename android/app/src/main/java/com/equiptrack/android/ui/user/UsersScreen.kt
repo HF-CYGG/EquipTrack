@@ -6,6 +6,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -36,16 +37,19 @@ import com.equiptrack.android.ui.components.AnimatedButton
 import com.equiptrack.android.ui.components.AnimatedOutlinedButton
 import com.equiptrack.android.ui.components.AnimatedTextButton
 import com.equiptrack.android.ui.components.DepartmentFilter
+import com.equiptrack.android.ui.components.AnimatedListItem
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import com.equiptrack.android.ui.navigation.NavigationViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun UsersScreen(
     viewModel: UserViewModel = hiltViewModel()
 ) {
+    val navVm: NavigationViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val filteredUsers by viewModel.filteredUsers.collectAsStateWithLifecycle()
@@ -57,6 +61,10 @@ fun UsersScreen(
     val canManage = viewModel.canManageUsers()
     var fabExpanded by remember { mutableStateOf(false) }
     val toastState = rememberToastState()
+
+    val settingsRepository = navVm.settingsRepository
+    val lowPerformanceMode by remember { mutableStateOf(settingsRepository.isLowPerformanceMode()) }
+    val listAnimationType by remember { mutableStateOf(settingsRepository.getListAnimationType()) }
 
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
@@ -210,6 +218,7 @@ fun UsersScreen(
                     }
                 }
 
+                val enableAnimations = !lowPerformanceMode && listAnimationType != "None"
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (filteredUsers.isEmpty()) {
                         item {
@@ -238,18 +247,24 @@ fun UsersScreen(
                             }
                         }
                     } else {
-                        items(filteredUsers) { user ->
-                            UserCard(
-                                user = user,
-                                canManage = canManage,
-                                onEdit = { viewModel.showEditDialog(user) },
-                                onResetPassword = { viewModel.showPasswordDialog(user) },
-                                onToggleStatus = {
-                                    val newStatus = if (user.status == UserStatus.NORMAL) UserStatus.BANNED else UserStatus.NORMAL
-                                    viewModel.updateUserStatus(user.id, newStatus)
-                                },
-                                onDelete = { viewModel.showDeleteDialog(user) }
-                            )
+                        itemsIndexed(filteredUsers) { index, user ->
+                            AnimatedListItem(
+                                enabled = enableAnimations,
+                                listAnimationType = listAnimationType,
+                                index = index
+                            ) {
+                                UserCard(
+                                    user = user,
+                                    canManage = canManage,
+                                    onEdit = { viewModel.showEditDialog(user) },
+                                    onResetPassword = { viewModel.showPasswordDialog(user) },
+                                    onToggleStatus = {
+                                        val newStatus = if (user.status == UserStatus.NORMAL) UserStatus.BANNED else UserStatus.NORMAL
+                                        viewModel.updateUserStatus(user.id, newStatus)
+                                    },
+                                    onDelete = { viewModel.showDeleteDialog(user) }
+                                )
+                            }
                         }
                     }
                 }

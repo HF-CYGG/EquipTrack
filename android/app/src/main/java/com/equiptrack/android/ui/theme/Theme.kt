@@ -51,14 +51,25 @@ fun EquipTrackTheme(
     overrides: ThemeOverrides? = null,
     content: @Composable () -> Unit
 ) {
-    val baseScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+    val resolvedDynamicColor = overrides?.dynamicColorEnabled ?: dynamicColor
+
+    var baseScheme = when {
+        resolvedDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
 
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
+    }
+
+    if (darkTheme && overrides?.darkModeStrategy == "TrueBlack") {
+        baseScheme = baseScheme.copy(
+            background = Color.Black,
+            surface = Color.Black,
+            onBackground = Color.White,
+            onSurface = Color.White
+        )
     }
     val colorScheme = overrides?.primaryColorHex?.let { hex ->
         val parsed = runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrNull()
@@ -78,6 +89,17 @@ fun EquipTrackTheme(
         finalScheme
     }
 
+    val schemeWithCardOpacity = overrides?.cardOpacity?.let { opacity ->
+        if (opacity in 0f..1f) {
+            schemeWithBackground.copy(
+                surface = schemeWithBackground.surface.copy(alpha = opacity),
+                surfaceVariant = schemeWithBackground.surfaceVariant.copy(alpha = opacity)
+            )
+        } else {
+            schemeWithBackground
+        }
+    } ?: schemeWithBackground
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -88,7 +110,7 @@ fun EquipTrackTheme(
     }
 
     MaterialTheme(
-        colorScheme = schemeWithBackground,
+        colorScheme = schemeWithCardOpacity,
         typography = Typography,
         content = content
     )

@@ -17,7 +17,7 @@ import com.equiptrack.android.data.model.*
         RegistrationRequest::class,
         BorrowHistoryEntry::class
     ],
-    version = 6,
+    version = 8,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -39,7 +39,7 @@ abstract class EquipTrackDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     EquipTrackDatabase::class.java,
-                    "equiptrack_database"
+                    "equiptrack_database_v2"
                 )
                     .fallbackToDestructiveMigration()
                     .build()

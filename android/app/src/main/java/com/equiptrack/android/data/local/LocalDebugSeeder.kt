@@ -46,6 +46,13 @@ class LocalDebugSeeder @Inject constructor(
         if (departmentDao.getDepartmentById(deptId2) == null) {
             departmentDao.insertDepartment(Department(id = deptId2, name = deptName2))
         }
+        
+        // Add sub-department for hierarchy testing
+        val deptId3 = "dept-dev"
+        val deptName3 = "研发部"
+        if (departmentDao.getDepartmentById(deptId3) == null) {
+            departmentDao.insertDepartment(Department(id = deptId3, name = deptName3, parentId = deptId))
+        }
 
         // Seed users if missing
         ensureUser(

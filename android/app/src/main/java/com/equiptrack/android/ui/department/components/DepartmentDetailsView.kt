@@ -201,21 +201,11 @@ fun DepartmentDetailsView(
                     )
                     Spacer(Modifier.height(8.dp))
                     
-                    // Placeholder for visual tree
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(100.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.AccountTree, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(Modifier.height(8.dp))
-                            Text("树形结构视图开发中...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
+                    HierarchicalDepartmentTree(
+                        departments = departments,
+                        selectedDepartmentId = selectedDepartmentId,
+                        onSelect = onSelectDepartment
+                    )
                 }
             }
 

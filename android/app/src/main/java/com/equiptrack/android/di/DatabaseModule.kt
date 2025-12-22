@@ -23,7 +23,7 @@ object DatabaseModule {
         return Room.databaseBuilder(
             context.applicationContext,
             EquipTrackDatabase::class.java,
-            "equiptrack_database"
+            "equiptrack_database_v2"
         )
             .fallbackToDestructiveMigration()
             .build()

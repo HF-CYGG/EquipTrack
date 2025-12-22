@@ -147,10 +147,10 @@ class EquipmentViewModel @Inject constructor(
     
     fun refreshData() {
         _isRefreshing.value = true
-        syncData()
+        syncData(isUserRefresh = true)
     }
 
-    fun syncData() {
+    fun syncData(isUserRefresh: Boolean = false) {
         viewModelScope.launch {
             try {
                 if (!_isRefreshing.value) {
@@ -159,6 +159,7 @@ class EquipmentViewModel @Inject constructor(
                 
                 // Get current user to ensure we have the latest context
                 val user = authRepository.getCurrentUser()
+                var hasError = false
                 
                 // Use coroutineScope to run syncs in parallel
                 kotlinx.coroutines.coroutineScope {
@@ -166,6 +167,7 @@ class EquipmentViewModel @Inject constructor(
                     launch {
                         equipmentRepository.syncCategories().collect { result ->
                             if (result is NetworkResult.Error) {
+                                hasError = true
                                 _uiState.update { 
                                     it.copy(errorMessage = "同步类别失败: ${result.message}") 
                                 }
@@ -181,6 +183,7 @@ class EquipmentViewModel @Inject constructor(
                             val departmentId = _filterDepartmentId.value ?: "all"
                             equipmentRepository.syncItems(user.role, departmentId).collect { result ->
                                 if (result is NetworkResult.Error) {
+                                    hasError = true
                                     _uiState.update { 
                                         it.copy(errorMessage = "同步物资失败: ${result.message}") 
                                     }
@@ -191,8 +194,18 @@ class EquipmentViewModel @Inject constructor(
                 }
                 
                 // Both finished successfully (or with handled errors)
-                _uiState.update { 
-                    it.copy(isLoading = false, errorMessage = null) 
+                if (!hasError) {
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false, 
+                            errorMessage = null,
+                            successMessage = if (isUserRefresh) "刷新成功" else null
+                        ) 
+                    }
+                } else {
+                    _uiState.update { 
+                        it.copy(isLoading = false) 
+                    }
                 }
                 
             } catch (e: Exception) {

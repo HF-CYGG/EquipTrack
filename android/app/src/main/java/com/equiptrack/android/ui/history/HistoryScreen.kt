@@ -6,6 +6,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -26,12 +27,14 @@ import com.equiptrack.android.data.model.BorrowStatus
 import com.equiptrack.android.ui.components.*
 import com.equiptrack.android.ui.equipment.components.ReturnItemDialog
 import com.equiptrack.android.ui.history.components.HistoryEntryCard
+import com.equiptrack.android.ui.navigation.NavigationViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun HistoryScreen(
     viewModel: HistoryViewModel = hiltViewModel()
 ) {
+    val navVm: NavigationViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
     val historyEntries by viewModel.historyEntries.collectAsState()
     val filterStatus by viewModel.filterStatus.collectAsState()
@@ -43,6 +46,11 @@ fun HistoryScreen(
     val toastState = rememberToastState()
     var showFilterDialog by remember { mutableStateOf(false) }
     var fabExpanded by remember { mutableStateOf(false) }
+    val settingsRepository = navVm.settingsRepository
+    val hapticEnabled by remember { mutableStateOf(settingsRepository.isHapticEnabled()) }
+    val confettiEnabled by remember { mutableStateOf(settingsRepository.isConfettiEnabled()) }
+    val lowPerformanceMode by remember { mutableStateOf(settingsRepository.isLowPerformanceMode()) }
+    var showConfetti by remember { mutableStateOf(false) }
     
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
@@ -63,6 +71,9 @@ fun HistoryScreen(
         }
         uiState.successMessage?.let { message ->
             toastState.showSuccess(message)
+            if (confettiEnabled && !lowPerformanceMode && message.contains("归还")) {
+                showConfetti = true
+            }
             viewModel.clearMessages()
         }
     }
@@ -115,7 +126,9 @@ fun HistoryScreen(
                     if (uiState.isLoading && !isRefreshing) {
                         HistoryListSkeleton()
                     } else {
-                        // History list
+                        val enableAnimations = !lowPerformanceMode && navVm.settingsRepository.getListAnimationType() != "None"
+                        val listAnimationType = navVm.settingsRepository.getListAnimationType()
+                        
                         LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
@@ -157,18 +170,24 @@ fun HistoryScreen(
                                     }
                                 }
                             } else {
-                                items(historyEntries) { entry ->
-                                    HistoryEntryCard(
-                                        entry = entry,
-                                        canForceReturn = viewModel.canForceReturn(),
-                                        serverUrl = serverUrl,
-                                        onReturn = {
-                                            viewModel.showReturnDialog(entry, isForced = false)
-                                        },
-                                        onForceReturn = {
-                                            viewModel.showReturnDialog(entry, isForced = true)
-                                        }
-                                    )
+                                itemsIndexed(historyEntries) { index, entry ->
+                                    AnimatedListItem(
+                                        enabled = enableAnimations,
+                                        listAnimationType = listAnimationType,
+                                        index = index
+                                    ) {
+                                        HistoryEntryCard(
+                                            entry = entry,
+                                            canForceReturn = viewModel.canForceReturn(),
+                                            serverUrl = serverUrl,
+                                            onReturn = {
+                                                viewModel.showReturnDialog(entry, isForced = false)
+                                            },
+                                            onForceReturn = {
+                                                viewModel.showReturnDialog(entry, isForced = true)
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -247,8 +266,9 @@ fun HistoryScreen(
         
         // Return dialog
         if (uiState.showReturnDialog && uiState.selectedHistoryEntry != null) {
-                val context = LocalContext.current
-                ReturnItemDialog(
+            val context = LocalContext.current
+            val effectiveHaptic = hapticEnabled && !lowPerformanceMode
+            ReturnItemDialog(
                 historyEntry = uiState.selectedHistoryEntry!!,
                 isForced = uiState.isForceReturn,
                 adminName = if (uiState.isForceReturn) viewModel.getCurrentUserName() else null,
@@ -261,19 +281,26 @@ fun HistoryScreen(
                         historyEntryId = uiState.selectedHistoryEntry!!.id,
                         returnRequest = returnRequest
                     )
-                }
+                },
+                hapticEnabled = effectiveHaptic
             )
         }
         
         // Toast message overlay
         Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.TopCenter
+            modifier = Modifier.fillMaxSize()
         ) {
             ToastMessage(
                 toastData = toastState.currentToast,
                 onDismiss = { toastState.dismiss() },
-                modifier = Modifier.padding(top = 16.dp)
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp)
+            )
+            ConfettiOverlay(
+                visible = showConfetti,
+                modifier = Modifier.align(Alignment.Center),
+                onFinished = { showConfetti = false }
             )
         }
     }
