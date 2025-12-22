@@ -20,7 +20,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.equiptrack.android.data.model.Category
 import com.equiptrack.android.data.model.EquipmentItem
 import com.equiptrack.android.data.model.EquipmentStatus
@@ -32,7 +35,7 @@ import com.equiptrack.android.utils.UrlUtils
 @Composable
 fun EquipmentItemCard(
     item: EquipmentItem,
-    categories: List<Category>,
+    category: Category?,
     canManage: Boolean,
     serverUrl: String,
     onEdit: () -> Unit,
@@ -44,7 +47,6 @@ fun EquipmentItemCard(
     cardMaterial: String = "Solid",
     tagStyle: String = "Solid"
 ) {
-    val category = categories.find { it.id == item.categoryId }
     val isAvailable = item.availableQuantity > 0
     
     var showImageDialog by remember { mutableStateOf(false) }
@@ -97,6 +99,14 @@ fun EquipmentItemCard(
     val imageHeight = when (equipmentImageRatio) {
         "Tall" -> baseImageHeight * (4f / 3f)
         else -> baseImageHeight
+    }
+
+    val density = LocalDensity.current
+    val imageWidthPx = remember(imageWidth, density) {
+        with(density) { imageWidth.roundToPx() }
+    }
+    val imageHeightPx = remember(imageHeight, density) {
+        with(density) { imageHeight.roundToPx() }
     }
 
     val cardShape = RoundedCornerShape(cornerRadius.dp)
@@ -177,7 +187,11 @@ fun EquipmentItemCard(
                         shape = cardShape
                     ) {
                         AsyncImage(
-                            model = imageThumbnailUrl,
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(imageThumbnailUrl)
+                                .size(width = imageWidthPx, height = imageHeightPx)
+                                .crossfade(true)
+                                .build(),
                             contentDescription = item.name,
                             modifier = Modifier
                                 .fillMaxSize()

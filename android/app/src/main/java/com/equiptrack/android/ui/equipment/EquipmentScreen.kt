@@ -375,13 +375,16 @@ fun EquipmentScreen(
             )
             
             // Loading indicator
-            if (uiState.isLoading) {
+            // Only show skeleton if loading AND no items (initial load)
+            if (uiState.isLoading && filteredItems.isEmpty()) {
                 EquipmentListSkeleton(
                     modifier = Modifier.fillMaxWidth(),
                     itemCount = 6
                 )
             } else {
                 val enableAnimations = !lowPerformanceMode && listAnimationType != "None"
+                val categoriesMap = remember(categories) { categories.associateBy { it.id } }
+                
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -435,7 +438,7 @@ fun EquipmentScreen(
                             ) {
                                 EquipmentItemCard(
                                     item = item,
-                                    categories = categories,
+                                    category = categoriesMap[item.categoryId],
                                     canManage = viewModel.canManageItems(),
                                     serverUrl = serverUrl,
                                     onEdit = { viewModel.showEditDialog(item) },
@@ -452,6 +455,7 @@ fun EquipmentScreen(
                     }
                 }
         }
+    }
     }
 
     // 右下角统一浮动菜单（添加 / 刷新 / 搜索）
@@ -599,5 +603,4 @@ fun EquipmentScreen(
             onFinished = { showConfetti = false }
         )
     }
-}
 }

@@ -2,6 +2,7 @@ package com.equiptrack.android.data.model
 
 import android.os.Parcelable
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import kotlinx.parcelize.Parcelize
 import kotlinx.parcelize.RawValue
@@ -33,7 +34,14 @@ enum class EquipmentStatus(val displayName: String) {
 }
 
 @Parcelize
-@Entity(tableName = "equipment_items")
+@Entity(
+    tableName = "equipment_items",
+    indices = [
+        Index(value = ["categoryId"]),
+        Index(value = ["departmentId"]),
+        Index(value = ["name"])
+    ]
+)
 data class EquipmentItem(
     @PrimaryKey
     val id: String,
