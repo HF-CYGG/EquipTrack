@@ -92,11 +92,53 @@ fun UsersScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp)
-                    .padding(bottom = if (showSearch) 80.dp else 0.dp),
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 搜索和筛选区域（条件显示）
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "用户管理",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "共 ${filteredUsers.size} 人",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { showSearch = !showSearch }) {
+                            Icon(
+                                imageVector = if (showSearch) Icons.Default.FilterAltOff else Icons.Default.FilterList,
+                                contentDescription = if (showSearch) "收起筛选" else "筛选与搜索"
+                            )
+                        }
+                        IconButton(onClick = { viewModel.refreshUsers() }) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "刷新"
+                            )
+                        }
+                        if (canManage) {
+                            IconButton(onClick = { viewModel.showAddDialog() }) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "添加用户"
+                                )
+                            }
+                        }
+                    }
+                }
+
                 androidx.compose.animation.AnimatedVisibility(
                     visible = showSearch,
                     enter = androidx.compose.animation.slideInVertically() + androidx.compose.animation.fadeIn(),
@@ -168,14 +210,6 @@ fun UsersScreen(
                     }
                 }
 
-                // 常显的快速筛选区（精简版）
-                // Remove this entire block to simplify UI as per user request "简洁美观大气"
-                // We will rely on the expandable search/filter area or just keep it hidden until requested.
-                // Actually, let's just keep the search/filter functionality but make it cleaner.
-                // The user asked for "简洁" (concise) so maybe just one row of filters is enough or just the search bar.
-                // Let's remove the duplicate "quick row" to reduce clutter.
-                
-                // Users list
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (filteredUsers.isEmpty()) {
                         item {
@@ -226,43 +260,6 @@ fun UsersScreen(
                 state = pullRefreshState,
                 modifier = Modifier.align(Alignment.TopCenter)
             )
-
-        // 右下角浮动操作按钮
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-                // 搜索按钮
-                AnimatedFloatingActionButton(
-                    onClick = { showSearch = !showSearch },
-                    containerColor = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(56.dp)
-                ) {
-                    // Use Text instead of Icon for a cleaner look if desired, or simple icons without text
-                    // User said "不需要额外的图标" (no extra icons), but FABs usually need something.
-                    // Let's keep simple icons for FABs but remove decorative ones elsewhere.
-                    Icon(
-                        imageVector = if (showSearch) Icons.Default.Close else Icons.Default.Search,
-                        contentDescription = if (showSearch) "关闭搜索" else "搜索"
-                    )
-                }
-
-                // 添加用户按钮
-                if (canManage) {
-                    AnimatedFloatingActionButton(
-                        onClick = { viewModel.showAddDialog() },
-                        containerColor = MaterialTheme.colorScheme.tertiary,
-                        modifier = Modifier.size(56.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "添加用户"
-                        )
-                    }
-                }
-            }
         }
     }
 
@@ -326,10 +323,16 @@ fun UserCard(
     onDelete: () -> Unit
 ) {
     val isBanned = user.status == UserStatus.BANNED
-    
+    val roleColor = when (user.role) {
+        UserRole.SUPER_ADMIN -> MaterialTheme.colorScheme.tertiary
+        UserRole.ADMIN -> MaterialTheme.colorScheme.primary
+        UserRole.ADVANCED_USER -> MaterialTheme.colorScheme.secondary
+        else -> MaterialTheme.colorScheme.outline
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // Flat design
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isBanned) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surface
         ),
@@ -338,14 +341,13 @@ fun UserCard(
             if (isBanned) MaterialTheme.colorScheme.error.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant
         )
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
-                    // Avatar initials
                     Surface(
                         shape = androidx.compose.foundation.shape.CircleShape, 
                         color = if (isBanned) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer, 
@@ -361,8 +363,15 @@ fun UserCard(
                         }
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(user.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                user.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
                             if (isBanned) {
                                 Surface(
                                     color = MaterialTheme.colorScheme.error,
@@ -377,33 +386,52 @@ fun UserCard(
                                 }
                             }
                         }
+                        if (!user.departmentId.isNullOrBlank()) {
+                            Text(
+                                text = user.departmentName ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (!user.contact.isNullOrBlank()) {
+                            Text(
+                                text = user.contact,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
-                
-                Text(
-                    text = user.role.displayName,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Surface(
+                    color = roleColor.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(999.dp)
+                ) {
+                    Text(
+                        text = user.role.displayName,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = roleColor,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
             }
 
             if (canManage) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    AnimatedTextButton(onClick = onEdit, modifier = Modifier.weight(1f)) {
-                        Text("编辑")
+                    AnimatedTextButton(onClick = onEdit) { Text("编辑") }
+                    AnimatedTextButton(onClick = onResetPassword) { Text("重置密码") }
+                    AnimatedTextButton(onClick = onToggleStatus) {
+                        Text(
+                            if (isBanned) "解封" else "封禁",
+                            color = if (isBanned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        )
                     }
-                    AnimatedTextButton(onClick = onResetPassword, modifier = Modifier.weight(1f)) {
-                        Text("重置密码")
-                    }
-                    AnimatedTextButton(onClick = onToggleStatus, modifier = Modifier.weight(1f)) {
-                        Text(if (isBanned) "解封" else "封禁", color = if (isBanned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
-                    }
-                    AnimatedTextButton(onClick = onDelete, modifier = Modifier.weight(1f)) {
-                        Text("删除", color = MaterialTheme.colorScheme.error)
-                    }
+                    AnimatedTextButton(onClick = onDelete) { Text("删除", color = MaterialTheme.colorScheme.error) }
                 }
             }
         }
@@ -477,108 +505,169 @@ fun AddEditUserDialog(
             ) {
                 Column(
                     modifier = Modifier
-                        .padding(24.dp)
+                        .padding(20.dp)
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
                         text = if (user == null) "添加用户" else "编辑用户",
                         style = MaterialTheme.typography.titleLarge
                     )
 
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("姓名") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(value = contact, onValueChange = { contact = it }, label = { Text("联系方式") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        // Department selection
-                        var deptExpanded by remember { mutableStateOf(false) }
-                        ExposedDropdownMenuBox(expanded = deptExpanded, onExpandedChange = { deptExpanded = it }) {
-                            OutlinedTextField(
-                                readOnly = true,
-                                value = departments.find { it.id == deptId }?.name ?: "",
-                                onValueChange = {},
-                                label = { Text("所属部门") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = deptExpanded) },
-                                modifier = Modifier.menuAnchor().fillMaxWidth()
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "基础信息",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            ExposedDropdownMenu(expanded = deptExpanded, onDismissRequest = { deptExpanded = false }) {
-                                departments.forEach { d ->
-                                    DropdownMenuItem(text = { Text(d.name) }, onClick = { deptId = d.id; deptExpanded = false })
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = name,
+                                    onValueChange = { name = it },
+                                    label = { Text("姓名") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                OutlinedTextField(
+                                    value = contact,
+                                    onValueChange = { contact = it },
+                                    label = { Text("联系方式") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            var deptExpanded by remember { mutableStateOf(false) }
+                            ExposedDropdownMenuBox(expanded = deptExpanded, onExpandedChange = { deptExpanded = it }) {
+                                OutlinedTextField(
+                                    readOnly = true,
+                                    value = departments.find { it.id == deptId }?.name ?: "",
+                                    onValueChange = {},
+                                    label = { Text("所属部门") },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = deptExpanded) },
+                                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                                )
+                                ExposedDropdownMenu(expanded = deptExpanded, onDismissRequest = { deptExpanded = false }) {
+                                    departments.forEach { d ->
+                                        DropdownMenuItem(text = { Text(d.name) }, onClick = { deptId = d.id; deptExpanded = false })
+                                    }
                                 }
                             }
                         }
 
-                        // Role selection
-                        var roleExpanded by remember { mutableStateOf(false) }
-                        ExposedDropdownMenuBox(expanded = roleExpanded, onExpandedChange = { roleExpanded = it }) {
-                            OutlinedTextField(
-                                readOnly = true,
-                                value = role.displayName,
-                                onValueChange = {},
-                                label = { Text("角色") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = roleExpanded) },
-                                modifier = Modifier.menuAnchor().fillMaxWidth()
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "角色与状态",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            ExposedDropdownMenu(expanded = roleExpanded, onDismissRequest = { roleExpanded = false }) {
+                            Text(
+                                text = "角色",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 UserRole.values().forEach { r ->
-                                    DropdownMenuItem(text = { Text(r.displayName) }, onClick = { role = r; roleExpanded = false })
+                                    FilterChip(
+                                        selected = role == r,
+                                        onClick = { role = r },
+                                        label = { Text(r.displayName) }
+                                    )
                                 }
                             }
-                        }
 
-                        // Status selection
-                        var statusExpanded by remember { mutableStateOf(false) }
-                        ExposedDropdownMenuBox(expanded = statusExpanded, onExpandedChange = { statusExpanded = it }) {
-                            OutlinedTextField(
-                                readOnly = true,
-                                value = status.displayName,
-                                onValueChange = {},
-                                label = { Text("状态") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusExpanded) },
-                                modifier = Modifier.menuAnchor().fillMaxWidth()
+                            Text(
+                                text = "状态",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            ExposedDropdownMenu(expanded = statusExpanded, onDismissRequest = { statusExpanded = false }) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 UserStatus.values().forEach { s ->
-                                    DropdownMenuItem(text = { Text(s.displayName) }, onClick = { status = s; statusExpanded = false })
+                                    FilterChip(
+                                        selected = status == s,
+                                        onClick = { status = s },
+                                        label = { Text(s.displayName) }
+                                    )
                                 }
                             }
                         }
 
                         if (isSuperAdmin) {
-                            OutlinedTextField(
-                                value = invitationCode,
-                                onValueChange = { invitationCode = it },
-                                label = { Text("邀请码") },
-                                placeholder = { Text("仅超级管理员可编辑") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = "高级选项",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                OutlinedTextField(
+                                    value = invitationCode,
+                                    onValueChange = { invitationCode = it },
+                                    label = { Text("邀请码") },
+                                    placeholder = { Text("仅超级管理员可编辑") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
 
                         if (user == null) {
-                            OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("初始密码") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                            OutlinedTextField(
+                                value = password,
+                                onValueChange = { password = it },
+                                label = { Text("初始密码") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                     }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        AnimatedOutlinedButton(onClick = onDismiss) { Text("取消") }
-                        Spacer(Modifier.width(8.dp))
-                        AnimatedButton(onClick = {
-                            val newUser = User(
-                                id = user?.id ?: java.util.UUID.randomUUID().toString(),
-                                name = name.trim(),
-                                contact = contact.trim(),
-                                departmentId = deptId,
-                                departmentName = departments.find { it.id == deptId }?.name,
-                                role = role,
-                                status = status,
-                                password = if (user == null) password.trim() else user.password,
-                                invitationCode = if (isSuperAdmin) invitationCode.trim() else user?.invitationCode
+                        AnimatedOutlinedButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("取消")
+                        }
+                        AnimatedButton(
+                            onClick = {
+                                val newUser = User(
+                                    id = user?.id ?: java.util.UUID.randomUUID().toString(),
+                                    name = name.trim(),
+                                    contact = contact.trim(),
+                                    departmentId = deptId,
+                                    departmentName = departments.find { it.id == deptId }?.name,
+                                    role = role,
+                                    status = status,
+                                    password = if (user == null) password.trim() else user.password,
+                                    invitationCode = if (isSuperAdmin) invitationCode.trim() else user?.invitationCode
+                                )
+                                onConfirm(newUser)
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             )
-                            onConfirm(newUser)
-                        }) { Text(if (user == null) "创建" else "更新") }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(if (user == null) "创建" else "更新")
+                        }
                     }
                 }
             }
