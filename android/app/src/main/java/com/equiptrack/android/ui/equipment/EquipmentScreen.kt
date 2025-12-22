@@ -214,11 +214,6 @@ fun EquipmentScreen(
         onRefresh = { viewModel.refreshData() }
     )
 
-    // Auto refresh on entry
-    LaunchedEffect(Unit) {
-        viewModel.refreshData()
-    }
-    
     // Show toast for messages
     LaunchedEffect(uiState.errorMessage, uiState.successMessage) {
         uiState.errorMessage?.let { message ->

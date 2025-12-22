@@ -13,7 +13,6 @@ import androidx.compose.foundation.background
 import androidx.core.view.WindowCompat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
-import androidx.lifecycle.lifecycleScope
 import com.equiptrack.android.data.local.LocalDebugSeeder
 import javax.inject.Inject
 import com.equiptrack.android.ui.navigation.EquipTrackNavigation
@@ -25,6 +24,11 @@ import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -36,12 +40,7 @@ class MainActivity : ComponentActivity() {
         
         // Enable edge-to-edge display
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        
-        // Seed local debug users on startup (if local debug is enabled)
-        lifecycleScope.launchWhenCreated {
-            localDebugSeeder.seedIfLocalDebug()
-        }
-        
+
         setContent {
             val overrides: ThemeOverrides by settingsRepository.themeOverridesFlow
                 .collectAsState(
@@ -55,15 +54,30 @@ class MainActivity : ComponentActivity() {
                     )
                 )
             EquipTrackTheme(overrides = overrides) {
+                LaunchedEffect(Unit) {
+                    localDebugSeeder.seedIfLocalDebug()
+                }
+
+                var showBackground by remember(overrides.backgroundUri) { mutableStateOf(false) }
+                LaunchedEffect(overrides.backgroundUri) {
+                    showBackground = false
+                    if (overrides.backgroundUri != null) {
+                        withFrameNanos { }
+                        showBackground = true
+                    }
+                }
+
                 Box(modifier = Modifier.fillMaxSize()) {
-                    overrides.backgroundUri?.let { uri ->
+                    if (showBackground) {
+                        val uri = overrides.backgroundUri
+                        uri?.let {
                         var modifier = Modifier.fillMaxSize()
                         if ((overrides.backgroundBlurRadius ?: 0) > 0) {
                             modifier = modifier.blur((overrides.backgroundBlurRadius ?: 0).dp)
                         }
                         
                         AsyncImage(
-                            model = uri,
+                            model = it,
                             contentDescription = null,
                             modifier = modifier,
                             contentScale = when (overrides.backgroundContentScale) {
@@ -73,22 +87,19 @@ class MainActivity : ComponentActivity() {
                                 else -> ContentScale.Crop
                             },
                         )
-                    }
-                    // Dim overlay for readability when background is set
-                    if (overrides.backgroundUri != null) {
-                        val dim = (overrides.backgroundDimAlpha ?: 0.25f).coerceIn(0f, 1f)
-                        androidx.compose.foundation.layout.Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .then(
-                                    androidx.compose.ui.Modifier
-                                        .background(Color.Black.copy(alpha = dim))
-                                )
-                        )
+                        }
+                        if (uri != null) {
+                            val dim = (overrides.backgroundDimAlpha ?: 0.25f).coerceIn(0f, 1f)
+                            androidx.compose.foundation.layout.Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = dim))
+                            )
+                        }
                     }
                     Surface(
                         modifier = Modifier.fillMaxSize(),
-                        color = if (overrides.backgroundUri != null) Color.Transparent else MaterialTheme.colorScheme.background
+                        color = if (showBackground && overrides.backgroundUri != null) Color.Transparent else MaterialTheme.colorScheme.background
                     ) {
                         EquipTrackNavigation()
                     }

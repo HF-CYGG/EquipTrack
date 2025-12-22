@@ -8,6 +8,7 @@ import com.equiptrack.android.permission.PermissionChecker
 import com.equiptrack.android.permission.PermissionType
 import com.equiptrack.android.data.repository.DepartmentRepository
 import com.equiptrack.android.data.repository.UserRepository
+import com.equiptrack.android.data.settings.SettingsRepository
 import com.equiptrack.android.utils.NetworkResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -18,7 +19,8 @@ import javax.inject.Inject
 class UserViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val departmentRepository: DepartmentRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(UserUiState())
@@ -96,6 +98,16 @@ class UserViewModel @Inject constructor(
     init {
         syncUsers()
         syncDepartments()
+
+        viewModelScope.launch {
+            settingsRepository.localDebugFlow
+                .combine(settingsRepository.serverUrlFlow) { local, url -> Pair(local, url) }
+                .distinctUntilChanged()
+                .collect {
+                    syncUsers()
+                    syncDepartments()
+                }
+        }
     }
     
     fun updateSearchQuery(query: String) {

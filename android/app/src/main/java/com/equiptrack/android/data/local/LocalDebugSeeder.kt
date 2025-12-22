@@ -5,6 +5,7 @@ import com.equiptrack.android.data.local.dao.CategoryDao
 import com.equiptrack.android.data.local.dao.EquipmentItemDao
 import com.equiptrack.android.data.local.dao.BorrowHistoryDao
 import com.equiptrack.android.data.local.dao.UserDao
+import com.equiptrack.android.data.local.EquipTrackDatabase
 import com.equiptrack.android.data.model.Department
 import com.equiptrack.android.data.model.Category
 import com.equiptrack.android.data.model.EquipmentItem
@@ -23,6 +24,7 @@ import javax.inject.Singleton
 @Singleton
 class LocalDebugSeeder @Inject constructor(
     private val settingsRepository: SettingsRepository,
+    private val database: EquipTrackDatabase,
     private val userDao: UserDao,
     private val departmentDao: DepartmentDao,
     private val categoryDao: CategoryDao,
@@ -190,13 +192,12 @@ class LocalDebugSeeder @Inject constructor(
     }
 
     suspend fun resetLocalSeed() = withContext(Dispatchers.IO) {
-        // Clear all local tables then reseed if local debug is enabled
-        userDao.deleteAllUsers()
-        departmentDao.deleteAllDepartments()
-        categoryDao.deleteAllCategories()
-        equipmentItemDao.deleteAllItems()
-        borrowHistoryDao.deleteAllHistory()
+        clearAllData()
         seedIfLocalDebug()
+    }
+
+    suspend fun clearAllData() = withContext(Dispatchers.IO) {
+        database.clearAllTables()
     }
 
     private suspend fun ensureUser(contact: String, user: User) {

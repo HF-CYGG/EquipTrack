@@ -103,7 +103,10 @@ class EquipmentViewModel @Inject constructor(
         )
     
     init {
-        syncData()
+        viewModelScope.launch {
+            kotlinx.coroutines.yield()
+            syncData()
+        }
         // 监听设置变化（本地调试/服务器地址），自动触发设备数据重同步
         viewModelScope.launch {
             settingsRepository.localDebugFlow
@@ -115,7 +118,10 @@ class EquipmentViewModel @Inject constructor(
         }
         
         // 初始加载部门数据
-        syncDepartments()
+        viewModelScope.launch {
+            kotlinx.coroutines.yield()
+            syncDepartments()
+        }
     }
 
     fun filterByDepartment(departmentId: String?) {

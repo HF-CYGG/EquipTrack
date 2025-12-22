@@ -34,11 +34,13 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun setLocalDebug(enabled: Boolean) {
-        settingsRepository.setLocalDebug(enabled)
-        // 如果开启本地调试，尝试初始化数据
-        if (enabled) {
-            viewModelScope.launch {
+        viewModelScope.launch {
+            if (enabled) {
+                settingsRepository.setLocalDebug(true)
                 localDebugSeeder.seedIfLocalDebug()
+            } else {
+                localDebugSeeder.clearAllData()
+                settingsRepository.setLocalDebug(false)
             }
         }
     }
