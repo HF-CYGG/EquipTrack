@@ -155,11 +155,36 @@ fun HistoryEntryCard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text(
-                            text = "借用人: ${entry.borrowerName}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        
+                        if (entry.borrowerName != entry.operatorName && entry.operatorName.isNotEmpty() && entry.operatorName != "系统记录") {
+                            Column {
+                                Text(
+                                    text = "借用人: ${entry.borrowerName} (${entry.borrowerContact})",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.Person, 
+                                        contentDescription = null,
+                                        modifier = Modifier.size(12.dp),
+                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "经办人: ${entry.operatorName}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                                    )
+                                }
+                            }
+                        } else {
+                            Text(
+                                text = "借用人: ${entry.borrowerName}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
 

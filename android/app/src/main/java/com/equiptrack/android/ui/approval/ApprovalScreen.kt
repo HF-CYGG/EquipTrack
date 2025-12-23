@@ -210,8 +210,7 @@ fun ApprovalScreen(
                                 AnimatedListItem(
                                     enabled = enableAnimations,
                                     listAnimationType = listAnimationType,
-                                    index = index,
-                                    lazyListState = listState
+                                    index = index
                                 ) {
                                     RegistrationRequestCard(
                                         request = request,

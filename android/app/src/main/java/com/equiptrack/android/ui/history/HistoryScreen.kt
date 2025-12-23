@@ -182,8 +182,7 @@ fun HistoryScreen(
                                     AnimatedListItem(
                                         enabled = enableAnimations,
                                         listAnimationType = listAnimationType,
-                                        index = index,
-                                        lazyListState = listState
+                                        index = index
                                     ) {
                                         HistoryEntryCard(
                                             entry = entry,

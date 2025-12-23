@@ -458,8 +458,7 @@ fun EquipmentScreen(
                             AnimatedListItem(
                                 enabled = enableItemAnimations,
                                 listAnimationType = listAnimationType,
-                                index = index,
-                                lazyListState = listState
+                                index = index
                             ) {
                                 EquipmentItemCard(
                                     item = item,
@@ -637,6 +636,8 @@ fun EquipmentScreen(
     }
     
     if (uiState.showBorrowDialog && uiState.selectedItem != null) {
+        val userSearchResults by viewModel.userSearchResults.collectAsState()
+        
         BorrowItemDialog(
             item = uiState.selectedItem!!,
             serverUrl = serverUrl,
@@ -644,7 +645,9 @@ fun EquipmentScreen(
             onConfirm = { borrowRequest ->
                 viewModel.borrowItem(uiState.selectedItem!!.id, borrowRequest)
             },
-            currentUser = viewModel.getCurrentUser()
+            currentUser = viewModel.getCurrentUser(),
+            userSearchResults = userSearchResults,
+            onSearchUser = viewModel::searchUsers
         )
     }
     

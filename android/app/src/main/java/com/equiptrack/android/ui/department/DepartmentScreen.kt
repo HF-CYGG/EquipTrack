@@ -225,8 +225,7 @@ fun DepartmentScreen(
                                         AnimatedListItem(
                                             enabled = true,
                                             listAnimationType = "Slide",
-                                            index = index,
-                                            lazyListState = listState
+                                            index = index
                                         ) {
                                             DepartmentCard(
                                                 department = department,

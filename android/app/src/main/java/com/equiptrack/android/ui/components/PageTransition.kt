@@ -221,7 +221,7 @@ fun AnimatedListItem(
     enabled: Boolean,
     listAnimationType: String,
     index: Int = 0,
-    lazyListState: LazyListState? = null,
+    // 移除 lazyListState，避免滚动时的全量重组
     content: @Composable () -> Unit
 ) {
     if (!enabled || listAnimationType == "None") {
@@ -229,49 +229,42 @@ fun AnimatedListItem(
         return
     }
 
-    // 性能优化：检测是否正在滚动
-    val isScrolling = lazyListState?.isScrollInProgress == true
-    
-    // 首屏加载判定
-    val isInitialLoad = index < 12 && !isScrolling
+    // 仅前几项应用级联延迟，避免长列表滚动时的等待
+    val isInitialItem = index < 6
     
     var visible by remember { mutableStateOf(false) }
     
     LaunchedEffect(Unit) {
-        if (isInitialLoad) {
-            // 首屏级联入场：大幅增加延迟间隔，让波浪感极强
-            val delay = (index * 80).toLong().coerceAtMost(1000) 
+        if (isInitialItem) {
+            // 大幅降低延迟时间，提升响应速度
+            // 从 80ms/item 降至 30ms/item，最大延迟限制在 200ms
+            val delay = (index * 30).toLong().coerceAtMost(200) 
             if (delay > 0) kotlinx.coroutines.delay(delay)
         }
         visible = true
     }
 
-    // 动态动画参数配置
-    // 首屏：极低刚度 (VeryLow) -> 慢动作回弹，视觉停留时间长
-    val stiffness = if (isInitialLoad) Spring.StiffnessVeryLow else Spring.StiffnessMedium
-    val damping = if (isInitialLoad) Spring.DampingRatioLowBouncy else Spring.DampingRatioNoBouncy
-
+    // 统一使用中等刚度，既有弹性又不会感觉拖沓
     val animationSpec = spring<Float>(
-        dampingRatio = damping,
-        stiffness = stiffness
+        dampingRatio = Spring.DampingRatioLowBouncy,
+        stiffness = Spring.StiffnessLow
     )
     
     val alpha by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(durationMillis = if (isInitialLoad) 600 else 150),
+        animationSpec = tween(durationMillis = 300),
         label = "itemAlpha"
     )
     
-    // 增强位移感：从右侧 1000f (大幅超出屏幕) 开始，制造强烈的飞入感
+    // 减小位移距离，从 1000f 降至 400f，减少视觉负担和渲染压力
     val offsetX by animateFloatAsState(
-        targetValue = if (visible) 0f else 1000f, 
+        targetValue = if (visible) 0f else 400f, 
         animationSpec = animationSpec,
         label = "itemOffset"
     )
     
-    // 增强缩放感：从 0.6 开始，从小变大非常明显
     val scale by animateFloatAsState(
-        targetValue = if (visible) 1f else 0.6f,
+        targetValue = if (visible) 1f else 0.9f,
         animationSpec = animationSpec,
         label = "itemScale"
     )

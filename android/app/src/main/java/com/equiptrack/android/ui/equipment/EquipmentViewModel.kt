@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.equiptrack.android.data.model.*
 import com.equiptrack.android.data.repository.AuthRepository
 import com.equiptrack.android.data.repository.DepartmentRepository
+import com.equiptrack.android.data.repository.UserRepository
 import com.equiptrack.android.permission.PermissionChecker
 import com.equiptrack.android.permission.PermissionType
 import com.equiptrack.android.data.repository.EquipmentRepository
@@ -27,11 +28,15 @@ class EquipmentViewModel @Inject constructor(
     private val borrowRepository: BorrowRepository,
     private val authRepository: AuthRepository,
     private val settingsRepository: SettingsRepository,
-    private val departmentRepository: DepartmentRepository
+    private val departmentRepository: DepartmentRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(EquipmentUiState())
     val uiState: StateFlow<EquipmentUiState> = _uiState.asStateFlow()
+
+    private val _userSearchResults = MutableStateFlow<List<User>>(emptyList())
+    val userSearchResults: StateFlow<List<User>> = _userSearchResults.asStateFlow()
     
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -276,24 +281,37 @@ class EquipmentViewModel @Inject constructor(
     
     fun deleteCategory(categoryId: String) {
         viewModelScope.launch {
-            equipmentRepository.deleteCategory(categoryId).collect { result ->
-                when (result) {
-                    is NetworkResult.Success -> {
-                        _uiState.value = _uiState.value.copy(
-                            successMessage = "类别删除成功"
-                        )
-                        // Refresh categories
-                        equipmentRepository.syncCategories().collect()
-                    }
-                    is NetworkResult.Error -> {
-                        _uiState.value = _uiState.value.copy(
-                            errorMessage = "删除类别失败: ${result.message}"
-                        )
-                    }
-                    is NetworkResult.Loading -> {
-                        // Loading state can be handled if needed
+            try {
+                equipmentRepository.deleteCategory(categoryId).collect { result ->
+                    when (result) {
+                        is NetworkResult.Success -> {
+                            _uiState.update { it.copy(showAddCategoryDialog = false) }
+                        }
+                        is NetworkResult.Error -> {
+                            _uiState.update { it.copy(errorMessage = result.message) }
+                        }
+                        is NetworkResult.Loading -> {
+                            // Loading handled by UI
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = e.message) }
+            }
+        }
+    }
+
+    fun searchUsers(query: String) {
+        if (query.isBlank()) {
+            _userSearchResults.value = emptyList()
+            return
+        }
+        viewModelScope.launch {
+            userRepository.getAllUsers().collect { users ->
+                _userSearchResults.value = users.filter { 
+                    it.name.contains(query, ignoreCase = true) || 
+                    it.contact.contains(query, ignoreCase = true) 
+                }.take(5)
             }
         }
     }

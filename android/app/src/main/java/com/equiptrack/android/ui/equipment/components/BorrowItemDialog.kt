@@ -68,7 +68,9 @@ fun BorrowItemDialog(
     serverUrl: String,
     onDismiss: () -> Unit,
     onConfirm: (BorrowRequest) -> Unit,
-    currentUser: User? = null
+    currentUser: User? = null,
+    userSearchResults: List<User> = emptyList(),
+    onSearchUser: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -89,8 +91,9 @@ fun BorrowItemDialog(
     
     var showCamera by remember { mutableStateOf(false) }
     
-    val dateDialogState = rememberMaterialDialogState()
-    val timeDialogState = rememberMaterialDialogState()
+    // 性能优化：延迟初始化日期时间选择器，避免首屏卡顿
+    var showDateDialog by remember { mutableStateOf(false) }
+    var showTimeDialog by remember { mutableStateOf(false) }
     
     var tempSelectedDate by remember { mutableStateOf<java.time.LocalDate?>(null) }
     
@@ -150,50 +153,64 @@ fun BorrowItemDialog(
         )
     }
     
-    MaterialDialog(
-        dialogState = dateDialogState,
-        buttons = {
-            positiveButton("下一步")
-            negativeButton("取消")
-        }
-    ) {
-        LegacyMaterialTheme(colors = dialogColors) {
-            val initialDate = remember(expectedReturnDate) {
-                expectedReturnDate?.let { date ->
-                    val instant = date.toInstant()
-                    val zone = java.time.ZoneId.systemDefault()
-                    java.time.LocalDateTime.ofInstant(instant, zone).toLocalDate()
-                } ?: today.plusDays(1)
+    if (showDateDialog) {
+        val dateDialogState = rememberMaterialDialogState()
+        LaunchedEffect(Unit) { dateDialogState.show() }
+        
+        MaterialDialog(
+            dialogState = dateDialogState,
+            onCloseRequest = { showDateDialog = false },
+            buttons = {
+                positiveButton("下一步")
+                negativeButton("取消")
             }
-            
-            datepicker(
-                initialDate = initialDate,
-                title = "选择预期归还日期",
-                allowedDateValidator = { it.isAfter(today.minusDays(1)) }
-            ) { date ->
-                tempSelectedDate = date
-                timeDialogState.show()
+        ) {
+            LegacyMaterialTheme(colors = dialogColors) {
+                val initialDate = remember(expectedReturnDate) {
+                    expectedReturnDate?.let { date ->
+                        val instant = date.toInstant()
+                        val zone = java.time.ZoneId.systemDefault()
+                        java.time.LocalDateTime.ofInstant(instant, zone).toLocalDate()
+                    } ?: today.plusDays(1)
+                }
+                
+                datepicker(
+                    initialDate = initialDate,
+                    title = "选择预期归还日期",
+                    allowedDateValidator = { it.isAfter(today.minusDays(1)) }
+                ) { date ->
+                    tempSelectedDate = date
+                    showDateDialog = false
+                    showTimeDialog = true
+                }
             }
         }
     }
     
-    MaterialDialog(
-        dialogState = timeDialogState,
-        buttons = {
-            positiveButton("确定")
-            negativeButton("取消")
-        }
-    ) {
-        LegacyMaterialTheme(colors = dialogColors) {
-            timepicker(
-                title = "选择预期归还时间",
-                is24HourClock = true
-            ) { time ->
-                tempSelectedDate?.let { date ->
-                    val calendar = Calendar.getInstance()
-                    calendar.set(date.year, date.monthValue - 1, date.dayOfMonth, time.hour, time.minute)
-                    expectedReturnDate = calendar.time
-                    dateError = null
+    if (showTimeDialog) {
+        val timeDialogState = rememberMaterialDialogState()
+        LaunchedEffect(Unit) { timeDialogState.show() }
+
+        MaterialDialog(
+            dialogState = timeDialogState,
+            onCloseRequest = { showTimeDialog = false },
+            buttons = {
+                positiveButton("确定")
+                negativeButton("取消")
+            }
+        ) {
+            LegacyMaterialTheme(colors = dialogColors) {
+                timepicker(
+                    title = "选择预期归还时间",
+                    is24HourClock = true
+                ) { time ->
+                    tempSelectedDate?.let { date ->
+                        val calendar = Calendar.getInstance()
+                        calendar.set(date.year, date.monthValue - 1, date.dayOfMonth, time.hour, time.minute)
+                        expectedReturnDate = calendar.time
+                        dateError = null
+                    }
+                    showTimeDialog = false
                 }
             }
         }
@@ -444,20 +461,62 @@ fun BorrowItemDialog(
                                 }
                             }
 
-                            OutlinedTextField(
-                                value = borrowerName,
-                                onValueChange = { borrowerName = it; nameError = null },
-                                label = { Text("姓名", style = MaterialTheme.typography.bodySmall) },
-                                placeholder = { Text("借用人姓名", style = MaterialTheme.typography.bodySmall) },
-                                leadingIcon = { Icon(Icons.Default.Person, null, modifier = Modifier.size(18.dp)) },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                singleLine = true,
-                                isError = nameError != null,
-                                supportingText = nameError?.let { { Text(it) } },
-                                enabled = !isPersonalBorrow || currentUser == null,
-                                textStyle = MaterialTheme.typography.bodyMedium
-                            )
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                var expanded by remember { mutableStateOf(false) }
+                                
+                                LaunchedEffect(userSearchResults) {
+                                    if (userSearchResults.isNotEmpty() && !isPersonalBorrow && borrowerName.isNotEmpty()) {
+                                        expanded = true
+                                    }
+                                }
+
+                                OutlinedTextField(
+                                    value = borrowerName,
+                                    onValueChange = { 
+                                        borrowerName = it
+                                        nameError = null
+                                        if (!isPersonalBorrow) {
+                                            onSearchUser(it)
+                                        }
+                                    },
+                                    label = { Text("姓名", style = MaterialTheme.typography.bodySmall) },
+                                    placeholder = { Text("借用人姓名", style = MaterialTheme.typography.bodySmall) },
+                                    leadingIcon = { Icon(Icons.Default.Person, null, modifier = Modifier.size(18.dp)) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    singleLine = true,
+                                    isError = nameError != null,
+                                    supportingText = nameError?.let { { Text(it) } },
+                                    enabled = !isPersonalBorrow || currentUser == null,
+                                    textStyle = MaterialTheme.typography.bodyMedium
+                                )
+                                
+                                if (!isPersonalBorrow && userSearchResults.isNotEmpty()) {
+                                    DropdownMenu(
+                                        expanded = expanded,
+                                        onDismissRequest = { expanded = false },
+                                        properties = androidx.compose.ui.window.PopupProperties(focusable = false),
+                                        modifier = Modifier.fillMaxWidth(0.7f).background(MaterialTheme.colorScheme.surface)
+                                    ) {
+                                        userSearchResults.forEach { user ->
+                                            DropdownMenuItem(
+                                                text = { 
+                                                    Column {
+                                                        Text(user.name, style = MaterialTheme.typography.bodyMedium)
+                                                        Text(user.contact, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                    }
+                                                },
+                                                onClick = {
+                                                    borrowerName = user.name
+                                                    borrowerPhone = user.contact
+                                                    expanded = false
+                                                    onSearchUser("") // Clear search
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
 
                             OutlinedTextField(
                                 value = borrowerPhone,
@@ -495,7 +554,7 @@ fun BorrowItemDialog(
                                             },
                                             shape = RoundedCornerShape(12.dp)
                                         )
-                                        .clickable { dateDialogState.show() },
+                                        .clickable { showDateDialog = true },
                                     color = MaterialTheme.colorScheme.surface
                                 ) {
                                     Row(

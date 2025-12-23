@@ -260,8 +260,7 @@ fun UsersScreen(
                             AnimatedListItem(
                                 enabled = enableAnimations,
                                 listAnimationType = listAnimationType,
-                                index = index,
-                                lazyListState = listState
+                                index = index
                             ) {
                                 UserCard(
                                     user = user,
