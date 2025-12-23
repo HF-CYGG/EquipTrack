@@ -224,43 +224,65 @@ fun AnimatedListItem(
     lazyListState: LazyListState? = null,
     content: @Composable () -> Unit
 ) {
-    if (!enabled) {
+    if (!enabled || listAnimationType == "None") {
         content()
         return
     }
 
-    val isInitialLoad = index < 8
+    // 性能优化：检测是否正在滚动
     val isScrolling = lazyListState?.isScrollInProgress == true
-    val hasSlide = listAnimationType == "Slide" && !isScrolling
-    val baseOffset = if (hasSlide) 96f else 0f
-    val duration = if (isInitialLoad) 260 else 140
-
-    var started by remember(listAnimationType) { mutableStateOf(false) }
-    LaunchedEffect(listAnimationType, index) {
-        if (started) return@LaunchedEffect
+    
+    // 首屏加载判定
+    val isInitialLoad = index < 12 && !isScrolling
+    
+    var visible by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
         if (isInitialLoad) {
-            val delay = (index * 20).toLong()
+            // 首屏级联入场：大幅增加延迟间隔，让波浪感极强
+            val delay = (index * 80).toLong().coerceAtMost(1000) 
             if (delay > 0) kotlinx.coroutines.delay(delay)
         }
-        started = true
+        visible = true
     }
 
-    val alpha by animateFloatAsState(
-        targetValue = if (started) 1f else 0f,
-        animationSpec = tween(durationMillis = duration, easing = LinearOutSlowInEasing),
-        label = "list_item_alpha"
+    // 动态动画参数配置
+    // 首屏：极低刚度 (VeryLow) -> 慢动作回弹，视觉停留时间长
+    val stiffness = if (isInitialLoad) Spring.StiffnessVeryLow else Spring.StiffnessMedium
+    val damping = if (isInitialLoad) Spring.DampingRatioLowBouncy else Spring.DampingRatioNoBouncy
+
+    val animationSpec = spring<Float>(
+        dampingRatio = damping,
+        stiffness = stiffness
     )
-    val offsetY by animateFloatAsState(
-        targetValue = if (started) 0f else baseOffset,
-        animationSpec = tween(durationMillis = duration, easing = LinearOutSlowInEasing),
-        label = "list_item_offset_y"
+    
+    val alpha by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(durationMillis = if (isInitialLoad) 600 else 150),
+        label = "itemAlpha"
+    )
+    
+    // 增强位移感：从右侧 1000f (大幅超出屏幕) 开始，制造强烈的飞入感
+    val offsetX by animateFloatAsState(
+        targetValue = if (visible) 0f else 1000f, 
+        animationSpec = animationSpec,
+        label = "itemOffset"
+    )
+    
+    // 增强缩放感：从 0.6 开始，从小变大非常明显
+    val scale by animateFloatAsState(
+        targetValue = if (visible) 1f else 0.6f,
+        animationSpec = animationSpec,
+        label = "itemScale"
     )
 
     Box(
         modifier = Modifier.graphicsLayer {
             this.alpha = alpha
-            if (hasSlide) {
-                translationY = offsetY
+            if (listAnimationType == "Slide") {
+                this.translationX = offsetX
+                this.scaleX = scale
+                this.scaleY = scale
             }
         }
     ) {
