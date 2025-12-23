@@ -17,7 +17,7 @@ import com.equiptrack.android.data.model.*
         RegistrationRequest::class,
         BorrowHistoryEntry::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

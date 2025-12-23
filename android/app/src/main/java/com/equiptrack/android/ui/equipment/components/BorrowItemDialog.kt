@@ -79,6 +79,7 @@ fun BorrowItemDialog(
     var isPersonalBorrow by remember { mutableStateOf(true) }
     var borrowerName by remember { mutableStateOf("") }
     var borrowerPhone by remember { mutableStateOf("") }
+    var borrowerId by remember { mutableStateOf<String?>(null) }
     var expectedReturnDate by remember { mutableStateOf<Date?>(null) }
     var capturedImageUri by remember { mutableStateOf<Uri?>(null) }
     var photoBase64 by remember { mutableStateOf<String?>(null) }
@@ -102,11 +103,13 @@ fun BorrowItemDialog(
         if (isPersonalBorrow && currentUser != null) {
             borrowerName = currentUser.name
             borrowerPhone = currentUser.contact
+            borrowerId = currentUser.id
             nameError = null
             phoneError = null
         } else if (!isPersonalBorrow) {
             borrowerName = ""
             borrowerPhone = ""
+            borrowerId = null
         }
     }
     
@@ -474,6 +477,7 @@ fun BorrowItemDialog(
                                     value = borrowerName,
                                     onValueChange = { 
                                         borrowerName = it
+                                        borrowerId = null
                                         nameError = null
                                         if (!isPersonalBorrow) {
                                             onSearchUser(it)
@@ -509,6 +513,7 @@ fun BorrowItemDialog(
                                                 onClick = {
                                                     borrowerName = user.name
                                                     borrowerPhone = user.contact
+                                                    borrowerId = user.id
                                                     expanded = false
                                                     onSearchUser("") // Clear search
                                                 }
@@ -726,7 +731,8 @@ fun BorrowItemDialog(
                                     val request = BorrowRequest(
                                         borrower = Borrower(
                                             name = borrowerName,
-                                            phone = borrowerPhone
+                                            phone = borrowerPhone,
+                                            id = borrowerId
                                         ),
                                         expectedReturnDate = expectedReturnDate!!,
                                         photo = photoBase64,

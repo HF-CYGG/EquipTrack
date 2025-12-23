@@ -5,8 +5,10 @@ import android.os.Parcelable
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import androidx.room.Ignore
 import kotlinx.parcelize.Parcelize
 import kotlinx.parcelize.RawValue
+import kotlinx.parcelize.IgnoredOnParcel
 import java.util.Date
 import com.google.gson.annotations.SerializedName
 
@@ -62,6 +64,10 @@ data class EquipmentItem(
 ) : Parcelable {
     val status: EquipmentStatus
         get() = if (availableQuantity > 0) EquipmentStatus.Available else EquipmentStatus.Borrowed
+
+    @Ignore
+    @IgnoredOnParcel
+    var borrowHistory: List<BorrowHistoryDto> = emptyList()
 }
 
 // User roles enum
@@ -188,7 +194,8 @@ data class BorrowRequest(
 @Parcelize
 data class Borrower(
     val name: String,
-    val phone: String
+    val phone: String,
+    val id: String? = null
 ) : Parcelable
 
 @Parcelize
@@ -198,9 +205,24 @@ data class ReturnRequest(
     val adminName: String? = null
 ) : Parcelable
 
+@Immutable
 @Parcelize
+data class BorrowHistoryDto(
+    val id: String,
+    val itemId: String,
+    val borrower: Borrower,
+    val operator: Borrower? = null,
+    val borrowDate: Date,
+    val expectedReturnDate: Date,
+    val returnDate: Date? = null,
+    val status: BorrowStatus,
+    val forcedReturnBy: String? = null,
+    val photo: String? = null,
+    val returnPhoto: String? = null
+) : Parcelable
+
 data class ApiResponse<T>(
     val success: Boolean,
-    val data: @RawValue T? = null,
-    val message: String? = null
-) : Parcelable
+    val message: String? = null,
+    val data: T? = null
+)

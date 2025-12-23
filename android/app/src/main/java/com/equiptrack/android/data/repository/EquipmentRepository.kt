@@ -2,6 +2,7 @@ package com.equiptrack.android.data.repository
 
 import com.equiptrack.android.data.local.dao.EquipmentItemDao
 import com.equiptrack.android.data.local.dao.CategoryDao
+import com.equiptrack.android.data.local.dao.BorrowHistoryDao
 import com.equiptrack.android.data.model.*
 import com.equiptrack.android.data.remote.api.EquipTrackApiService
 import com.equiptrack.android.data.settings.SettingsRepository
@@ -23,6 +24,7 @@ class EquipmentRepository @Inject constructor(
     private val apiService: EquipTrackApiService,
     private val equipmentItemDao: EquipmentItemDao,
     private val categoryDao: CategoryDao,
+    private val borrowHistoryDao: BorrowHistoryDao,
     private val settingsRepository: SettingsRepository
 ) {
     
@@ -99,6 +101,34 @@ class EquipmentRepository @Inject constructor(
             is NetworkResult.Success -> {
                 val items = result.data ?: emptyList()
                 equipmentItemDao.insertItems(items)
+                
+                // Sync borrow history
+                val histories = items.flatMap { item ->
+                    item.borrowHistory.map { historyDto ->
+                        BorrowHistoryEntry(
+                            id = historyDto.id,
+                            itemId = historyDto.itemId,
+                            itemName = item.name,
+                            departmentId = item.departmentId,
+                            borrowerName = historyDto.borrower.name,
+                            borrowerContact = historyDto.borrower.phone,
+                            operatorUserId = historyDto.operator?.id ?: "",
+                            operatorName = historyDto.operator?.name ?: "",
+                            operatorContact = historyDto.operator?.phone ?: "",
+                            borrowDate = historyDto.borrowDate,
+                            expectedReturnDate = historyDto.expectedReturnDate,
+                            returnDate = historyDto.returnDate,
+                            status = historyDto.status,
+                            forcedReturnBy = historyDto.forcedReturnBy,
+                            photo = historyDto.photo,
+                            returnPhoto = historyDto.returnPhoto
+                        )
+                    }
+                }
+                if (histories.isNotEmpty()) {
+                    borrowHistoryDao.insertHistories(histories)
+                }
+                
                 emit(NetworkResult.Success(items))
             }
             is NetworkResult.Error -> {
