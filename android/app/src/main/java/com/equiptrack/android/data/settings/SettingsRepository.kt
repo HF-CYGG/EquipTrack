@@ -29,7 +29,8 @@ data class ThemeOverrides(
     val hapticEnabled: Boolean? = null,
     val confettiEnabled: Boolean? = null,
     val tagStyle: String? = null,
-    val lowPerformanceMode: Boolean? = null
+    val lowPerformanceMode: Boolean? = null,
+    val themeMode: String? = null
 )
 
 @Singleton
@@ -58,7 +59,8 @@ class SettingsRepository @Inject constructor(
             hapticEnabled = null,
             confettiEnabled = null,
             tagStyle = null,
-            lowPerformanceMode = null
+            lowPerformanceMode = null,
+            themeMode = null
         )
     )
 
@@ -89,7 +91,8 @@ class SettingsRepository @Inject constructor(
             KEY_HAPTIC_ENABLED,
             KEY_CONFETTI_ENABLED,
             KEY_TAG_STYLE,
-            KEY_LOW_PERFORMANCE_MODE -> {
+            KEY_LOW_PERFORMANCE_MODE,
+            KEY_THEME_MODE -> {
                 _themeOverridesFlow.value = ThemeOverrides(
                     primaryColorHex = shared.getString(KEY_PRIMARY_COLOR, null),
                     accentColorHex = shared.getString(KEY_ACCENT_COLOR, null),
@@ -108,7 +111,8 @@ class SettingsRepository @Inject constructor(
                     hapticEnabled = runCatching { shared.getBoolean(KEY_HAPTIC_ENABLED, true) }.getOrNull(),
                     confettiEnabled = runCatching { shared.getBoolean(KEY_CONFETTI_ENABLED, false) }.getOrNull(),
                     tagStyle = shared.getString(KEY_TAG_STYLE, null),
-                    lowPerformanceMode = runCatching { shared.getBoolean(KEY_LOW_PERFORMANCE_MODE, false) }.getOrNull()
+                    lowPerformanceMode = runCatching { shared.getBoolean(KEY_LOW_PERFORMANCE_MODE, false) }.getOrNull(),
+                    themeMode = shared.getString(KEY_THEME_MODE, null)
                 )
             }
             KEY_SERVER_URL -> {
@@ -139,7 +143,8 @@ class SettingsRepository @Inject constructor(
             hapticEnabled = runCatching { prefs.getBoolean(KEY_HAPTIC_ENABLED, true) }.getOrNull(),
             confettiEnabled = runCatching { prefs.getBoolean(KEY_CONFETTI_ENABLED, false) }.getOrNull(),
             tagStyle = prefs.getString(KEY_TAG_STYLE, null),
-            lowPerformanceMode = runCatching { prefs.getBoolean(KEY_LOW_PERFORMANCE_MODE, false) }.getOrNull()
+            lowPerformanceMode = runCatching { prefs.getBoolean(KEY_LOW_PERFORMANCE_MODE, false) }.getOrNull(),
+            themeMode = prefs.getString(KEY_THEME_MODE, null)
         )
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
     }
@@ -169,6 +174,7 @@ class SettingsRepository @Inject constructor(
         private const val KEY_CONFETTI_ENABLED = "confetti_enabled"
         private const val KEY_TAG_STYLE = "tag_style"
         private const val KEY_LOW_PERFORMANCE_MODE = "low_performance_mode"
+        private const val KEY_THEME_MODE = "theme_mode"
     }
 
     fun getServerUrl(): String? = prefs.getString(KEY_SERVER_URL, null)
@@ -328,5 +334,10 @@ class SettingsRepository @Inject constructor(
     fun isLowPerformanceMode(): Boolean = prefs.getBoolean(KEY_LOW_PERFORMANCE_MODE, false)
     fun setLowPerformanceMode(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_LOW_PERFORMANCE_MODE, enabled).apply()
+    }
+
+    fun getThemeMode(): String = prefs.getString(KEY_THEME_MODE, "System") ?: "System"
+    fun setThemeMode(mode: String) {
+        prefs.edit().putString(KEY_THEME_MODE, mode).apply()
     }
 }

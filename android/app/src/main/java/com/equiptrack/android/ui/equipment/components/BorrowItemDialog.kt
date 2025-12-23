@@ -40,6 +40,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.material.MaterialTheme as LegacyMaterialTheme
+import androidx.compose.material.lightColors
 import coil.compose.AsyncImage
 import com.equiptrack.android.data.model.Borrower
 import com.equiptrack.android.data.model.BorrowRequest
@@ -50,6 +52,7 @@ import com.equiptrack.android.ui.components.AnimatedOutlinedButton
 import com.equiptrack.android.ui.components.CameraCapture
 import com.equiptrack.android.utils.CameraUtils
 import com.equiptrack.android.utils.UrlUtils
+import com.equiptrack.android.ui.theme.LocalHapticFeedbackEnabled
 import com.vanpra.composematerialdialogs.MaterialDialog
 import com.vanpra.composematerialdialogs.datetime.date.datepicker
 import com.vanpra.composematerialdialogs.datetime.time.timepicker
@@ -64,11 +67,11 @@ fun BorrowItemDialog(
     serverUrl: String,
     onDismiss: () -> Unit,
     onConfirm: (BorrowRequest) -> Unit,
-    currentUser: User? = null,
-    hapticEnabled: Boolean = true
+    currentUser: User? = null
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val hapticEnabled = LocalHapticFeedbackEnabled.current
     
     var isPersonalBorrow by remember { mutableStateOf(true) }
     var borrowerName by remember { mutableStateOf("") }
@@ -88,7 +91,6 @@ fun BorrowItemDialog(
     val dateDialogState = rememberMaterialDialogState()
     val timeDialogState = rememberMaterialDialogState()
     
-    // Temporary date holder to combine date and time
     var tempSelectedDate by remember { mutableStateOf<java.time.LocalDate?>(null) }
     
     // Auto-fill logic
@@ -132,7 +134,21 @@ fun BorrowItemDialog(
         }
     }
     
-    // Date Picker Dialog
+    val today = java.time.LocalDate.now()
+    val m3Colors = MaterialTheme.colorScheme
+    val dialogColors = remember(m3Colors) {
+        lightColors(
+            primary = m3Colors.primary,
+            secondary = m3Colors.secondary,
+            background = m3Colors.surface,
+            surface = m3Colors.surface,
+            onPrimary = m3Colors.onPrimary,
+            onSecondary = m3Colors.onSecondary,
+            onBackground = m3Colors.onSurface,
+            onSurface = m3Colors.onSurface
+        )
+    }
+    
     MaterialDialog(
         dialogState = dateDialogState,
         buttons = {
@@ -140,17 +156,26 @@ fun BorrowItemDialog(
             negativeButton("取消")
         }
     ) {
-        datepicker(
-            initialDate = java.time.LocalDate.now().plusDays(1),
-            title = "选择预期归还日期",
-            allowedDateValidator = { it.isAfter(java.time.LocalDate.now().minusDays(1)) }
-        ) { date ->
-            tempSelectedDate = date
-            timeDialogState.show()
+        LegacyMaterialTheme(colors = dialogColors) {
+            val initialDate = remember(expectedReturnDate) {
+                expectedReturnDate?.let { date ->
+                    val instant = date.toInstant()
+                    val zone = java.time.ZoneId.systemDefault()
+                    java.time.LocalDateTime.ofInstant(instant, zone).toLocalDate()
+                } ?: today.plusDays(1)
+            }
+            
+            datepicker(
+                initialDate = initialDate,
+                title = "选择预期归还日期",
+                allowedDateValidator = { it.isAfter(today.minusDays(1)) }
+            ) { date ->
+                tempSelectedDate = date
+                timeDialogState.show()
+            }
         }
     }
     
-    // Time Picker Dialog
     MaterialDialog(
         dialogState = timeDialogState,
         buttons = {
@@ -158,15 +183,17 @@ fun BorrowItemDialog(
             negativeButton("取消")
         }
     ) {
-        timepicker(
-            title = "选择预期归还时间",
-            is24HourClock = true
-        ) { time ->
-            tempSelectedDate?.let { date ->
-                val calendar = Calendar.getInstance()
-                calendar.set(date.year, date.monthValue - 1, date.dayOfMonth, time.hour, time.minute)
-                expectedReturnDate = calendar.time
-                dateError = null
+        LegacyMaterialTheme(colors = dialogColors) {
+            timepicker(
+                title = "选择预期归还时间",
+                is24HourClock = true
+            ) { time ->
+                tempSelectedDate?.let { date ->
+                    val calendar = Calendar.getInstance()
+                    calendar.set(date.year, date.monthValue - 1, date.dayOfMonth, time.hour, time.minute)
+                    expectedReturnDate = calendar.time
+                    dateError = null
+                }
             }
         }
     }
@@ -443,32 +470,76 @@ fun BorrowItemDialog(
                                 textStyle = MaterialTheme.typography.bodyMedium
                             )
                             
-                            OutlinedTextField(
-                                value = expectedReturnDate?.let { 
-                                    SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(it) 
-                                } ?: "",
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("预期归还", style = MaterialTheme.typography.bodySmall) },
-                                placeholder = { Text("点击选择日期和时间", style = MaterialTheme.typography.bodySmall) },
-                                leadingIcon = { Icon(Icons.Default.CalendarToday, null, modifier = Modifier.size(18.dp)) },
-                                trailingIcon = { Icon(Icons.Default.AccessTime, null, modifier = Modifier.size(20.dp)) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { dateDialogState.show() },
-                                shape = RoundedCornerShape(12.dp),
-                                enabled = false, 
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                                    disabledBorderColor = MaterialTheme.colorScheme.outline,
-                                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                ),
-                                isError = dateError != null,
-                                supportingText = dateError?.let { { Text(it) } },
-                                textStyle = MaterialTheme.typography.bodyMedium
-                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    text = "预期归还",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(52.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .border(
+                                            width = 1.dp,
+                                            color = if (dateError != null) {
+                                                MaterialTheme.colorScheme.error
+                                            } else {
+                                                MaterialTheme.colorScheme.outline
+                                            },
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        .clickable { dateDialogState.show() },
+                                    color = MaterialTheme.colorScheme.surface
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(horizontal = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.CalendarToday,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            val text = expectedReturnDate?.let {
+                                                SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(it)
+                                            } ?: "点击选择日期和时间"
+                                            Text(
+                                                text = text,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = if (expectedReturnDate == null) {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurface
+                                                },
+                                                maxLines = 1
+                                            )
+                                        }
+                                        Icon(
+                                            Icons.Default.AccessTime,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                if (dateError != null) {
+                                    Text(
+                                        text = dateError!!,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
                         }
 
                         Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -603,7 +674,8 @@ fun BorrowItemDialog(
                             modifier = Modifier
                                 .weight(1f)
                                 .height(44.dp), // Reduced height
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            hapticFeedbackType = null
                         ) {
                             Text("确认借用")
                         }

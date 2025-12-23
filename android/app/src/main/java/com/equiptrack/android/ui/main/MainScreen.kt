@@ -1,6 +1,8 @@
 package com.equiptrack.android.ui.main
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -51,7 +53,9 @@ fun MainScreen(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
+            ModalDrawerSheet(
+                drawerContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 1f)
+            ) {
                 Text(
                     text = "导航",
                     style = MaterialTheme.typography.titleMedium,
@@ -146,73 +150,49 @@ fun MainScreen(
             NavHost(
                 navController = navController,
                 startDestination = MainNavItem.Equipment.route,
-                modifier = Modifier.padding(innerPadding)
+                modifier = Modifier.padding(innerPadding),
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300)) }
             ) {
             composable(MainNavItem.Equipment.route) {
-                AnimatedPage(
-                    transitionType = PageTransitionType.SLIDE_HORIZONTAL
-                ) {
-                    EquipmentScreen(
-                        navController = navController,
-                        onNavigateToDetail = { /* TODO: Implement detail view */ }
-                    )
-                }
+                EquipmentScreen(
+                    navController = navController,
+                    onNavigateToDetail = { /* TODO: Implement detail view */ }
+                )
             }
             composable(MainNavItem.History.route) {
-                AnimatedPage(
-                    transitionType = PageTransitionType.SLIDE_HORIZONTAL
-                ) {
-                    HistoryScreen()
-                }
+                HistoryScreen()
             }
             composable(MainNavItem.Profile.route) {
-                AnimatedPage(
-                    transitionType = PageTransitionType.SLIDE_HORIZONTAL
-                ) {
-                    ProfileScreen(
-                        onLogout = onLogout,
-                        onNavigateToSettings = { onNavigateToServerConfig() },
-                        onNavigateToSystemInfo = { navController.navigate(MainNavItem.SystemInfo.route) }
-                    )
-                }
+                ProfileScreen(
+                    onLogout = onLogout,
+                    onNavigateToSettings = { onNavigateToServerConfig() },
+                    onNavigateToSystemInfo = { navController.navigate(MainNavItem.SystemInfo.route) }
+                )
             }
             composable(MainNavItem.Approvals.route) {
-                AnimatedPage(
-                    transitionType = PageTransitionType.SLIDE_HORIZONTAL
-                ) {
-                    ApprovalScreen()
-                }
+                ApprovalScreen()
             }
             composable(MainNavItem.Users.route) {
-                AnimatedPage(
-                    transitionType = PageTransitionType.SLIDE_HORIZONTAL
-                ) {
-                    UsersScreen()
-                }
-            }
-            composable(MainNavItem.SystemInfo.route) {
-                AnimatedPage(
-                    transitionType = PageTransitionType.SLIDE_HORIZONTAL
-                ) {
-                    SystemInfoScreen()
-                }
+                UsersScreen()
             }
             composable(MainNavItem.Departments.route) {
-                AnimatedPage(
-                    transitionType = PageTransitionType.SLIDE_HORIZONTAL
-                ) {
-                    if (PermissionChecker.hasPermission(currentUser, PermissionType.VIEW_DEPARTMENT_MANAGEMENT)) {
-                        DepartmentScreen()
-                    } else {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.Lock, contentDescription = "无权限", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text("无权访问部门管理")
-                            }
+                if (PermissionChecker.hasPermission(currentUser, PermissionType.VIEW_DEPARTMENT_MANAGEMENT)) {
+                    DepartmentScreen()
+                } else {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.Lock, contentDescription = "无权限", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("无权访问部门管理")
                         }
                     }
                 }
+            }
+            composable(MainNavItem.SystemInfo.route) {
+                SystemInfoScreen()
             }
         }
         }

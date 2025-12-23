@@ -41,6 +41,7 @@ import com.equiptrack.android.ui.components.AnimatedButton
 import com.equiptrack.android.ui.components.AnimatedOutlinedButton
 import com.equiptrack.android.ui.components.CameraCapture
 import com.equiptrack.android.utils.CameraUtils
+import com.equiptrack.android.ui.theme.LocalHapticFeedbackEnabled
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -51,11 +52,11 @@ fun ReturnItemDialog(
     adminName: String? = null,
     currentUserRole: com.equiptrack.android.data.model.UserRole? = null,
     onDismiss: () -> Unit,
-    onConfirm: (ReturnRequest) -> Unit,
-    hapticEnabled: Boolean = true
+    onConfirm: (ReturnRequest) -> Unit
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val hapticEnabled = LocalHapticFeedbackEnabled.current
     
     var capturedImageUri by remember { mutableStateOf<Uri?>(null) }
     var photoBase64 by remember { mutableStateOf<String?>(null) }
@@ -442,7 +443,8 @@ fun ReturnItemDialog(
                                 .weight(1f)
                                 .height(44.dp), // Reduced height
                             shape = RoundedCornerShape(12.dp),
-                            colors = if (isForced) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error) else ButtonDefaults.buttonColors()
+                            colors = if (isForced) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error) else ButtonDefaults.buttonColors(),
+                            hapticFeedbackType = null
                         ) {
                             Text(if (isForced) "确认强制归还" else "确认归还")
                         }

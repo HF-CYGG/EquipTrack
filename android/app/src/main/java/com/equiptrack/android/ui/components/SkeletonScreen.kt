@@ -16,16 +16,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-/**
- * 骨架屏基础组件
- */
+@Stable
+private data class SkeletonAnimationState(
+    val alpha: Float,
+    val shimmerTranslateX: Float
+)
+
+private val LocalSkeletonAnimationState = staticCompositionLocalOf<SkeletonAnimationState?> { null }
+
 @Composable
-fun SkeletonBox(
-    modifier: Modifier = Modifier,
-    height: Dp = 16.dp,
-    cornerRadius: Dp = 4.dp
+private fun ProvideSkeletonAnimationState(
+    content: @Composable () -> Unit
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "skeleton_shimmer")
+    val infiniteTransition = rememberInfiniteTransition(label = "skeleton_shared")
     val alpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
         targetValue = 0.7f,
@@ -35,6 +38,49 @@ fun SkeletonBox(
         ),
         label = "skeleton_alpha"
     )
+    val shimmerTranslateX by infiniteTransition.animateFloat(
+        initialValue = -300f,
+        targetValue = 300f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer_translate"
+    )
+
+    CompositionLocalProvider(
+        LocalSkeletonAnimationState provides SkeletonAnimationState(
+            alpha = alpha,
+            shimmerTranslateX = shimmerTranslateX
+        )
+    ) {
+        content()
+    }
+}
+
+/**
+ * 骨架屏基础组件
+ */
+@Composable
+fun SkeletonBox(
+    modifier: Modifier = Modifier,
+    height: Dp = 16.dp,
+    cornerRadius: Dp = 4.dp
+) {
+    val sharedState = LocalSkeletonAnimationState.current
+    val alpha = sharedState?.alpha ?: run {
+        val infiniteTransition = rememberInfiniteTransition(label = "skeleton_shimmer")
+        val a by infiniteTransition.animateFloat(
+            initialValue = 0.3f,
+            targetValue = 0.7f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1000),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "skeleton_alpha"
+        )
+        a
+    }
 
     Box(
         modifier = modifier
@@ -55,16 +101,20 @@ fun ShimmerSkeletonBox(
     height: Dp = 16.dp,
     cornerRadius: Dp = 4.dp
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "shimmer_skeleton")
-    val translateAnim by infiniteTransition.animateFloat(
-        initialValue = -300f,
-        targetValue = 300f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmer_translate"
-    )
+    val sharedState = LocalSkeletonAnimationState.current
+    val translateAnim = sharedState?.shimmerTranslateX ?: run {
+        val infiniteTransition = rememberInfiniteTransition(label = "shimmer_skeleton")
+        val x by infiniteTransition.animateFloat(
+            initialValue = -300f,
+            targetValue = 300f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1200, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "shimmer_translate"
+        )
+        x
+    }
 
     val shimmerColors = listOf(
         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
@@ -261,17 +311,19 @@ fun EquipmentListSkeleton(
     modifier: Modifier = Modifier,
     itemCount: Int = 5
 ) {
-    LazyColumn(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(16.dp)
-    ) {
-        items(itemCount) {
-            SkeletonCard(
-                showAvatar = false,
-                showImage = true,
-                imageHeight = 100.dp
-            )
+    ProvideSkeletonAnimationState {
+        LazyColumn(
+            modifier = modifier,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(16.dp)
+        ) {
+            items(itemCount) {
+                SkeletonCard(
+                    showAvatar = false,
+                    showImage = true,
+                    imageHeight = 100.dp
+                )
+            }
         }
     }
 }
@@ -284,19 +336,21 @@ fun UserListSkeleton(
     modifier: Modifier = Modifier,
     itemCount: Int = 8
 ) {
-    LazyColumn(
-        modifier = modifier
-    ) {
-        items(itemCount) {
-            SkeletonListItem(
-                showAvatar = true,
-                showTrailing = true
-            )
-            if (it < itemCount - 1) {
-                Divider(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+    ProvideSkeletonAnimationState {
+        LazyColumn(
+            modifier = modifier
+        ) {
+            items(itemCount) {
+                SkeletonListItem(
+                    showAvatar = true,
+                    showTrailing = true
                 )
+                if (it < itemCount - 1) {
+                    Divider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                    )
+                }
             }
         }
     }
@@ -310,49 +364,51 @@ fun HistoryListSkeleton(
     modifier: Modifier = Modifier,
     itemCount: Int = 6
 ) {
-    LazyColumn(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(16.dp)
-    ) {
-        items(itemCount) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+    ProvideSkeletonAnimationState {
+        LazyColumn(
+            modifier = modifier,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(16.dp)
+        ) {
+            items(itemCount) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.padding(16.dp)
                     ) {
-                        SkeletonTextLine(width = 100.dp, height = 16.dp)
-                        SkeletonBox(
-                            modifier = Modifier.width(60.dp),
-                            height = 24.dp,
-                            cornerRadius = 12.dp
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    SkeletonTextLine(width = 150.dp, height = 18.dp)
-                    
-                    Spacer(modifier = Modifier.height(4.dp))
-                    
-                    SkeletonTextLine(width = 120.dp, height = 14.dp)
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        SkeletonTextLine(width = 80.dp, height = 12.dp)
-                        SkeletonTextLine(width = 80.dp, height = 12.dp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            SkeletonTextLine(width = 100.dp, height = 16.dp)
+                            SkeletonBox(
+                                modifier = Modifier.width(60.dp),
+                                height = 24.dp,
+                                cornerRadius = 12.dp
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        SkeletonTextLine(width = 150.dp, height = 18.dp)
+                        
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        SkeletonTextLine(width = 120.dp, height = 14.dp)
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            SkeletonTextLine(width = 80.dp, height = 12.dp)
+                            SkeletonTextLine(width = 80.dp, height = 12.dp)
+                        }
                     }
                 }
             }
@@ -368,59 +424,61 @@ fun ApprovalListSkeleton(
     modifier: Modifier = Modifier,
     itemCount: Int = 4
 ) {
-    LazyColumn(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(16.dp)
-    ) {
-        items(itemCount) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+    ProvideSkeletonAnimationState {
+        LazyColumn(
+            modifier = modifier,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(16.dp)
+        ) {
+            items(itemCount) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.padding(16.dp)
                     ) {
-                        SkeletonAvatar(size = 40.dp)
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(
-                            modifier = Modifier.weight(1f)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            SkeletonTextLine(width = 120.dp, height = 16.dp)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            SkeletonTextLine(width = 80.dp, height = 14.dp)
+                            SkeletonAvatar(size = 40.dp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                SkeletonTextLine(width = 120.dp, height = 16.dp)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                SkeletonTextLine(width = 80.dp, height = 14.dp)
+                            }
+                            SkeletonBox(
+                                modifier = Modifier.width(60.dp),
+                                height = 24.dp,
+                                cornerRadius = 12.dp
+                            )
                         }
-                        SkeletonBox(
-                            modifier = Modifier.width(60.dp),
-                            height = 24.dp,
-                            cornerRadius = 12.dp
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    SkeletonTextBlock(lines = 2, lineHeight = 14.dp)
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        SkeletonBox(
-                            modifier = Modifier.width(60.dp),
-                            height = 32.dp,
-                            cornerRadius = 16.dp
-                        )
-                        SkeletonBox(
-                            modifier = Modifier.width(60.dp),
-                            height = 32.dp,
-                            cornerRadius = 16.dp
-                        )
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        SkeletonTextBlock(lines = 2, lineHeight = 14.dp)
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            SkeletonBox(
+                                modifier = Modifier.width(60.dp),
+                                height = 32.dp,
+                                cornerRadius = 16.dp
+                            )
+                            SkeletonBox(
+                                modifier = Modifier.width(60.dp),
+                                height = 32.dp,
+                                cornerRadius = 16.dp
+                            )
+                        }
                     }
                 }
             }

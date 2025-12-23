@@ -59,12 +59,12 @@ fun UsersScreen(
     val filterDepartmentId by viewModel.filterDepartmentId.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val canManage = viewModel.canManageUsers()
-    var fabExpanded by remember { mutableStateOf(false) }
     val toastState = rememberToastState()
 
     val settingsRepository = navVm.settingsRepository
-    val lowPerformanceMode by remember { mutableStateOf(settingsRepository.isLowPerformanceMode()) }
-    val listAnimationType by remember { mutableStateOf(settingsRepository.getListAnimationType()) }
+    val themeOverrides by settingsRepository.themeOverridesFlow.collectAsStateWithLifecycle()
+    val lowPerformanceMode = themeOverrides.lowPerformanceMode ?: settingsRepository.isLowPerformanceMode()
+    val listAnimationType = themeOverrides.listAnimationType ?: settingsRepository.getListAnimationType()
 
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
@@ -247,7 +247,11 @@ fun UsersScreen(
                             }
                         }
                     } else {
-                        itemsIndexed(filteredUsers) { index, user ->
+                        itemsIndexed(
+                            items = filteredUsers,
+                            key = { _, user -> user.id },
+                            contentType = { _, _ -> "user" }
+                        ) { index, user ->
                             AnimatedListItem(
                                 enabled = enableAnimations,
                                 listAnimationType = listAnimationType,

@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.graphicsLayer
 
 /**
  * 页面过渡动画类型
@@ -25,6 +27,85 @@ enum class PageTransitionType {
 /**
  * 页面过渡动画组件
  */
+private fun getEnterTransition(type: PageTransitionType, duration: Int): EnterTransition {
+    val easing = FastOutSlowInEasing
+    return when (type) {
+        PageTransitionType.SLIDE_HORIZONTAL -> slideInHorizontally(
+            initialOffsetX = { it },
+            animationSpec = tween(duration, easing = easing)
+        ) + fadeIn(animationSpec = tween(duration))
+        PageTransitionType.SLIDE_VERTICAL -> slideInVertically(
+            initialOffsetY = { it },
+            animationSpec = tween(duration, easing = easing)
+        ) + fadeIn(animationSpec = tween(duration))
+        PageTransitionType.FADE -> fadeIn(animationSpec = tween(duration, easing = LinearEasing))
+        PageTransitionType.SCALE -> scaleIn(
+            initialScale = 0.8f,
+            animationSpec = tween(duration, easing = easing)
+        ) + fadeIn(animationSpec = tween(duration))
+        PageTransitionType.SLIDE_UP -> slideInVertically(
+            initialOffsetY = { it },
+            animationSpec = tween(duration, easing = easing)
+        ) + fadeIn(animationSpec = tween(duration))
+        PageTransitionType.SLIDE_DOWN -> slideInVertically(
+            initialOffsetY = { -it },
+            animationSpec = tween(duration, easing = easing)
+        ) + fadeIn(animationSpec = tween(duration))
+    }
+}
+
+private fun getExitTransition(type: PageTransitionType, duration: Int): ExitTransition {
+    val easing = FastOutSlowInEasing
+    return when (type) {
+        PageTransitionType.SLIDE_HORIZONTAL -> slideOutHorizontally(
+            targetOffsetX = { -it },
+            animationSpec = tween(duration, easing = easing)
+        ) + fadeOut(animationSpec = tween(duration))
+        PageTransitionType.SLIDE_VERTICAL -> slideOutVertically(
+            targetOffsetY = { -it },
+            animationSpec = tween(duration, easing = easing)
+        ) + fadeOut(animationSpec = tween(duration))
+        PageTransitionType.FADE -> fadeOut(animationSpec = tween(duration, easing = LinearEasing))
+        PageTransitionType.SCALE -> scaleOut(
+            targetScale = 0.8f,
+            animationSpec = tween(duration, easing = easing)
+        ) + fadeOut(animationSpec = tween(duration))
+        PageTransitionType.SLIDE_UP -> slideOutVertically(
+            targetOffsetY = { it },
+            animationSpec = tween(duration, easing = easing)
+        ) + fadeOut(animationSpec = tween(duration))
+        PageTransitionType.SLIDE_DOWN -> slideOutVertically(
+            targetOffsetY = { -it },
+            animationSpec = tween(duration, easing = easing)
+        ) + fadeOut(animationSpec = tween(duration))
+    }
+}
+
+/**
+ * 页面过渡动画组件 (State version)
+ */
+@OptIn(ExperimentalAnimationApi::class)
+@Composable
+fun PageTransition(
+    visibleState: MutableTransitionState<Boolean>,
+    transitionType: PageTransitionType = PageTransitionType.SLIDE_HORIZONTAL,
+    durationMillis: Int = 300,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    AnimatedVisibility(
+        visibleState = visibleState,
+        enter = getEnterTransition(transitionType, durationMillis),
+        exit = getExitTransition(transitionType, durationMillis),
+        modifier = modifier
+    ) {
+        content()
+    }
+}
+
+/**
+ * 页面过渡动画组件 (Boolean version)
+ */
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun PageTransition(
@@ -34,102 +115,13 @@ fun PageTransition(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
-    when (transitionType) {
-        PageTransitionType.SLIDE_HORIZONTAL -> {
-            AnimatedVisibility(
-                visible = visible,
-                enter = slideInHorizontally(
-                    initialOffsetX = { it },
-                    animationSpec = tween(durationMillis, easing = FastOutSlowInEasing)
-                ) + fadeIn(animationSpec = tween(durationMillis)),
-                exit = slideOutHorizontally(
-                    targetOffsetX = { -it },
-                    animationSpec = tween(durationMillis, easing = FastOutSlowInEasing)
-                ) + fadeOut(animationSpec = tween(durationMillis)),
-                modifier = modifier
-            ) {
-                content()
-            }
-        }
-        
-        PageTransitionType.SLIDE_VERTICAL -> {
-            AnimatedVisibility(
-                visible = visible,
-                enter = slideInVertically(
-                    initialOffsetY = { it },
-                    animationSpec = tween(durationMillis, easing = FastOutSlowInEasing)
-                ) + fadeIn(animationSpec = tween(durationMillis)),
-                exit = slideOutVertically(
-                    targetOffsetY = { -it },
-                    animationSpec = tween(durationMillis, easing = FastOutSlowInEasing)
-                ) + fadeOut(animationSpec = tween(durationMillis)),
-                modifier = modifier
-            ) {
-                content()
-            }
-        }
-        
-        PageTransitionType.FADE -> {
-            AnimatedVisibility(
-                visible = visible,
-                enter = fadeIn(animationSpec = tween(durationMillis, easing = LinearEasing)),
-                exit = fadeOut(animationSpec = tween(durationMillis, easing = LinearEasing)),
-                modifier = modifier
-            ) {
-                content()
-            }
-        }
-        
-        PageTransitionType.SCALE -> {
-            AnimatedVisibility(
-                visible = visible,
-                enter = scaleIn(
-                    initialScale = 0.8f,
-                    animationSpec = tween(durationMillis, easing = FastOutSlowInEasing)
-                ) + fadeIn(animationSpec = tween(durationMillis)),
-                exit = scaleOut(
-                    targetScale = 0.8f,
-                    animationSpec = tween(durationMillis, easing = FastOutSlowInEasing)
-                ) + fadeOut(animationSpec = tween(durationMillis)),
-                modifier = modifier
-            ) {
-                content()
-            }
-        }
-        
-        PageTransitionType.SLIDE_UP -> {
-            AnimatedVisibility(
-                visible = visible,
-                enter = slideInVertically(
-                    initialOffsetY = { it },
-                    animationSpec = tween(durationMillis, easing = FastOutSlowInEasing)
-                ) + fadeIn(animationSpec = tween(durationMillis)),
-                exit = slideOutVertically(
-                    targetOffsetY = { it },
-                    animationSpec = tween(durationMillis, easing = FastOutSlowInEasing)
-                ) + fadeOut(animationSpec = tween(durationMillis)),
-                modifier = modifier
-            ) {
-                content()
-            }
-        }
-        
-        PageTransitionType.SLIDE_DOWN -> {
-            AnimatedVisibility(
-                visible = visible,
-                enter = slideInVertically(
-                    initialOffsetY = { -it },
-                    animationSpec = tween(durationMillis, easing = FastOutSlowInEasing)
-                ) + fadeIn(animationSpec = tween(durationMillis)),
-                exit = slideOutVertically(
-                    targetOffsetY = { -it },
-                    animationSpec = tween(durationMillis, easing = FastOutSlowInEasing)
-                ) + fadeOut(animationSpec = tween(durationMillis)),
-                modifier = modifier
-            ) {
-                content()
-            }
-        }
+    AnimatedVisibility(
+        visible = visible,
+        enter = getEnterTransition(transitionType, durationMillis),
+        exit = getExitTransition(transitionType, durationMillis),
+        modifier = modifier
+    ) {
+        content()
     }
 }
 
@@ -141,17 +133,13 @@ fun PageTransition(
 fun AnimatedPage(
     modifier: Modifier = Modifier,
     transitionType: PageTransitionType = PageTransitionType.FADE,
-    durationMillis: Int = 300,
+    durationMillis: Int = 200,
     content: @Composable () -> Unit
 ) {
-    var visible by remember { mutableStateOf(false) }
-    
-    LaunchedEffect(Unit) {
-        visible = true
-    }
+    val visibleState = remember { MutableTransitionState(false).apply { targetState = true } }
     
     PageTransition(
-        visible = visible,
+        visibleState = visibleState,
         transitionType = transitionType,
         durationMillis = durationMillis,
         modifier = modifier.fillMaxSize()
@@ -183,41 +171,41 @@ fun PageSwitchTransition(
             when (transitionType) {
                 PageTransitionType.SLIDE_HORIZONTAL -> {
                     if (targetState > initialState) {
-                        slideInHorizontally { it } + fadeIn() with
+                        slideInHorizontally { it } + fadeIn() togetherWith
                         slideOutHorizontally { -it } + fadeOut()
                     } else {
-                        slideInHorizontally { -it } + fadeIn() with
+                        slideInHorizontally { -it } + fadeIn() togetherWith
                         slideOutHorizontally { it } + fadeOut()
                     }.using(SizeTransform(clip = false))
                 }
                 
                 PageTransitionType.SLIDE_VERTICAL -> {
                     if (targetState > initialState) {
-                        slideInVertically { it } + fadeIn() with
+                        slideInVertically { it } + fadeIn() togetherWith
                         slideOutVertically { -it } + fadeOut()
                     } else {
-                        slideInVertically { -it } + fadeIn() with
+                        slideInVertically { -it } + fadeIn() togetherWith
                         slideOutVertically { it } + fadeOut()
                     }.using(SizeTransform(clip = false))
                 }
                 
                 PageTransitionType.FADE -> {
-                    fadeIn(animationSpec = tween(durationMillis)) with
+                    fadeIn(animationSpec = tween(durationMillis)) togetherWith
                     fadeOut(animationSpec = tween(durationMillis))
                 }
                 
                 PageTransitionType.SCALE -> {
-                    scaleIn(initialScale = 0.8f) + fadeIn() with
+                    scaleIn(initialScale = 0.8f) + fadeIn() togetherWith
                     scaleOut(targetScale = 1.2f) + fadeOut()
                 }
                 
                 PageTransitionType.SLIDE_UP -> {
-                    slideInVertically { it } + fadeIn() with
+                    slideInVertically { it } + fadeIn() togetherWith
                     slideOutVertically { it } + fadeOut()
                 }
                 
                 PageTransitionType.SLIDE_DOWN -> {
-                    slideInVertically { -it } + fadeIn() with
+                    slideInVertically { -it } + fadeIn() togetherWith
                     slideOutVertically { -it } + fadeOut()
                 }
             }.using(SizeTransform(clip = false))
@@ -238,34 +226,40 @@ fun AnimatedListItem(
         content()
         return
     }
-    
-    val transitionState = remember { MutableTransitionState(false).apply { targetState = true } }
-    
-    // Calculate staggered delay based on index
-    // Limit delay to first 10 items to avoid long waits for large lists
-    val delay = (index % 10) * 50
-    
-    val enterTransition = when (listAnimationType) {
-        "Fade" -> fadeIn(
-            animationSpec = tween(durationMillis = 300, delayMillis = delay)
-        ) + expandVertically(
-            animationSpec = tween(durationMillis = 300, delayMillis = delay)
-        )
-        "Slide" -> slideInHorizontally(
-            initialOffsetX = { fullWidth -> fullWidth },
-            animationSpec = tween(durationMillis = 350, delayMillis = delay, easing = FastOutSlowInEasing)
-        ) + fadeIn(
-            animationSpec = tween(durationMillis = 300, delayMillis = delay)
-        )
-        else -> fadeIn(
-            animationSpec = tween(durationMillis = 300, delayMillis = delay)
-        )
+
+    val isInitialLoad = index < 12
+    val hasSlide = listAnimationType == "Slide"
+    val baseOffset = if (hasSlide) 96f else 0f
+    val duration = if (isInitialLoad) 300 else 150
+
+    var started by remember(listAnimationType) { mutableStateOf(false) }
+    LaunchedEffect(listAnimationType, index) {
+        if (started) return@LaunchedEffect
+        if (isInitialLoad) {
+            val delay = (index * 30).toLong()
+            if (delay > 0) kotlinx.coroutines.delay(delay)
+        }
+        started = true
     }
-    
-    AnimatedVisibility(
-        visibleState = transitionState,
-        enter = enterTransition,
-        exit = ExitTransition.None
+
+    val alpha by animateFloatAsState(
+        targetValue = if (started) 1f else 0f,
+        animationSpec = tween(durationMillis = duration, easing = LinearOutSlowInEasing),
+        label = "list_item_alpha"
+    )
+    val offsetY by animateFloatAsState(
+        targetValue = if (started) 0f else baseOffset,
+        animationSpec = tween(durationMillis = duration, easing = LinearOutSlowInEasing),
+        label = "list_item_offset_y"
+    )
+
+    Box(
+        modifier = Modifier.graphicsLayer {
+            this.alpha = alpha
+            if (hasSlide) {
+                translationY = offsetY
+            }
+        }
     ) {
         content()
     }

@@ -73,28 +73,7 @@ fun ThemeCustomizeScreen(
 ) {
     val navVm: NavigationViewModel = hiltViewModel()
     val repo = navVm.settingsRepository
-    val overrides by repo.themeOverridesFlow.collectAsState(
-        initial = ThemeOverrides(
-            primaryColorHex = repo.getPrimaryColorHex(),
-            accentColorHex = repo.getAccentColorHex(),
-            backgroundUri = repo.getBackgroundUri(),
-            backgroundDimAlpha = repo.getBackgroundDimAlpha(),
-            backgroundContentScale = repo.getBackgroundContentScale(),
-            backgroundBlurRadius = repo.getBackgroundBlurRadius(),
-            cardOpacity = repo.getCardOpacity(),
-            cardMaterial = repo.getCardMaterial(),
-            noiseEnabled = repo.isNoiseEnabled(),
-            cornerRadius = repo.getCornerRadius(),
-            dynamicColorEnabled = repo.isDynamicColorEnabled(),
-            darkModeStrategy = repo.getDarkModeStrategy(),
-            equipmentImageRatio = repo.getEquipmentImageRatio(),
-            listAnimationType = repo.getListAnimationType(),
-            hapticEnabled = repo.isHapticEnabled(),
-            confettiEnabled = repo.isConfettiEnabled(),
-            tagStyle = repo.getTagStyle(),
-            lowPerformanceMode = repo.isLowPerformanceMode()
-        )
-    )
+    val overrides by repo.themeOverridesFlow.collectAsState()
 
     var colorText by remember(overrides.primaryColorHex) { mutableStateOf(TextFieldValue(overrides.primaryColorHex ?: "#006493")) }
     var previewColor by remember(overrides.primaryColorHex) { mutableStateOf(parseHexColorOrNull(overrides.primaryColorHex ?: "#006493") ?: Color(0xFF006493)) }
@@ -119,52 +98,7 @@ fun ThemeCustomizeScreen(
     var confettiEnabled by remember(overrides.confettiEnabled) { mutableStateOf(overrides.confettiEnabled ?: repo.isConfettiEnabled()) }
     var tagStyle by remember(overrides.tagStyle) { mutableStateOf(overrides.tagStyle ?: repo.getTagStyle()) }
     var lowPerformanceMode by remember(overrides.lowPerformanceMode) { mutableStateOf(overrides.lowPerformanceMode ?: repo.isLowPerformanceMode()) }
-
-    LaunchedEffect(
-        colorText,
-        accentText,
-        bgUri,
-        dimAlpha,
-        contentScale,
-        blurRadius,
-        cardOpacity,
-        isCompactList,
-        cardMaterial,
-        noiseEnabled,
-        cornerRadius,
-        dynamicColorEnabled,
-        darkModeStrategy,
-        equipmentImageRatio,
-        listAnimationType,
-        hapticEnabled,
-        confettiEnabled,
-        tagStyle,
-        lowPerformanceMode
-    ) {
-        val primary = validHexOrNull(colorText.text)
-        val accent = validHexOrNull(accentText.text)
-        
-        if (primary != null) repo.setPrimaryColorHex(primary)
-        if (accent != null) repo.setAccentColorHex(accent)
-        
-        repo.setBackgroundUri(bgUri)
-        repo.setBackgroundDimAlpha(dimAlpha)
-        repo.setBackgroundContentScale(contentScale)
-        repo.setBackgroundBlurRadius(blurRadius.toInt())
-        repo.setCardOpacity(cardOpacity)
-        repo.setEquipmentListCompact(isCompactList)
-        repo.setCardMaterial(cardMaterial)
-        repo.setNoiseEnabled(noiseEnabled)
-        repo.setCornerRadius(cornerRadius)
-        repo.setDynamicColorEnabled(dynamicColorEnabled)
-        repo.setDarkModeStrategy(darkModeStrategy)
-        repo.setEquipmentImageRatio(equipmentImageRatio)
-        repo.setListAnimationType(listAnimationType)
-        repo.setHapticEnabled(hapticEnabled)
-        repo.setConfettiEnabled(confettiEnabled)
-        repo.setTagStyle(tagStyle)
-        repo.setLowPerformanceMode(lowPerformanceMode)
-    }
+    var themeMode by remember(overrides.themeMode) { mutableStateOf(overrides.themeMode ?: repo.getThemeMode()) }
 
     val context = LocalContext.current
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -234,6 +168,8 @@ fun ThemeCustomizeScreen(
                                 previewColor = parseHexColorOrNull(preset.primary)!!
                                 accentText = TextFieldValue(preset.accent)
                                 previewAccent = parseHexColorOrNull(preset.accent)!!
+                                repo.setPrimaryColorHex(preset.primary)
+                                repo.setAccentColorHex(preset.accent)
                             }
                         }
                     }
@@ -279,7 +215,10 @@ fun ThemeCustomizeScreen(
                 ) {
                     Text(" 背景壁纸", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     if (bgUri != null) {
-                        AnimatedTextButton(onClick = { bgUri = null }) {
+                        AnimatedTextButton(onClick = { 
+                            bgUri = null 
+                            repo.setBackgroundUri(null)
+                        }) {
                             Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("清除背景")
@@ -324,6 +263,7 @@ fun ThemeCustomizeScreen(
                                     Slider(
                                         value = dimAlpha,
                                         onValueChange = { dimAlpha = it },
+                                        onValueChangeFinished = { repo.setBackgroundDimAlpha(dimAlpha) },
                                         valueRange = 0f..0.9f,
                                         colors = SliderDefaults.colors(
                                             thumbColor = MaterialTheme.colorScheme.primary,
@@ -344,6 +284,7 @@ fun ThemeCustomizeScreen(
                                     Slider(
                                         value = blurRadius,
                                         onValueChange = { blurRadius = it },
+                                        onValueChangeFinished = { repo.setBackgroundBlurRadius(blurRadius.toInt()) },
                                         valueRange = 0f..25f,
                                         colors = SliderDefaults.colors(
                                             thumbColor = MaterialTheme.colorScheme.primary,
@@ -362,7 +303,10 @@ fun ThemeCustomizeScreen(
                                         listOf("Crop" to "裁剪填充", "Fit" to "适应屏幕", "FillBounds" to "拉伸填充").forEach { (mode, label) ->
                                             FilterChip(
                                                 selected = contentScale == mode,
-                                                onClick = { contentScale = mode },
+                                                onClick = { 
+                                                    contentScale = mode
+                                                    repo.setBackgroundContentScale(mode)
+                                                },
                                                 label = { Text(label) },
                                                 leadingIcon = if (contentScale == mode) {
                                                     { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
@@ -394,6 +338,7 @@ fun ThemeCustomizeScreen(
                     Slider(
                         value = cardOpacity,
                         onValueChange = { cardOpacity = it },
+                        onValueChangeFinished = { repo.setCardOpacity(cardOpacity) },
                         valueRange = 0.3f..1f,
                         colors = SliderDefaults.colors(
                             thumbColor = MaterialTheme.colorScheme.primary,
@@ -414,7 +359,10 @@ fun ThemeCustomizeScreen(
                         ).forEach { (value, label) ->
                             FilterChip(
                                 selected = cardMaterial == value,
-                                onClick = { cardMaterial = value },
+                                onClick = { 
+                                    cardMaterial = value
+                                    repo.setCardMaterial(value)
+                                },
                                 label = { Text(label) },
                                 leadingIcon = if (cardMaterial == value) {
                                     { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
@@ -436,6 +384,7 @@ fun ThemeCustomizeScreen(
                     Slider(
                         value = cornerRadius,
                         onValueChange = { cornerRadius = it },
+                        onValueChangeFinished = { repo.setCornerRadius(cornerRadius) },
                         valueRange = 0f..30f,
                         colors = SliderDefaults.colors(
                             thumbColor = MaterialTheme.colorScheme.primary,
@@ -456,7 +405,10 @@ fun ThemeCustomizeScreen(
                         ).forEach { (value, label) ->
                             FilterChip(
                                 selected = equipmentImageRatio == value,
-                                onClick = { equipmentImageRatio = value },
+                                onClick = { 
+                                    equipmentImageRatio = value
+                                    repo.setEquipmentImageRatio(value)
+                                },
                                 label = { Text(label) },
                                 leadingIcon = if (equipmentImageRatio == value) {
                                     { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
@@ -478,7 +430,10 @@ fun ThemeCustomizeScreen(
                         ).forEach { (value, label) ->
                             FilterChip(
                                 selected = tagStyle == value,
-                                onClick = { tagStyle = value },
+                                onClick = { 
+                                    tagStyle = value
+                                    repo.setTagStyle(value)
+                                },
                                 label = { Text(label) },
                                 leadingIcon = if (tagStyle == value) {
                                     { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
@@ -495,7 +450,10 @@ fun ThemeCustomizeScreen(
                     ) {
                         FilterChip(
                             selected = !isCompactList,
-                            onClick = { isCompactList = false },
+                            onClick = { 
+                                isCompactList = false
+                                repo.setEquipmentListCompact(false)
+                            },
                             label = { Text("舒适模式") },
                             leadingIcon = if (!isCompactList) {
                                 { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
@@ -503,7 +461,10 @@ fun ThemeCustomizeScreen(
                         )
                         FilterChip(
                             selected = isCompactList,
-                            onClick = { isCompactList = true },
+                            onClick = { 
+                                isCompactList = true
+                                repo.setEquipmentListCompact(true)
+                            },
                             label = { Text("紧凑模式") },
                             leadingIcon = if (isCompactList) {
                                 { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
@@ -518,6 +479,31 @@ fun ThemeCustomizeScreen(
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(" 系统主题", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("外观模式", style = MaterialTheme.typography.bodyMedium)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(
+                            "System" to "跟随系统",
+                            "Light" to "浅色模式",
+                            "Dark" to "深色模式"
+                        ).forEach { (value, label) ->
+                            FilterChip(
+                                selected = themeMode == value,
+                                onClick = { 
+                                    themeMode = value
+                                    repo.setThemeMode(value)
+                                },
+                                label = { Text(label) },
+                                leadingIcon = if (themeMode == value) {
+                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                } else null
+                            )
+                        }
+                    }
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -526,7 +512,10 @@ fun ThemeCustomizeScreen(
                     Text("跟随壁纸动态取色", style = MaterialTheme.typography.bodyMedium)
                     Switch(
                         checked = dynamicColorEnabled,
-                        onCheckedChange = { dynamicColorEnabled = it },
+                        onCheckedChange = { 
+                            dynamicColorEnabled = it
+                            repo.setDynamicColorEnabled(it)
+                        },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = MaterialTheme.colorScheme.primary,
                             checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
@@ -545,7 +534,10 @@ fun ThemeCustomizeScreen(
                         ).forEach { (value, label) ->
                             FilterChip(
                                 selected = darkModeStrategy == value,
-                                onClick = { darkModeStrategy = value },
+                                onClick = { 
+                                    darkModeStrategy = value
+                                    repo.setDarkModeStrategy(value)
+                                },
                                 label = { Text(label) },
                                 leadingIcon = if (darkModeStrategy == value) {
                                     { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
@@ -569,7 +561,10 @@ fun ThemeCustomizeScreen(
                     Text("界面噪点纹理", style = MaterialTheme.typography.bodyMedium)
                     Switch(
                         checked = noiseEnabled,
-                        onCheckedChange = { noiseEnabled = it },
+                        onCheckedChange = { 
+                            noiseEnabled = it
+                            repo.setNoiseEnabled(it)
+                        },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = MaterialTheme.colorScheme.primary,
                             checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
@@ -585,7 +580,10 @@ fun ThemeCustomizeScreen(
                     Text("低性能模式", style = MaterialTheme.typography.bodyMedium)
                     Switch(
                         checked = lowPerformanceMode,
-                        onCheckedChange = { lowPerformanceMode = it },
+                        onCheckedChange = { 
+                            lowPerformanceMode = it
+                            repo.setLowPerformanceMode(it)
+                        },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = MaterialTheme.colorScheme.primary,
                             checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
@@ -605,7 +603,10 @@ fun ThemeCustomizeScreen(
                         ).forEach { (value, label) ->
                             FilterChip(
                                 selected = listAnimationType == value,
-                                onClick = { listAnimationType = value },
+                                onClick = {
+                                    listAnimationType = value
+                                    repo.setListAnimationType(value)
+                                },
                                 label = { Text(label) },
                                 leadingIcon = if (listAnimationType == value) {
                                     { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
@@ -625,7 +626,10 @@ fun ThemeCustomizeScreen(
                         Text("震动反馈", style = MaterialTheme.typography.bodyMedium)
                         Switch(
                             checked = hapticEnabled,
-                            onCheckedChange = { hapticEnabled = it },
+                            onCheckedChange = { 
+                                hapticEnabled = it
+                                repo.setHapticEnabled(it)
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
@@ -640,7 +644,10 @@ fun ThemeCustomizeScreen(
                         Text("礼花动画", style = MaterialTheme.typography.bodyMedium)
                         Switch(
                             checked = confettiEnabled,
-                            onCheckedChange = { confettiEnabled = it },
+                            onCheckedChange = {
+                                confettiEnabled = it
+                                repo.setConfettiEnabled(it)
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)

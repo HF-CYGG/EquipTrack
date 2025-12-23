@@ -10,6 +10,8 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -43,6 +45,8 @@ private val LightColorScheme = lightColorScheme(
     onSurface = DarkGray,
 )
 
+val LocalHapticFeedbackEnabled = compositionLocalOf { true }
+
 @Composable
 fun EquipTrackTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -51,19 +55,26 @@ fun EquipTrackTheme(
     overrides: ThemeOverrides? = null,
     content: @Composable () -> Unit
 ) {
+    val themeMode = overrides?.themeMode ?: "System"
+    val isDark = when (themeMode) {
+        "Light" -> false
+        "Dark" -> true
+        else -> darkTheme
+    }
+
     val resolvedDynamicColor = overrides?.dynamicColorEnabled ?: dynamicColor
 
     var baseScheme = when {
         resolvedDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
 
-        darkTheme -> DarkColorScheme
+        isDark -> DarkColorScheme
         else -> LightColorScheme
     }
 
-    if (darkTheme && overrides?.darkModeStrategy == "TrueBlack") {
+    if (isDark && overrides?.darkModeStrategy == "TrueBlack") {
         baseScheme = baseScheme.copy(
             background = Color.Black,
             surface = Color.Black,
@@ -105,13 +116,19 @@ fun EquipTrackTheme(
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDark
         }
     }
 
-    MaterialTheme(
-        colorScheme = schemeWithCardOpacity,
-        typography = Typography,
-        content = content
-    )
+    val hapticEnabled = (overrides?.hapticEnabled ?: true) && (overrides?.lowPerformanceMode != true)
+
+    CompositionLocalProvider(
+        LocalHapticFeedbackEnabled provides hapticEnabled
+    ) {
+        MaterialTheme(
+            colorScheme = schemeWithCardOpacity,
+            typography = Typography,
+            content = content
+        )
+    }
 }

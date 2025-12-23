@@ -47,9 +47,10 @@ fun HistoryScreen(
     var showFilterDialog by remember { mutableStateOf(false) }
     var fabExpanded by remember { mutableStateOf(false) }
     val settingsRepository = navVm.settingsRepository
-    val hapticEnabled by remember { mutableStateOf(settingsRepository.isHapticEnabled()) }
-    val confettiEnabled by remember { mutableStateOf(settingsRepository.isConfettiEnabled()) }
-    val lowPerformanceMode by remember { mutableStateOf(settingsRepository.isLowPerformanceMode()) }
+    val themeOverrides by settingsRepository.themeOverridesFlow.collectAsState()
+    
+    val confettiEnabled = themeOverrides.confettiEnabled ?: settingsRepository.isConfettiEnabled()
+    val lowPerformanceMode = themeOverrides.lowPerformanceMode ?: settingsRepository.isLowPerformanceMode()
     var showConfetti by remember { mutableStateOf(false) }
     
     val pullRefreshState = rememberPullRefreshState(
@@ -126,8 +127,8 @@ fun HistoryScreen(
                     if (uiState.isLoading && !isRefreshing) {
                         HistoryListSkeleton()
                     } else {
-                        val enableAnimations = !lowPerformanceMode && navVm.settingsRepository.getListAnimationType() != "None"
-                        val listAnimationType = navVm.settingsRepository.getListAnimationType()
+                        val listAnimationType = themeOverrides.listAnimationType ?: navVm.settingsRepository.getListAnimationType()
+                        val enableAnimations = !lowPerformanceMode && listAnimationType != "None"
                         
                         LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -170,7 +171,11 @@ fun HistoryScreen(
                                     }
                                 }
                             } else {
-                                itemsIndexed(historyEntries) { index, entry ->
+                                itemsIndexed(
+                                    items = historyEntries,
+                                    key = { _, entry -> entry.id },
+                                    contentType = { _, _ -> "borrow_history_entry" }
+                                ) { index, entry ->
                                     AnimatedListItem(
                                         enabled = enableAnimations,
                                         listAnimationType = listAnimationType,
@@ -267,7 +272,6 @@ fun HistoryScreen(
         // Return dialog
         if (uiState.showReturnDialog && uiState.selectedHistoryEntry != null) {
             val context = LocalContext.current
-            val effectiveHaptic = hapticEnabled && !lowPerformanceMode
             ReturnItemDialog(
                 historyEntry = uiState.selectedHistoryEntry!!,
                 isForced = uiState.isForceReturn,
@@ -281,8 +285,7 @@ fun HistoryScreen(
                         historyEntryId = uiState.selectedHistoryEntry!!.id,
                         returnRequest = returnRequest
                     )
-                },
-                hapticEnabled = effectiveHaptic
+                }
             )
         }
         

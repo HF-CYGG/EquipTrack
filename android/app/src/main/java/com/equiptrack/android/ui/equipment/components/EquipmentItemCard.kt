@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -18,8 +19,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import coil.compose.AsyncImage
@@ -32,15 +31,18 @@ import com.equiptrack.android.ui.components.*
 import com.equiptrack.android.utils.UrlUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun EquipmentItemCard(
     item: EquipmentItem,
     category: Category?,
+    categoryColor: Color?,
     canManage: Boolean,
     serverUrl: String,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onBorrow: () -> Unit,
+    onPreviewImage: (String, String) -> Unit,
     compact: Boolean = false,
     cornerRadius: Float = 12f,
     equipmentImageRatio: String = "Square",
@@ -48,42 +50,12 @@ fun EquipmentItemCard(
     tagStyle: String = "Solid"
 ) {
     val isAvailable = item.availableQuantity > 0
-    
-    var showImageDialog by remember { mutableStateOf(false) }
 
     val imageThumbnailUrl = remember(item.image, serverUrl) {
         UrlUtils.resolveImageUrl(serverUrl, item.image)
     }
     val imageFullUrl = remember(item.imageFull, item.image, serverUrl) {
         UrlUtils.resolveImageUrl(serverUrl, item.imageFull ?: item.image)
-    }
-
-    if (showImageDialog && !imageFullUrl.isNullOrEmpty()) {
-        Dialog(
-            onDismissRequest = { showImageDialog = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.8f))
-                    .clickable { showImageDialog = false },
-                contentAlignment = Alignment.Center
-            ) {
-                AsyncImage(
-                    model = imageFullUrl,
-                    contentDescription = item.name,
-                    modifier = Modifier
-                        .fillMaxWidth(0.95f)
-                        .fillMaxHeight(0.8f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surface),
-                    contentScale = ContentScale.Fit,
-                    error = rememberVectorPainter(Icons.Default.BrokenImage),
-                    placeholder = rememberVectorPainter(Icons.Default.Image)
-                )
-            }
-        }
     }
 
     val cardPadding = if (compact) 8.dp else 12.dp
@@ -107,6 +79,15 @@ fun EquipmentItemCard(
     }
     val imageHeightPx = remember(imageHeight, density) {
         with(density) { imageHeight.roundToPx() }
+    }
+
+    val context = LocalContext.current
+    val thumbnailRequest = remember(context, imageThumbnailUrl, imageWidthPx, imageHeightPx) {
+        ImageRequest.Builder(context)
+            .data(imageThumbnailUrl)
+            .size(imageWidthPx, imageHeightPx)
+            .allowHardware(true)
+            .build()
     }
 
     val cardShape = RoundedCornerShape(cornerRadius.dp)
@@ -135,31 +116,6 @@ fun EquipmentItemCard(
         item.availableQuantity < item.quantity -> Warning
         else -> Available
     }
-    val statusBackground: Color
-    val statusContentColor: Color
-    val statusBorder: BorderStroke?
-    val statusElevation: androidx.compose.ui.unit.Dp
-
-    when (tagStyle) {
-        "Outline" -> {
-            statusBackground = Color.Transparent
-            statusContentColor = statusColor
-            statusBorder = BorderStroke(1.dp, statusColor)
-            statusElevation = 0.dp
-        }
-        "Soft" -> {
-            statusBackground = statusColor.copy(alpha = 0.18f)
-            statusContentColor = statusColor
-            statusBorder = null
-            statusElevation = 0.dp
-        }
-        else -> {
-            statusBackground = statusColor
-            statusContentColor = White
-            statusBorder = null
-            statusElevation = 1.dp
-        }
-    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -179,23 +135,24 @@ fun EquipmentItemCard(
             ) {
                 // Item image with enhanced styling
                 if (!item.image.isNullOrEmpty()) {
-                    Card(
+                    Box(
                         modifier = Modifier
                             .width(imageWidth)
-                            .height(imageHeight),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                        shape = cardShape
+                            .height(imageHeight)
+                            .clip(cardShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant, cardShape)
                     ) {
                         AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(imageThumbnailUrl)
-                                .size(width = imageWidthPx, height = imageHeightPx)
-                                .crossfade(true)
-                                .build(),
+                            model = thumbnailRequest,
                             contentDescription = item.name,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .clickable(enabled = !imageFullUrl.isNullOrEmpty()) { showImageDialog = true },
+                                .clickable(enabled = !imageFullUrl.isNullOrEmpty()) {
+                                    val url = imageFullUrl
+                                    if (!url.isNullOrEmpty()) {
+                                        onPreviewImage(url, item.name)
+                                    }
+                                },
                             contentScale = ContentScale.Crop,
                             error = rememberVectorPainter(Icons.Default.BrokenImage),
                             placeholder = rememberVectorPainter(Icons.Default.Image)
@@ -203,27 +160,19 @@ fun EquipmentItemCard(
                     }
                 } else {
                     // Placeholder for items without image
-                    Card(
+                    Box(
                         modifier = Modifier
                             .width(imageWidth)
-                            .height(imageHeight),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                        shape = cardShape,
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
+                            .height(imageHeight)
+                            .background(MaterialTheme.colorScheme.surfaceVariant, cardShape),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Default.Inventory,
-                                contentDescription = null,
-                                modifier = Modifier.size(32.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                        }
+                        Icon(
+                            Icons.Default.Inventory,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
                     }
                 }
                 
@@ -234,7 +183,7 @@ fun EquipmentItemCard(
                 ) {
                     Text(
                         text = item.name,
-                        style = MaterialTheme.typography.titleMedium, // Reduced typography
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
@@ -243,139 +192,119 @@ fun EquipmentItemCard(
                     if (item.description.isNotEmpty()) {
                         Text(
                             text = item.description,
-                            style = MaterialTheme.typography.bodySmall, // Reduced typography
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
                     
-                    // Category chip with enhanced styling
+                    // Category chip
                     if (category != null) {
-                        AssistChip(
-                            onClick = { },
-                            label = { 
-                                Text(
-                                    category.name,
-                                    style = MaterialTheme.typography.labelSmall, // Reduced typography
-                                    fontWeight = FontWeight.Medium
-                                ) 
-                            },
-                            leadingIcon = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp) // Reduced size
-                                        .clip(RoundedCornerShape(4.dp))
-                                        .background(
-                                            try {
-                                                androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(category.color))
-                                            } catch (e: Exception) {
-                                                MaterialTheme.colorScheme.primary
-                                            }
-                                        )
-                                )
-                            },
-                            modifier = Modifier.height(28.dp), // Reduced height
-                            colors = AssistChipDefaults.assistChipColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                labelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(8.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                             Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(
+                                        categoryColor ?: MaterialTheme.colorScheme.primary,
+                                        CircleShape
+                                    )
                             )
-                        )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                category.name,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(sectionSpacing))
 
-            // Enhanced quantity and status section
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                ),
-                shape = RoundedCornerShape(12.dp)
+            // Enhanced quantity and status section (Optimized: Removed nested Card)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                    .padding(if (compact) 8.dp else 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(if (compact) 8.dp else 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp), // Reduced spacing
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = "总数量",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = androidx.compose.ui.unit.TextUnit.Unspecified // Reset if needed
-                                )
-                                Text(
-                                    text = "${item.quantity}",
-                                    style = MaterialTheme.typography.bodyMedium, // Reduced typography
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                            
-                            Column {
-                                Text(
-                                    text = "可用",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "${item.availableQuantity}",
-                                    style = MaterialTheme.typography.bodyMedium, // Reduced typography
-                                    color = if (isAvailable) Available else Error,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                    
-                    // Enhanced status badge
-                    Surface(
-                        color = when {
-                            item.availableQuantity == 0 -> Error
-                            item.availableQuantity < item.quantity -> Warning
-                            else -> Available
-                        },
-                        shape = RoundedCornerShape(16.dp),
-                        shadowElevation = 1.dp // Reduced elevation
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), // Reduced padding
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                when {
-                                    item.availableQuantity == 0 -> Icons.Default.Block
-                                    item.availableQuantity < item.quantity -> Icons.Default.Warning
-                                    else -> Icons.Default.CheckCircle
-                                },
-                                contentDescription = null,
-                                modifier = Modifier.size(12.dp), // Reduced size
-                                tint = White
+                        Column {
+                            Text(
+                                text = "总数量",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = when {
-                                    item.availableQuantity == 0 -> "已借完"
-                                    item.availableQuantity < item.quantity -> "部分借出"
-                                    else -> "可借用"
-                                },
-                                style = MaterialTheme.typography.labelSmall, // Reduced typography
-                                color = White,
-                                fontWeight = FontWeight.Medium
+                                text = "${item.quantity}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        
+                        Column {
+                            Text(
+                                text = "可用",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "${item.availableQuantity}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (isAvailable) Available else Error,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
+                }
+                
+                // Enhanced status badge
+                Row(
+                    modifier = Modifier
+                        .background(
+                            statusColor,
+                            RoundedCornerShape(16.dp)
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        when {
+                            item.availableQuantity == 0 -> Icons.Default.Block
+                            item.availableQuantity < item.quantity -> Icons.Default.Warning
+                            else -> Icons.Default.CheckCircle
+                        },
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = White
+                    )
+                    Text(
+                        text = when {
+                            item.availableQuantity == 0 -> "已借完"
+                            item.availableQuantity < item.quantity -> "部分借出"
+                            else -> "可借用"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = White,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
 
@@ -384,11 +313,11 @@ fun EquipmentItemCard(
             // Enhanced action buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp) // Reduced spacing
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Borrow button (Always visible if available)
+                // Borrow button
                 if (isAvailable) {
-                    Button(
+                    AnimatedButton(
                         onClick = onBorrow,
                         modifier = Modifier
                             .weight(1f)
@@ -399,12 +328,12 @@ fun EquipmentItemCard(
                         Icon(
                             Icons.Default.Assignment,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp) // Reduced size
+                            modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             "借用",
-                            style = MaterialTheme.typography.labelMedium, // Reduced typography
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -419,24 +348,25 @@ fun EquipmentItemCard(
                     ) {
                         Text(
                             "暂不可借",
-                            style = MaterialTheme.typography.labelMedium // Reduced typography
+                            style = MaterialTheme.typography.labelMedium
                         )
                     }
                 }
 
-                // Management buttons (Only for admins)
+                // Management buttons
                 if (canManage) {
-                     AnimatedOutlinedButton(
+                     OutlinedButton(
                         onClick = onEdit,
                         modifier = Modifier.height(if (compact) 36.dp else 40.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = MaterialTheme.colorScheme.primary
-                        )
+                        ),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
                             Icons.Default.Edit,
                             contentDescription = "编辑",
-                            modifier = Modifier.size(16.dp) // Reduced size
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                     
@@ -445,12 +375,13 @@ fun EquipmentItemCard(
                         modifier = Modifier.height(if (compact) 36.dp else 40.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = MaterialTheme.colorScheme.error
-                        )
+                        ),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
                             Icons.Default.Delete,
                             contentDescription = "删除",
-                            modifier = Modifier.size(16.dp) // Reduced size
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }

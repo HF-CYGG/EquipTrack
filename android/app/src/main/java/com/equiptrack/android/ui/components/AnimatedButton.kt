@@ -12,6 +12,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import com.equiptrack.android.ui.theme.LocalHapticFeedbackEnabled
 
 @Composable
 fun AnimatedButton(
@@ -20,9 +23,20 @@ fun AnimatedButton(
     enabled: Boolean = true,
     shape: androidx.compose.ui.graphics.Shape = ButtonDefaults.shape,
     colors: ButtonColors = ButtonDefaults.buttonColors(),
+    elevation: ButtonElevation? = ButtonDefaults.buttonElevation(),
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    hapticFeedbackType: HapticFeedbackType? = HapticFeedbackType.TextHandleMove,
     content: @Composable RowScope.() -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+    val hapticEnabled = LocalHapticFeedbackEnabled.current
+    val wrappedOnClick = {
+        if (hapticEnabled && hapticFeedbackType != null) {
+            haptic.performHapticFeedback(hapticFeedbackType)
+        }
+        onClick()
+    }
+
     val isPressed by interactionSource.collectIsPressedAsState()
     
     val scale by animateFloatAsState(
@@ -35,7 +49,7 @@ fun AnimatedButton(
     )
     
     Button(
-        onClick = onClick,
+        onClick = wrappedOnClick,
         modifier = modifier.graphicsLayer {
             scaleX = scale
             scaleY = scale
@@ -43,6 +57,7 @@ fun AnimatedButton(
         enabled = enabled,
         shape = shape,
         colors = colors,
+        elevation = elevation,
         interactionSource = interactionSource,
         content = content
     )
@@ -56,8 +71,18 @@ fun AnimatedOutlinedButton(
     shape: androidx.compose.ui.graphics.Shape = ButtonDefaults.outlinedShape,
     colors: ButtonColors = ButtonDefaults.outlinedButtonColors(),
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    hapticFeedbackType: HapticFeedbackType? = HapticFeedbackType.TextHandleMove,
     content: @Composable RowScope.() -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+    val hapticEnabled = LocalHapticFeedbackEnabled.current
+    val wrappedOnClick = {
+        if (hapticEnabled && hapticFeedbackType != null) {
+            haptic.performHapticFeedback(hapticFeedbackType)
+        }
+        onClick()
+    }
+
     val isPressed by interactionSource.collectIsPressedAsState()
     
     val scale by animateFloatAsState(
@@ -70,7 +95,7 @@ fun AnimatedOutlinedButton(
     )
     
     OutlinedButton(
-        onClick = onClick,
+        onClick = wrappedOnClick,
         modifier = modifier.graphicsLayer {
             scaleX = scale
             scaleY = scale
@@ -90,8 +115,18 @@ fun AnimatedIconButton(
     enabled: Boolean = true,
     colors: IconButtonColors = IconButtonDefaults.iconButtonColors(),
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    hapticFeedbackType: HapticFeedbackType? = HapticFeedbackType.TextHandleMove,
     content: @Composable () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+    val hapticEnabled = LocalHapticFeedbackEnabled.current
+    val wrappedOnClick = {
+        if (hapticEnabled && hapticFeedbackType != null) {
+            haptic.performHapticFeedback(hapticFeedbackType)
+        }
+        onClick()
+    }
+
     val isPressed by interactionSource.collectIsPressedAsState()
     
     val scale by animateFloatAsState(
@@ -104,7 +139,7 @@ fun AnimatedIconButton(
     )
     
     IconButton(
-        onClick = onClick,
+        onClick = wrappedOnClick,
         modifier = modifier.graphicsLayer {
             scaleX = scale
             scaleY = scale
@@ -123,8 +158,18 @@ fun AnimatedTextButton(
     enabled: Boolean = true,
     colors: ButtonColors = ButtonDefaults.textButtonColors(),
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    hapticFeedbackType: HapticFeedbackType? = HapticFeedbackType.TextHandleMove,
     content: @Composable RowScope.() -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+    val hapticEnabled = LocalHapticFeedbackEnabled.current
+    val wrappedOnClick = {
+        if (hapticEnabled && hapticFeedbackType != null) {
+            haptic.performHapticFeedback(hapticFeedbackType)
+        }
+        onClick()
+    }
+
     val isPressed by interactionSource.collectIsPressedAsState()
     
     val scale by animateFloatAsState(
@@ -137,7 +182,7 @@ fun AnimatedTextButton(
     )
     
     TextButton(
-        onClick = onClick,
+        onClick = wrappedOnClick,
         modifier = modifier.graphicsLayer {
             scaleX = scale
             scaleY = scale
@@ -158,8 +203,18 @@ fun AnimatedFloatingActionButton(
     contentColor: androidx.compose.ui.graphics.Color = contentColorFor(containerColor),
     elevation: FloatingActionButtonElevation = FloatingActionButtonDefaults.elevation(),
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    hapticFeedbackType: HapticFeedbackType? = HapticFeedbackType.TextHandleMove,
     content: @Composable () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+    val hapticEnabled = LocalHapticFeedbackEnabled.current
+    val wrappedOnClick = {
+        if (hapticEnabled && hapticFeedbackType != null) {
+            haptic.performHapticFeedback(hapticFeedbackType)
+        }
+        onClick()
+    }
+
     val isPressed by interactionSource.collectIsPressedAsState()
     
     val scale by animateFloatAsState(
@@ -172,7 +227,7 @@ fun AnimatedFloatingActionButton(
     )
     
     FloatingActionButton(
-        onClick = onClick,
+        onClick = wrappedOnClick,
         modifier = modifier.graphicsLayer {
             scaleX = scale
             scaleY = scale
@@ -195,8 +250,18 @@ fun AnimatedSmallFloatingActionButton(
     contentColor: androidx.compose.ui.graphics.Color = contentColorFor(containerColor),
     elevation: FloatingActionButtonElevation = FloatingActionButtonDefaults.elevation(),
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    hapticFeedbackType: HapticFeedbackType? = HapticFeedbackType.TextHandleMove,
     content: @Composable () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+    val hapticEnabled = LocalHapticFeedbackEnabled.current
+    val wrappedOnClick = {
+        if (hapticEnabled && hapticFeedbackType != null) {
+            haptic.performHapticFeedback(hapticFeedbackType)
+        }
+        onClick()
+    }
+
     val isPressed by interactionSource.collectIsPressedAsState()
     
     val scale by animateFloatAsState(
@@ -209,7 +274,7 @@ fun AnimatedSmallFloatingActionButton(
     )
     
     SmallFloatingActionButton(
-        onClick = onClick,
+        onClick = wrappedOnClick,
         modifier = modifier.graphicsLayer {
             scaleX = scale
             scaleY = scale
@@ -232,8 +297,18 @@ fun AnimatedCard(
     colors: CardColors = CardDefaults.cardColors(),
     elevation: CardElevation = CardDefaults.cardElevation(),
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    hapticFeedbackType: HapticFeedbackType? = HapticFeedbackType.TextHandleMove,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+    val hapticEnabled = LocalHapticFeedbackEnabled.current
+    val wrappedOnClick = {
+        if (hapticEnabled && hapticFeedbackType != null) {
+            haptic.performHapticFeedback(hapticFeedbackType)
+        }
+        onClick()
+    }
+
     val isPressed by interactionSource.collectIsPressedAsState()
     
     val scale by animateFloatAsState(
@@ -246,7 +321,7 @@ fun AnimatedCard(
     )
     
     Card(
-        onClick = onClick,
+        onClick = wrappedOnClick,
         modifier = modifier.graphicsLayer {
             scaleX = scale
             scaleY = scale

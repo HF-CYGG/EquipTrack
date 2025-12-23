@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -26,18 +27,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.equiptrack.android.ui.navigation.NavigationViewModel
 import com.equiptrack.android.data.model.Category
 import com.equiptrack.android.data.model.Department
@@ -166,23 +171,20 @@ fun CategoryChipsRow(
                 leadingIcon = if (isSelected) {
                     { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                 } else {
-                    val colorStr = category.color
-                    if (colorStr != null) {
-                        {
-                            Box(
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        try {
-                                            Color(android.graphics.Color.parseColor(colorStr))
-                                        } catch (e: Exception) {
-                                            MaterialTheme.colorScheme.primary
-                                        }
-                                    )
-                            )
-                        }
-                    } else null
+                    {
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    try {
+                                        Color(android.graphics.Color.parseColor(category.color))
+                                    } catch (e: Exception) {
+                                        MaterialTheme.colorScheme.primary
+                                    }
+                                )
+                        )
+                    }
                 }
             )
         }
@@ -190,6 +192,7 @@ fun CategoryChipsRow(
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun EquipmentScreen(
     navController: NavController,
@@ -213,15 +216,20 @@ fun EquipmentScreen(
     var showSearch by remember { mutableStateOf(false) }
     var fabExpanded by remember { mutableStateOf(false) }
     val settingsRepository = navVm.settingsRepository
+    val themeOverrides by settingsRepository.themeOverridesFlow.collectAsStateWithLifecycle()
+    val listState = rememberLazyListState()
+    val canManageItems = viewModel.canManageItems()
+    var previewImageUrl by remember { mutableStateOf<String?>(null) }
+    var previewImageTitle by remember { mutableStateOf<String?>(null) }
+    
     val isCompactList by remember { mutableStateOf(settingsRepository.isEquipmentListCompact()) }
-    val listAnimationType by remember { mutableStateOf(settingsRepository.getListAnimationType()) }
-    val cornerRadius by remember { mutableStateOf(settingsRepository.getCornerRadius()) }
-    val equipmentImageRatio by remember { mutableStateOf(settingsRepository.getEquipmentImageRatio()) }
-    val cardMaterial by remember { mutableStateOf(settingsRepository.getCardMaterial()) }
-    val tagStyle by remember { mutableStateOf(settingsRepository.getTagStyle()) }
-    val hapticEnabled by remember { mutableStateOf(settingsRepository.isHapticEnabled()) }
-    val confettiEnabled by remember { mutableStateOf(settingsRepository.isConfettiEnabled()) }
-    val lowPerformanceMode by remember { mutableStateOf(settingsRepository.isLowPerformanceMode()) }
+    val listAnimationType = themeOverrides.listAnimationType ?: settingsRepository.getListAnimationType()
+    val cornerRadius = themeOverrides.cornerRadius ?: settingsRepository.getCornerRadius()
+    val equipmentImageRatio = themeOverrides.equipmentImageRatio ?: settingsRepository.getEquipmentImageRatio()
+    val cardMaterial = themeOverrides.cardMaterial ?: settingsRepository.getCardMaterial()
+    val tagStyle = themeOverrides.tagStyle ?: settingsRepository.getTagStyle()
+    val confettiEnabled = themeOverrides.confettiEnabled ?: settingsRepository.isConfettiEnabled()
+    val lowPerformanceMode = themeOverrides.lowPerformanceMode ?: settingsRepository.isLowPerformanceMode()
     var showConfetti by remember { mutableStateOf(false) }
     
     val pullRefreshState = rememberPullRefreshState(
@@ -378,14 +386,30 @@ fun EquipmentScreen(
             // Only show skeleton if loading AND no items (initial load)
             if (uiState.isLoading && filteredItems.isEmpty()) {
                 EquipmentListSkeleton(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
                     itemCount = 6
                 )
             } else {
                 val enableAnimations = !lowPerformanceMode && listAnimationType != "None"
+                val enableItemAnimations by remember(enableAnimations, listState) {
+                    derivedStateOf { enableAnimations && !listState.isScrollInProgress }
+                }
                 val categoriesMap = remember(categories) { categories.associateBy { it.id } }
+                val categoryColorMap = remember(categories) {
+                    categories.associate { category ->
+                        category.id to runCatching {
+                            Color(android.graphics.Color.parseColor(category.color))
+                        }.getOrNull()
+                    }
+                }
                 
                 LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    state = listState,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     if (filteredItems.isEmpty() && !uiState.isLoading) {
@@ -418,7 +442,7 @@ fun EquipmentScreen(
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                    if (searchQuery.isEmpty() && selectedCategoryId == null && viewModel.canManageItems()) {
+                                    if (searchQuery.isEmpty() && selectedCategoryId == null && canManageItems) {
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Text(
                                             text = "点击右上角的 + 按钮添加物资",
@@ -430,20 +454,34 @@ fun EquipmentScreen(
                             }
                         }
                     } else {
-                        itemsIndexed(filteredItems, key = { _, item -> item.id }) { index, item ->
+                        itemsIndexed(
+                            items = filteredItems,
+                            key = { _, item -> item.id },
+                            contentType = { _, _ -> "equipment_item" }
+                        ) { index, item ->
+                            val currentItem by rememberUpdatedState(item)
+                            val onEdit = remember(viewModel) { { viewModel.showEditDialog(currentItem) } }
+                            val onDelete = remember(viewModel) { { viewModel.showDeleteDialog(currentItem) } }
+                            val onBorrow = remember(viewModel) { { viewModel.showBorrowDialog(currentItem) } }
+
                             AnimatedListItem(
-                                enabled = enableAnimations,
+                                enabled = enableItemAnimations,
                                 listAnimationType = listAnimationType,
                                 index = index
                             ) {
                                 EquipmentItemCard(
                                     item = item,
                                     category = categoriesMap[item.categoryId],
-                                    canManage = viewModel.canManageItems(),
+                                    categoryColor = categoryColorMap[item.categoryId],
+                                    canManage = canManageItems,
                                     serverUrl = serverUrl,
-                                    onEdit = { viewModel.showEditDialog(item) },
-                                    onDelete = { viewModel.showDeleteDialog(item) },
-                                    onBorrow = { viewModel.showBorrowDialog(item) },
+                                    onEdit = onEdit,
+                                    onDelete = onDelete,
+                                    onBorrow = onBorrow,
+                                    onPreviewImage = { url, title ->
+                                        previewImageUrl = url
+                                        previewImageTitle = title
+                                    },
                                     compact = isCompactList,
                                     cornerRadius = cornerRadius,
                                     equipmentImageRatio = equipmentImageRatio,
@@ -454,8 +492,8 @@ fun EquipmentScreen(
                         }
                     }
                 }
+            }
         }
-    }
     }
 
     // 右下角统一浮动菜单（添加 / 刷新 / 搜索）
@@ -479,7 +517,7 @@ fun EquipmentScreen(
                     Icon(Icons.Default.Search, contentDescription = "搜索")
                 }
                 
-                if (viewModel.canManageItems()) {
+                if (canManageItems) {
                     AnimatedSmallFloatingActionButton(
                         onClick = { viewModel.showAddDialog(); fabExpanded = false },
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -509,6 +547,40 @@ fun EquipmentScreen(
             state = pullRefreshState,
             modifier = Modifier.align(Alignment.TopCenter)
         )
+    }
+    
+    if (!previewImageUrl.isNullOrEmpty()) {
+        Dialog(
+            onDismissRequest = {
+                previewImageUrl = null
+                previewImageTitle = null
+            },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.8f))
+                    .clickable {
+                        previewImageUrl = null
+                        previewImageTitle = null
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = previewImageUrl,
+                    contentDescription = previewImageTitle,
+                    modifier = Modifier
+                        .fillMaxWidth(0.95f)
+                        .fillMaxHeight(0.8f)
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                    error = rememberVectorPainter(Icons.Default.BrokenImage),
+                    placeholder = rememberVectorPainter(Icons.Default.Image)
+                )
+            }
+        }
     }
     
     // Dialogs
@@ -573,7 +645,6 @@ fun EquipmentScreen(
     }
     
     if (uiState.showBorrowDialog && uiState.selectedItem != null) {
-        val effectiveHaptic = hapticEnabled && !lowPerformanceMode
         BorrowItemDialog(
             item = uiState.selectedItem!!,
             serverUrl = serverUrl,
@@ -581,8 +652,7 @@ fun EquipmentScreen(
             onConfirm = { borrowRequest ->
                 viewModel.borrowItem(uiState.selectedItem!!.id, borrowRequest)
             },
-            currentUser = viewModel.getCurrentUser(),
-            hapticEnabled = effectiveHaptic
+            currentUser = viewModel.getCurrentUser()
         )
     }
     

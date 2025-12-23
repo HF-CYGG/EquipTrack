@@ -66,8 +66,9 @@ fun ApprovalScreen(
     }
     val filteredRequests by viewModel.filteredRequests.collectAsStateWithLifecycle()
     val settingsRepository = navVm.settingsRepository
-    val lowPerformanceMode by remember { mutableStateOf(settingsRepository.isLowPerformanceMode()) }
-    val listAnimationType by remember { mutableStateOf(settingsRepository.getListAnimationType()) }
+    val themeOverrides by settingsRepository.themeOverridesFlow.collectAsStateWithLifecycle()
+    val lowPerformanceMode = themeOverrides.lowPerformanceMode ?: settingsRepository.isLowPerformanceMode()
+    val listAnimationType = themeOverrides.listAnimationType ?: settingsRepository.getListAnimationType()
     
     var showSearch by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -198,7 +199,11 @@ fun ApprovalScreen(
                                 }
                             }
                         } else {
-                            itemsIndexed(filteredRequests) { index, request ->
+                            itemsIndexed(
+                                items = filteredRequests,
+                                key = { _, request -> request.id },
+                                contentType = { _, _ -> "registration_request" }
+                            ) { index, request ->
                                 AnimatedListItem(
                                     enabled = enableAnimations,
                                     listAnimationType = listAnimationType,
