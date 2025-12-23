@@ -112,6 +112,7 @@ class EquipmentViewModel @Inject constructor(
             settingsRepository.localDebugFlow
                 .combine(settingsRepository.serverUrlFlow) { local, url -> Pair(local, url) }
                 .distinctUntilChanged()
+                .drop(1)
                 .collect {
                     syncData()
                 }

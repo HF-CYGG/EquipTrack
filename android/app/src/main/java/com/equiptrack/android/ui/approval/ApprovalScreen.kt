@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -69,6 +70,7 @@ fun ApprovalScreen(
     val themeOverrides by settingsRepository.themeOverridesFlow.collectAsStateWithLifecycle()
     val lowPerformanceMode = themeOverrides.lowPerformanceMode ?: settingsRepository.isLowPerformanceMode()
     val listAnimationType = themeOverrides.listAnimationType ?: settingsRepository.getListAnimationType()
+    val listState = rememberLazyListState()
     
     var showSearch by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -163,7 +165,8 @@ fun ApprovalScreen(
                     val enableAnimations = !lowPerformanceMode && listAnimationType != "None"
                     LazyColumn(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        state = listState
                     ) {
                         if (filteredRequests.isEmpty()) {
                             item {
@@ -207,7 +210,8 @@ fun ApprovalScreen(
                                 AnimatedListItem(
                                     enabled = enableAnimations,
                                     listAnimationType = listAnimationType,
-                                    index = index
+                                    index = index,
+                                    lazyListState = listState
                                 ) {
                                     RegistrationRequestCard(
                                         request = request,

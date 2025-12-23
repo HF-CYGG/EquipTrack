@@ -1,5 +1,6 @@
 package com.equiptrack.android.data.model
 
+import androidx.compose.runtime.Immutable
 import android.os.Parcelable
 import androidx.room.Entity
 import androidx.room.Index
@@ -9,6 +10,7 @@ import kotlinx.parcelize.RawValue
 import java.util.Date
 import com.google.gson.annotations.SerializedName
 
+@Immutable
 @Parcelize
 @Entity(tableName = "departments")
 data class Department(
@@ -18,6 +20,7 @@ data class Department(
     val parentId: String? = null
 ) : Parcelable
 
+@Immutable
 @Parcelize
 @Entity(tableName = "categories")
 data class Category(
@@ -33,6 +36,7 @@ enum class EquipmentStatus(val displayName: String) {
     Borrowed("已借出")
 }
 
+@Immutable
 @Parcelize
 @Entity(
     tableName = "equipment_items",
@@ -80,6 +84,7 @@ enum class UserStatus(val displayName: String) {
     BANNED("封禁")
 }
 
+@Immutable
 @Parcelize
 @Entity(tableName = "users")
 data class User(
@@ -96,6 +101,7 @@ data class User(
     val avatarUrl: String? = null // 新增头像字段（圆形裁剪后上传）
 ) : Parcelable
 
+@Immutable
 @Parcelize
 @Entity(tableName = "registration_requests")
 data class RegistrationRequest(
@@ -126,6 +132,7 @@ enum class BorrowStatus(val displayName: String) {
     OVERDUE_NOT_RETURNED("逾期未归还")
 }
 
+@Immutable
 @Parcelize
 @Entity(tableName = "borrow_history")
 data class BorrowHistoryEntry(

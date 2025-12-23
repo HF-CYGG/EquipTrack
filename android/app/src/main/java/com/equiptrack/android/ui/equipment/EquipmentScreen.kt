@@ -382,8 +382,6 @@ fun EquipmentScreen(
                 onDepartmentSelected = { viewModel.filterByDepartment(it) }
             )
             
-            // Loading indicator
-            // Only show skeleton if loading AND no items (initial load)
             if (uiState.isLoading && filteredItems.isEmpty()) {
                 EquipmentListSkeleton(
                     modifier = Modifier
@@ -393,9 +391,7 @@ fun EquipmentScreen(
                 )
             } else {
                 val enableAnimations = !lowPerformanceMode && listAnimationType != "None"
-                val enableItemAnimations by remember(enableAnimations, listState) {
-                    derivedStateOf { enableAnimations && !listState.isScrollInProgress }
-                }
+                val enableItemAnimations = enableAnimations
                 val categoriesMap = remember(categories) { categories.associateBy { it.id } }
                 val categoryColorMap = remember(categories) {
                     categories.associate { category ->
@@ -459,15 +455,11 @@ fun EquipmentScreen(
                             key = { _, item -> item.id },
                             contentType = { _, _ -> "equipment_item" }
                         ) { index, item ->
-                            val currentItem by rememberUpdatedState(item)
-                            val onEdit = remember(viewModel) { { viewModel.showEditDialog(currentItem) } }
-                            val onDelete = remember(viewModel) { { viewModel.showDeleteDialog(currentItem) } }
-                            val onBorrow = remember(viewModel) { { viewModel.showBorrowDialog(currentItem) } }
-
                             AnimatedListItem(
                                 enabled = enableItemAnimations,
                                 listAnimationType = listAnimationType,
-                                index = index
+                                index = index,
+                                lazyListState = listState
                             ) {
                                 EquipmentItemCard(
                                     item = item,
@@ -475,9 +467,9 @@ fun EquipmentScreen(
                                     categoryColor = categoryColorMap[item.categoryId],
                                     canManage = canManageItems,
                                     serverUrl = serverUrl,
-                                    onEdit = onEdit,
-                                    onDelete = onDelete,
-                                    onBorrow = onBorrow,
+                                    onEdit = { viewModel.showEditDialog(item) },
+                                    onDelete = { viewModel.showDeleteDialog(item) },
+                                    onBorrow = { viewModel.showBorrowDialog(item) },
                                     onPreviewImage = { url, title ->
                                         previewImageUrl = url
                                         previewImageTitle = title

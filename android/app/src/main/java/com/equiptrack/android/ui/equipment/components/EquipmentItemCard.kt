@@ -87,6 +87,7 @@ fun EquipmentItemCard(
             .data(imageThumbnailUrl)
             .size(imageWidthPx, imageHeightPx)
             .allowHardware(true)
+            .crossfade(false) // Disable crossfade for performance
             .build()
     }
 

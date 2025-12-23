@@ -32,6 +32,9 @@ import com.equiptrack.android.utils.UrlUtils
 import java.text.SimpleDateFormat
 import java.util.*
 
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
+
 @Composable
 fun HistoryEntryCard(
     entry: BorrowHistoryEntry,
@@ -40,6 +43,7 @@ fun HistoryEntryCard(
     onReturn: () -> Unit,
     onForceReturn: () -> Unit
 ) {
+    val context = LocalContext.current
     val dateFormat = SimpleDateFormat("yyyy-MM-dd\nHH:mm", Locale.getDefault())
     val isOverdue = entry.status == BorrowStatus.OVERDUE_NOT_RETURNED
     val overdueDays = if (isOverdue) {
@@ -78,7 +82,10 @@ fun HistoryEntryCard(
                         )
                     } else {
                         AsyncImage(
-                            model = UrlUtils.resolveImageUrl(serverUrl, photo),
+                            model = ImageRequest.Builder(context)
+                                .data(UrlUtils.resolveImageUrl(serverUrl, photo))
+                                .crossfade(false)
+                                .build(),
                             contentDescription = "归还凭证",
                             modifier = Modifier
                                 .fillMaxWidth(0.95f)
@@ -92,7 +99,10 @@ fun HistoryEntryCard(
                     }
                 } else {
                     AsyncImage(
-                        model = UrlUtils.resolveImageUrl(serverUrl, photo),
+                        model = ImageRequest.Builder(context)
+                            .data(UrlUtils.resolveImageUrl(serverUrl, photo))
+                            .crossfade(false)
+                            .build(),
                         contentDescription = "归还凭证",
                         modifier = Modifier
                             .fillMaxWidth(0.95f)

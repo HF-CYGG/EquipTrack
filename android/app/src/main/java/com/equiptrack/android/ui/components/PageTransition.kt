@@ -6,6 +6,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -40,7 +41,7 @@ private fun getEnterTransition(type: PageTransitionType, duration: Int): EnterTr
         ) + fadeIn(animationSpec = tween(duration))
         PageTransitionType.FADE -> fadeIn(animationSpec = tween(duration, easing = LinearEasing))
         PageTransitionType.SCALE -> scaleIn(
-            initialScale = 0.8f,
+            initialScale = 0.9f,
             animationSpec = tween(duration, easing = easing)
         ) + fadeIn(animationSpec = tween(duration))
         PageTransitionType.SLIDE_UP -> slideInVertically(
@@ -67,7 +68,7 @@ private fun getExitTransition(type: PageTransitionType, duration: Int): ExitTran
         ) + fadeOut(animationSpec = tween(duration))
         PageTransitionType.FADE -> fadeOut(animationSpec = tween(duration, easing = LinearEasing))
         PageTransitionType.SCALE -> scaleOut(
-            targetScale = 0.8f,
+            targetScale = 0.95f,
             animationSpec = tween(duration, easing = easing)
         ) + fadeOut(animationSpec = tween(duration))
         PageTransitionType.SLIDE_UP -> slideOutVertically(
@@ -220,6 +221,7 @@ fun AnimatedListItem(
     enabled: Boolean,
     listAnimationType: String,
     index: Int = 0,
+    lazyListState: LazyListState? = null,
     content: @Composable () -> Unit
 ) {
     if (!enabled) {
@@ -227,16 +229,17 @@ fun AnimatedListItem(
         return
     }
 
-    val isInitialLoad = index < 12
-    val hasSlide = listAnimationType == "Slide"
+    val isInitialLoad = index < 8
+    val isScrolling = lazyListState?.isScrollInProgress == true
+    val hasSlide = listAnimationType == "Slide" && !isScrolling
     val baseOffset = if (hasSlide) 96f else 0f
-    val duration = if (isInitialLoad) 300 else 150
+    val duration = if (isInitialLoad) 260 else 140
 
     var started by remember(listAnimationType) { mutableStateOf(false) }
     LaunchedEffect(listAnimationType, index) {
         if (started) return@LaunchedEffect
         if (isInitialLoad) {
-            val delay = (index * 30).toLong()
+            val delay = (index * 20).toLong()
             if (delay > 0) kotlinx.coroutines.delay(delay)
         }
         started = true

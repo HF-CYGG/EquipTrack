@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -65,6 +66,7 @@ fun UsersScreen(
     val themeOverrides by settingsRepository.themeOverridesFlow.collectAsStateWithLifecycle()
     val lowPerformanceMode = themeOverrides.lowPerformanceMode ?: settingsRepository.isLowPerformanceMode()
     val listAnimationType = themeOverrides.listAnimationType ?: settingsRepository.getListAnimationType()
+    val listState = rememberLazyListState()
 
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
@@ -219,7 +221,10 @@ fun UsersScreen(
                 }
 
                 val enableAnimations = !lowPerformanceMode && listAnimationType != "None"
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    state = listState
+                ) {
                     if (filteredUsers.isEmpty()) {
                         item {
                             Card(
@@ -255,7 +260,8 @@ fun UsersScreen(
                             AnimatedListItem(
                                 enabled = enableAnimations,
                                 listAnimationType = listAnimationType,
-                                index = index
+                                index = index,
+                                lazyListState = listState
                             ) {
                                 UserCard(
                                     user = user,

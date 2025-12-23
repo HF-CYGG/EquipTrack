@@ -43,6 +43,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material.MaterialTheme as LegacyMaterialTheme
 import androidx.compose.material.lightColors
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.equiptrack.android.data.model.Borrower
 import com.equiptrack.android.data.model.BorrowRequest
 import com.equiptrack.android.data.model.EquipmentItem
@@ -288,8 +289,12 @@ fun BorrowItemDialog(
                                         UrlUtils.resolveImageUrl(serverUrl, item.image)
                                     }
                                     if (!previewUrl.isNullOrEmpty()) {
+                                        val context = LocalContext.current
                                         AsyncImage(
-                                            model = previewUrl,
+                                            model = ImageRequest.Builder(context)
+                                                .data(previewUrl)
+                                                .crossfade(false)
+                                                .build(),
                                             contentDescription = item.name,
                                             modifier = Modifier.fillMaxSize(),
                                             contentScale = ContentScale.Crop,

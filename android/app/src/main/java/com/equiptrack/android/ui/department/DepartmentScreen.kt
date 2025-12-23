@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -58,6 +59,7 @@ fun DepartmentScreen(
     var fabExpanded by remember { mutableStateOf(false) }
     var currentTab by remember { mutableStateOf(0) } // 0: 全局视图, 1: 部门详情视图
     val toastState = rememberToastState()
+    val listState = rememberLazyListState()
 
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
@@ -151,7 +153,8 @@ fun DepartmentScreen(
                     if (targetTab == 0) {
                         // 全局视图：部门列表
                         LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            state = listState
                         ) {
                             if (filteredDepartments.isEmpty() && !uiState.isLoading) {
                                 item {
@@ -222,7 +225,8 @@ fun DepartmentScreen(
                                         AnimatedListItem(
                                             enabled = true,
                                             listAnimationType = "Slide",
-                                            index = index
+                                            index = index,
+                                            lazyListState = listState
                                         ) {
                                             DepartmentCard(
                                                 department = department,
