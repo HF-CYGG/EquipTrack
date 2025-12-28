@@ -663,8 +663,10 @@ class EquipmentViewModel @Inject constructor(
                         _uiState.value = _uiState.value.copy(
                             showBorrowDialog = false,
                             selectedItem = null,
-                            successMessage = "物资借用成功"
+                            successMessage = "借用申请已提交，等待审核"
                         )
+                        // 提交申请后自动刷新页面并同步数据
+                        syncData()
                     }
                     is NetworkResult.Error -> {
                         _uiState.value = _uiState.value.copy(
@@ -672,7 +674,6 @@ class EquipmentViewModel @Inject constructor(
                         )
                     }
                     is NetworkResult.Loading -> {
-                        // Loading state can be handled if needed
                     }
                 }
             }

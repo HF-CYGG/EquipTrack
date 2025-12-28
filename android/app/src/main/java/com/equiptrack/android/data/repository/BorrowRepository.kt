@@ -42,7 +42,7 @@ class BorrowRepository @Inject constructor(
     suspend fun borrowItem(
         itemId: String,
         borrowRequest: BorrowRequest
-    ): Flow<NetworkResult<EquipmentItem>> = flow {
+    ): Flow<NetworkResult<Unit>> = flow {
         emit(NetworkResult.Loading())
         
         // Check if item is available and has enough quantity
@@ -57,133 +57,163 @@ class BorrowRepository @Inject constructor(
         }
         
         if (settingsRepository.isLocalDebug()) {
-             val updatedItem = item.copy(
-                 availableQuantity = item.availableQuantity - borrowRequest.quantity,
-                 borrowPhoto = borrowRequest.photo
-             )
-             equipmentItemDao.updateItem(updatedItem)
-             val currentUser = authRepository.getCurrentUser()
-             val historyEntry = BorrowHistoryEntry(
-                 id = UUID.randomUUID().toString(),
-                 itemId = itemId,
-                 itemName = item.name,
-                 departmentId = item.departmentId,
-                 borrowerName = borrowRequest.borrower.name,
-                 borrowerContact = borrowRequest.borrower.phone,
-                 operatorUserId = currentUser?.id ?: "",
-                 operatorName = currentUser?.name ?: "",
-                 operatorContact = currentUser?.contact ?: "",
-                 borrowDate = Date(),
-                 expectedReturnDate = borrowRequest.expectedReturnDate,
-                 status = BorrowStatus.BORROWING,
-                 photo = borrowRequest.photo
-             )
-             borrowHistoryDao.insertHistory(historyEntry)
-             emit(NetworkResult.Success(updatedItem))
-             return@flow
-         }
+            val updatedItem = item.copy(
+                availableQuantity = item.availableQuantity - borrowRequest.quantity,
+                borrowPhoto = borrowRequest.photo
+            )
+            equipmentItemDao.updateItem(updatedItem)
+            val currentUser = authRepository.getCurrentUser()
+            val historyEntry = BorrowHistoryEntry(
+                id = UUID.randomUUID().toString(),
+                itemId = itemId,
+                itemName = item.name,
+                departmentId = item.departmentId,
+                borrowerName = borrowRequest.borrower.name,
+                borrowerContact = borrowRequest.borrower.phone,
+                operatorUserId = currentUser?.id ?: "",
+                operatorName = currentUser?.name ?: "",
+                operatorContact = currentUser?.contact ?: "",
+                borrowDate = Date(),
+                expectedReturnDate = borrowRequest.expectedReturnDate,
+                status = BorrowStatus.BORROWING,
+                photo = borrowRequest.photo
+            )
+            borrowHistoryDao.insertHistory(historyEntry)
+            emit(NetworkResult.Success(Unit))
+            return@flow
+        }
         try {
-            // Try to borrow on server first
             val result = safeApiCall {
-                apiService.borrowItem(itemId, borrowRequest)
+                apiService.createBorrowRequest(
+                    BorrowRequestCreateRequest(
+                        itemId = itemId,
+                        borrower = borrowRequest.borrower,
+                        expectedReturnDate = borrowRequest.expectedReturnDate,
+                        photo = borrowRequest.photo,
+                        quantity = borrowRequest.quantity
+                    )
+                )
             }
-            
+
             when (result) {
                 is NetworkResult.Success -> {
-                    val updatedItem = result.data!!
-                    // Update local database
-                    equipmentItemDao.updateItem(updatedItem)
-                    
-                    // Create local history entry
-                    val currentUser = authRepository.getCurrentUser()
-                    val historyEntry = BorrowHistoryEntry(
-                        id = UUID.randomUUID().toString(),
-                        itemId = itemId,
-                        itemName = updatedItem.name,
-                        departmentId = updatedItem.departmentId,
-                        borrowerName = borrowRequest.borrower.name,
-                        borrowerContact = borrowRequest.borrower.phone,
-                        operatorUserId = currentUser?.id ?: "",
-                        operatorName = currentUser?.name ?: "",
-                        operatorContact = currentUser?.contact ?: "",
-                        borrowDate = Date(),
-                        expectedReturnDate = borrowRequest.expectedReturnDate,
-                        status = BorrowStatus.BORROWING,
-                        photo = borrowRequest.photo
-                    )
-                    borrowHistoryDao.insertHistory(historyEntry)
-                    
-                    emit(NetworkResult.Success(updatedItem))
+                    emit(NetworkResult.Success(Unit))
                 }
                 is NetworkResult.Error -> {
-                    // Try local borrow as fallback
-                    val item = equipmentItemDao.getItemById(itemId)
-                    if (item != null && item.availableQuantity >= borrowRequest.quantity) {
-                        val updatedItem = item.copy(
-                            availableQuantity = item.availableQuantity - borrowRequest.quantity,
-                            borrowPhoto = borrowRequest.photo
-                        )
-                        equipmentItemDao.updateItem(updatedItem)
-                        
-                        // Create local history entry
-                        val currentUser = authRepository.getCurrentUser()
-                        val historyEntry = BorrowHistoryEntry(
-                            id = UUID.randomUUID().toString(),
-                            itemId = itemId,
-                            itemName = item.name,
-                            departmentId = item.departmentId,
-                            borrowerName = borrowRequest.borrower.name,
-                            borrowerContact = borrowRequest.borrower.phone,
-                            operatorUserId = currentUser?.id ?: "",
-                            operatorName = currentUser?.name ?: "",
-                            operatorContact = currentUser?.contact ?: "",
-                            borrowDate = Date(),
-                            expectedReturnDate = borrowRequest.expectedReturnDate,
-                            status = BorrowStatus.BORROWING,
-                            photo = borrowRequest.photo
-                        )
-                        borrowHistoryDao.insertHistory(historyEntry)
-                        
-                        emit(NetworkResult.Success(updatedItem))
-                    } else {
-                        emit(NetworkResult.Error("库存不足，当前可用数量: ${item?.availableQuantity ?: 0}"))
-                    }
+                    emit(NetworkResult.Error(result.message ?: "提交借用申请失败"))
                 }
                 is NetworkResult.Loading -> {
                     emit(NetworkResult.Loading())
                 }
             }
         } catch (e: Exception) {
-            // Fallback to local borrow
-            val item = equipmentItemDao.getItemById(itemId)
-            if (item != null && item.availableQuantity >= borrowRequest.quantity) {
-                val updatedItem = item.copy(
-                    availableQuantity = item.availableQuantity - borrowRequest.quantity,
-                    borrowPhoto = borrowRequest.photo
+            emit(NetworkResult.Error("提交借用申请失败: ${e.message}"))
+        }
+    }
+
+    suspend fun fetchBorrowRequestsForReview(
+        status: String? = null
+    ): Flow<NetworkResult<List<BorrowRequestEntry>>> = flow {
+        emit(NetworkResult.Loading())
+        val result = safeApiCall {
+            apiService.getBorrowReviewRequests(status)
+        }
+        when (result) {
+            is NetworkResult.Success -> {
+                val requests = result.data ?: emptyList()
+                emit(NetworkResult.Success(requests))
+            }
+            is NetworkResult.Error -> {
+                emit(NetworkResult.Error(result.message ?: "加载借用申请失败"))
+            }
+            is NetworkResult.Loading -> {
+                emit(NetworkResult.Loading())
+            }
+        }
+    }
+
+    suspend fun fetchBorrowReviewHistory(): Flow<NetworkResult<List<BorrowRequestEntry>>> = flow {
+        emit(NetworkResult.Loading())
+        val approvedResult = safeApiCall {
+            apiService.getBorrowReviewRequests("approved")
+        }
+        val rejectedResult = safeApiCall {
+            apiService.getBorrowReviewRequests("rejected")
+        }
+
+        val approved = if (approvedResult is NetworkResult.Success) {
+            approvedResult.data ?: emptyList()
+        } else {
+            emptyList()
+        }
+
+        val rejected = if (rejectedResult is NetworkResult.Success) {
+            rejectedResult.data ?: emptyList()
+        } else {
+            emptyList()
+        }
+
+        if (approvedResult is NetworkResult.Error && rejectedResult is NetworkResult.Error) {
+            emit(
+                NetworkResult.Error(
+                    approvedResult.message ?: rejectedResult.message ?: "加载审批历史失败"
                 )
-                equipmentItemDao.updateItem(updatedItem)
-                
-                // Create local history entry
-                val currentUser = authRepository.getCurrentUser()
-                val historyEntry = BorrowHistoryEntry(
-                    id = UUID.randomUUID().toString(),
-                    itemId = itemId,
-                    itemName = item.name,
-                    departmentId = item.departmentId,
-                    borrowerName = borrowRequest.borrower.name,
-                    borrowerContact = borrowRequest.borrower.phone,
-                    operatorUserId = currentUser?.id ?: "",
-                    operatorName = currentUser?.name ?: "",
-                    operatorContact = currentUser?.contact ?: "",
-                    borrowDate = Date(),
-                    expectedReturnDate = borrowRequest.expectedReturnDate,
-                    status = BorrowStatus.BORROWING
-                )
-                borrowHistoryDao.insertHistory(historyEntry)
-                
-                emit(NetworkResult.Success(updatedItem))
-            } else {
-                emit(NetworkResult.Error("借用失败: ${e.message}"))
+            )
+            return@flow
+        }
+
+        val combined = (approved + rejected).sortedByDescending { entry ->
+            entry.reviewedAt ?: entry.createdAt
+        }
+        emit(NetworkResult.Success(combined))
+    }
+
+    suspend fun approveBorrowRequest(
+        requestId: String,
+        remark: String?
+    ): Flow<NetworkResult<BorrowRequestEntry>> = flow {
+        emit(NetworkResult.Loading())
+        val result = safeApiCall {
+            apiService.approveBorrowRequest(
+                requestId,
+                BorrowReviewActionRequest(remark = remark)
+            )
+        }
+        when (result) {
+            is NetworkResult.Success -> {
+                val entry = result.data!!
+                emit(NetworkResult.Success(entry))
+            }
+            is NetworkResult.Error -> {
+                emit(NetworkResult.Error(result.message ?: "通过借用申请失败"))
+            }
+            is NetworkResult.Loading -> {
+                emit(NetworkResult.Loading())
+            }
+        }
+    }
+
+    suspend fun rejectBorrowRequest(
+        requestId: String,
+        remark: String?
+    ): Flow<NetworkResult<BorrowRequestEntry>> = flow {
+        emit(NetworkResult.Loading())
+        val result = safeApiCall {
+            apiService.rejectBorrowRequest(
+                requestId,
+                BorrowReviewActionRequest(remark = remark)
+            )
+        }
+        when (result) {
+            is NetworkResult.Success -> {
+                val entry = result.data!!
+                emit(NetworkResult.Success(entry))
+            }
+            is NetworkResult.Error -> {
+                emit(NetworkResult.Error(result.message ?: "驳回借用申请失败"))
+            }
+            is NetworkResult.Loading -> {
+                emit(NetworkResult.Loading())
             }
         }
     }

@@ -71,7 +71,7 @@ fun DepartmentScreen(
         viewModel.refreshDepartments()
     }
     
-    // Show snackbar for messages
+    // Show toast for messages
     LaunchedEffect(uiState.errorMessage, uiState.successMessage) {
         uiState.errorMessage?.let { message ->
             toastState.showError(message)
@@ -81,6 +81,15 @@ fun DepartmentScreen(
             toastState.showSuccess(message)
             viewModel.clearMessages()
         }
+    }
+    
+    // Show toast after pull-to-refresh completes successfully
+    var wasRefreshing by remember { mutableStateOf(false) }
+    LaunchedEffect(isRefreshing, uiState.errorMessage) {
+        if (wasRefreshing && !isRefreshing && uiState.errorMessage == null) {
+            toastState.showSuccess("刷新成功")
+        }
+        wasRefreshing = isRefreshing
     }
     
     Box(

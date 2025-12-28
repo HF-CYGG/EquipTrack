@@ -59,6 +59,7 @@ data class EquipmentItem(
     val imageFull: String? = null,
     val quantity: Int,
     val availableQuantity: Int,
+    val pendingApprovalQuantity: Int = 0,
     val borrowPhoto: String? = null, // Data URI for the photo taken on borrow
     val lastReturnPhoto: String? = null // Data URI for the photo
 ) : Parcelable {
@@ -210,7 +211,7 @@ data class ReturnRequest(
 data class BorrowHistoryDto(
     val id: String,
     val itemId: String,
-    val borrower: Borrower,
+    val borrower: Borrower?,
     val operator: Borrower? = null,
     val borrowDate: Date,
     val expectedReturnDate: Date,
@@ -219,6 +220,42 @@ data class BorrowHistoryDto(
     val forcedReturnBy: String? = null,
     val photo: String? = null,
     val returnPhoto: String? = null
+) : Parcelable
+
+@Immutable
+@Parcelize
+data class BorrowRequestEntry(
+    val id: String,
+    val itemId: String,
+    val itemDepartmentId: String,
+    val itemName: String? = null,
+    val itemImage: String? = null,
+    val borrower: Borrower?,
+    val applicant: Borrower?,
+    val expectedReturnDate: Date,
+    val photo: String? = null,
+    val quantity: Int,
+    val status: String,
+    val remark: String? = null,
+    @SerializedName("createdAt")
+    val createdAt: Date,
+    @SerializedName("reviewedAt")
+    val reviewedAt: Date? = null,
+    val reviewer: Borrower? = null
+) : Parcelable
+
+@Parcelize
+data class BorrowRequestCreateRequest(
+    val itemId: String,
+    val borrower: Borrower,
+    val expectedReturnDate: Date,
+    val photo: String? = null,
+    val quantity: Int = 1
+) : Parcelable
+
+@Parcelize
+data class BorrowReviewActionRequest(
+    val remark: String? = null
 ) : Parcelable
 
 data class ApiResponse<T>(

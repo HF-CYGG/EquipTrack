@@ -159,7 +159,7 @@ private fun UsageGuideSection() {
         
         Spacer(modifier = Modifier.height(4.dp))
         Text("4. 审批流程：", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-        Text("   管理员在‘注册审批’页处理申请，通过后用户方可使用系统。", style = MaterialTheme.typography.bodyMedium)
+        Text("   管理员在‘注册审批’页处理申请；借用申请需由管理员或高级用户审批通过后方可取用物资。", style = MaterialTheme.typography.bodyMedium)
         
         Spacer(modifier = Modifier.height(4.dp))
         Text("5. 个性化设置：", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
@@ -195,10 +195,10 @@ private fun DataSyncSection() {
 @Composable
 private fun RoleSummary() {
     val summaries = listOf(
-        UserRole.SUPER_ADMIN to "全权管理：跨部门管理、系统全局配置、用户与物资全生命周期管理。",
-        UserRole.ADMIN to "部门管理：管理本部门用户与物资、审批注册申请、维护部门数据。",
-        UserRole.ADVANCED_USER to "高级操作：除基础借还外，可编辑物资信息、执行强制归还操作。",
-        UserRole.NORMAL_USER to "基础使用：浏览物资信息、提交借用申请、归还物资、查看个人记录。"
+        UserRole.SUPER_ADMIN to "全权管理：跨部门管理、系统全局配置、用户与物资全生命周期管理、全局借用审批。",
+        UserRole.ADMIN to "部门管理：管理本部门用户与物资、审批注册申请、审批部门借用申请、维护部门数据。",
+        UserRole.ADVANCED_USER to "高级操作：除基础借还外，可编辑物资信息、执行强制归还操作、协助审批借用申请。",
+        UserRole.NORMAL_USER to "基础使用：浏览物资信息、提交借用申请（需审批）、归还物资、查看个人记录。"
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

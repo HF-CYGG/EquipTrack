@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -32,8 +33,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -48,6 +51,7 @@ import com.equiptrack.android.data.model.Borrower
 import com.equiptrack.android.data.model.BorrowRequest
 import com.equiptrack.android.data.model.EquipmentItem
 import com.equiptrack.android.data.model.User
+import com.equiptrack.android.data.model.UserRole
 import com.equiptrack.android.ui.components.AnimatedButton
 import com.equiptrack.android.ui.components.AnimatedOutlinedButton
 import com.equiptrack.android.ui.components.CameraCapture
@@ -58,10 +62,12 @@ import com.vanpra.composematerialdialogs.MaterialDialog
 import com.vanpra.composematerialdialogs.datetime.date.datepicker
 import com.vanpra.composematerialdialogs.datetime.time.timepicker
 import com.vanpra.composematerialdialogs.rememberMaterialDialogState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun BorrowItemDialog(
     item: EquipmentItem,
@@ -73,8 +79,11 @@ fun BorrowItemDialog(
     onSearchUser: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val haptic = LocalHapticFeedback.current
     val hapticEnabled = LocalHapticFeedbackEnabled.current
+    val scope = rememberCoroutineScope()
     
     var isPersonalBorrow by remember { mutableStateOf(true) }
     var borrowerName by remember { mutableStateOf("") }
@@ -92,10 +101,10 @@ fun BorrowItemDialog(
     
     var showCamera by remember { mutableStateOf(false) }
     
-    // 性能优化：延迟初始化日期时间选择器，避免首屏卡顿
-    var showDateDialog by remember { mutableStateOf(false) }
-    var showTimeDialog by remember { mutableStateOf(false) }
+    val isPhotoRequired = currentUser?.role != UserRole.SUPER_ADMIN
     
+    val dateDialogState = rememberMaterialDialogState()
+    val timeDialogState = rememberMaterialDialogState()
     var tempSelectedDate by remember { mutableStateOf<java.time.LocalDate?>(null) }
     
     // Auto-fill logic
@@ -156,64 +165,57 @@ fun BorrowItemDialog(
         )
     }
     
-    if (showDateDialog) {
-        val dateDialogState = rememberMaterialDialogState()
-        LaunchedEffect(Unit) { dateDialogState.show() }
-        
-        MaterialDialog(
-            dialogState = dateDialogState,
-            onCloseRequest = { showDateDialog = false },
-            buttons = {
-                positiveButton("下一步")
-                negativeButton("取消")
+    MaterialDialog(
+        dialogState = dateDialogState,
+        buttons = {
+            positiveButton("下一步") {
+                if (tempSelectedDate != null) {
+                    timeDialogState.show()
+                }
             }
-        ) {
-            LegacyMaterialTheme(colors = dialogColors) {
-                val initialDate = remember(expectedReturnDate) {
-                    expectedReturnDate?.let { date ->
-                        val instant = date.toInstant()
-                        val zone = java.time.ZoneId.systemDefault()
-                        java.time.LocalDateTime.ofInstant(instant, zone).toLocalDate()
-                    } ?: today.plusDays(1)
-                }
-                
-                datepicker(
-                    initialDate = initialDate,
-                    title = "选择预期归还日期",
-                    allowedDateValidator = { it.isAfter(today.minusDays(1)) }
-                ) { date ->
-                    tempSelectedDate = date
-                    showDateDialog = false
-                    showTimeDialog = true
-                }
+            negativeButton("取消") {
+                tempSelectedDate = null
+            }
+        }
+    ) {
+        LegacyMaterialTheme(colors = dialogColors) {
+            val initialDate = remember(expectedReturnDate) {
+                expectedReturnDate?.let { date ->
+                    val instant = date.toInstant()
+                    val zone = java.time.ZoneId.systemDefault()
+                    java.time.LocalDateTime.ofInstant(instant, zone).toLocalDate()
+                } ?: today.plusDays(1)
+            }
+            
+            datepicker(
+                initialDate = initialDate,
+                title = "选择预期归还日期",
+                allowedDateValidator = { it.isAfter(today.minusDays(1)) }
+            ) { date ->
+                tempSelectedDate = date
             }
         }
     }
     
-    if (showTimeDialog) {
-        val timeDialogState = rememberMaterialDialogState()
-        LaunchedEffect(Unit) { timeDialogState.show() }
-
-        MaterialDialog(
-            dialogState = timeDialogState,
-            onCloseRequest = { showTimeDialog = false },
-            buttons = {
-                positiveButton("确定")
-                negativeButton("取消")
+    MaterialDialog(
+        dialogState = timeDialogState,
+        buttons = {
+            positiveButton("确定")
+            negativeButton("取消") {
+                tempSelectedDate = null
             }
-        ) {
-            LegacyMaterialTheme(colors = dialogColors) {
-                timepicker(
-                    title = "选择预期归还时间",
-                    is24HourClock = true
-                ) { time ->
-                    tempSelectedDate?.let { date ->
-                        val calendar = Calendar.getInstance()
-                        calendar.set(date.year, date.monthValue - 1, date.dayOfMonth, time.hour, time.minute)
-                        expectedReturnDate = calendar.time
-                        dateError = null
-                    }
-                    showTimeDialog = false
+        }
+    ) {
+        LegacyMaterialTheme(colors = dialogColors) {
+            timepicker(
+                title = "选择预期归还时间",
+                is24HourClock = true
+            ) { time ->
+                tempSelectedDate?.let { date ->
+                    val calendar = Calendar.getInstance()
+                    calendar.set(date.year, date.monthValue - 1, date.dayOfMonth, time.hour, time.minute)
+                    expectedReturnDate = calendar.time
+                    dateError = null
                 }
             }
         }
@@ -559,7 +561,11 @@ fun BorrowItemDialog(
                                             },
                                             shape = RoundedCornerShape(12.dp)
                                         )
-                                        .clickable { showDateDialog = true },
+                                        .clickable {
+                                            keyboardController?.hide()
+                                            focusManager.clearFocus(force = true)
+                                            dateDialogState.show()
+                                        },
                                     color = MaterialTheme.colorScheme.surface
                                 ) {
                                     Row(
@@ -616,7 +622,7 @@ fun BorrowItemDialog(
                         // 4. Photo Section
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
-                                text = "现场拍照 (可选)",
+                                text = if (isPhotoRequired) "现场照片 (必填)" else "现场照片 (可选)",
                                 style = MaterialTheme.typography.labelMedium, // Reduced typography
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -663,7 +669,14 @@ fun BorrowItemDialog(
                                             drawRoundRect(color = color, style = stroke, cornerRadius = CornerRadius(12.dp.toPx()))
                                         }
                                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
-                                        .clickable { showCamera = true },
+                                        .clickable {
+                                            scope.launch {
+                                                keyboardController?.hide()
+                                                focusManager.clearFocus(force = true)
+                                                delay(300)
+                                                showCamera = true
+                                            }
+                                        },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -675,7 +688,7 @@ fun BorrowItemDialog(
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
-                                            text = "点击拍摄照片",
+                                            text = "点击拍摄",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.primary
                                         )
@@ -721,6 +734,13 @@ fun BorrowItemDialog(
                                 }
                                 if (expectedReturnDate == null) {
                                     dateError = "请选择日期"
+                                    hasError = true
+                                }
+                                
+
+                                
+                                if (isPhotoRequired && photoBase64 == null) {
+                                    photoError = "请拍摄现场照片"
                                     hasError = true
                                 }
                                 

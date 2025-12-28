@@ -85,6 +85,15 @@ fun ProfileScreen(
         }
     }
     
+    // Show toast after pull-to-refresh completes
+    var wasRefreshing by remember { mutableStateOf(false) }
+    LaunchedEffect(isRefreshing) {
+        if (wasRefreshing && !isRefreshing) {
+            toastState.showSuccess("刷新成功")
+        }
+        wasRefreshing = isRefreshing
+    }
+    
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { profileViewModel.updateAvatar(context.contentResolver, it) }
     }
@@ -252,8 +261,8 @@ fun ProfileScreen(
                             Text("关于", style = MaterialTheme.typography.labelLarge)
                         }
                         Text("EquipTrack 现代化智能物资管理系统", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("版本：0.2.1", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("说明：支持多部门、角色权限、带拍照的借还流程与历史审计。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("版本：0.4.1", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("说明：支持多部门、角色权限、带拍照的借还流程、借用审批与历史审计。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("开发者：夜喵cats（https://github.com/HF-CYGG）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(8.dp))
                         AnimatedOutlinedButton(onClick = onNavigateToSystemInfo, modifier = Modifier.fillMaxWidth()) {

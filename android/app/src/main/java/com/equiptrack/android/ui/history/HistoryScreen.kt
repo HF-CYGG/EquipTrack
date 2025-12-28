@@ -80,6 +80,15 @@ fun HistoryScreen(
             viewModel.clearMessages()
         }
     }
+    
+    // Show toast after pull-to-refresh completes successfully
+    var wasRefreshing by remember { mutableStateOf(false) }
+    LaunchedEffect(isRefreshing, uiState.errorMessage) {
+        if (wasRefreshing && !isRefreshing && uiState.errorMessage == null) {
+            toastState.showSuccess("刷新成功")
+        }
+        wasRefreshing = isRefreshing
+    }
 
     Scaffold(
         floatingActionButton = {

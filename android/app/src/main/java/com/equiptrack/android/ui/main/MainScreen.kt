@@ -1,8 +1,8 @@
 package com.equiptrack.android.ui.main
 
-import androidx.compose.foundation.layout.*
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -21,18 +21,18 @@ import com.equiptrack.android.ui.equipment.EquipmentScreen
 import com.equiptrack.android.ui.history.HistoryScreen
 import com.equiptrack.android.ui.profile.ProfileScreen
 import com.equiptrack.android.ui.approval.ApprovalScreen
+import com.equiptrack.android.ui.approval.BorrowApprovalScreen
 import com.equiptrack.android.ui.user.UsersScreen
 import com.equiptrack.android.ui.info.SystemInfoScreen
 import com.equiptrack.android.ui.department.DepartmentScreen
+import androidx.compose.ui.Alignment
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.equiptrack.android.permission.PermissionChecker
+import com.equiptrack.android.permission.PermissionType
+import com.equiptrack.android.ui.components.AnimatedIconButton
 import com.equiptrack.android.ui.components.AnimatedPage
 import com.equiptrack.android.ui.components.PageTransitionType
 import com.equiptrack.android.ui.navigation.NavigationViewModel
-import com.equiptrack.android.data.model.UserRole
-import com.equiptrack.android.permission.PermissionChecker
-import com.equiptrack.android.permission.PermissionType
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.ui.Alignment
-import com.equiptrack.android.ui.components.AnimatedIconButton
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,6 +68,9 @@ fun MainScreen(
                         MainNavItem.History,
                         MainNavItem.Profile
                     )
+                    if (PermissionChecker.hasPermission(currentUser, PermissionType.MANAGE_EQUIPMENT_ITEMS)) {
+                        items.add(MainNavItem.BorrowApprovals)
+                    }
                     if (PermissionChecker.hasPermission(currentUser, PermissionType.VIEW_REGISTRATION_APPROVALS)) {
                         items.add(MainNavItem.Approvals)
                     }
@@ -131,6 +134,7 @@ fun MainScreen(
                             MainNavItem.Equipment.route -> "EquipTrack > 物资管理"
                             MainNavItem.History.route -> "EquipTrack > 借用记录"
                             MainNavItem.Profile.route -> "EquipTrack > 个人中心"
+                            MainNavItem.BorrowApprovals.route -> "EquipTrack > 借用审批"
                             MainNavItem.Approvals.route -> "EquipTrack > 注册审批"
                             MainNavItem.Users.route -> "EquipTrack > 用户管理"
                             MainNavItem.Departments.route -> "EquipTrack > 部门管理"
@@ -156,45 +160,48 @@ fun MainScreen(
                 popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)) },
                 popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300)) }
             ) {
-            composable(MainNavItem.Equipment.route) {
-                EquipmentScreen(
-                    navController = navController,
-                    onNavigateToDetail = { /* TODO: Implement detail view */ }
-                )
-            }
-            composable(MainNavItem.History.route) {
-                HistoryScreen()
-            }
-            composable(MainNavItem.Profile.route) {
-                ProfileScreen(
-                    onLogout = onLogout,
-                    onNavigateToSettings = { onNavigateToServerConfig() },
-                    onNavigateToSystemInfo = { navController.navigate(MainNavItem.SystemInfo.route) }
-                )
-            }
-            composable(MainNavItem.Approvals.route) {
-                ApprovalScreen()
-            }
-            composable(MainNavItem.Users.route) {
-                UsersScreen()
-            }
-            composable(MainNavItem.Departments.route) {
-                if (PermissionChecker.hasPermission(currentUser, PermissionType.VIEW_DEPARTMENT_MANAGEMENT)) {
-                    DepartmentScreen()
-                } else {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.Lock, contentDescription = "无权限", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("无权访问部门管理")
+                composable(MainNavItem.Equipment.route) {
+                    EquipmentScreen(
+                        navController = navController,
+                        onNavigateToDetail = { }
+                    )
+                }
+                composable(MainNavItem.History.route) {
+                    HistoryScreen()
+                }
+                composable(MainNavItem.Profile.route) {
+                    ProfileScreen(
+                        onLogout = onLogout,
+                        onNavigateToSettings = { onNavigateToServerConfig() },
+                        onNavigateToSystemInfo = { navController.navigate(MainNavItem.SystemInfo.route) }
+                    )
+                }
+                composable(MainNavItem.BorrowApprovals.route) {
+                    BorrowApprovalScreen()
+                }
+                composable(MainNavItem.Approvals.route) {
+                    ApprovalScreen()
+                }
+                composable(MainNavItem.Users.route) {
+                    UsersScreen()
+                }
+                composable(MainNavItem.Departments.route) {
+                    if (PermissionChecker.hasPermission(currentUser, PermissionType.VIEW_DEPARTMENT_MANAGEMENT)) {
+                        DepartmentScreen()
+                    } else {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.Lock, contentDescription = "无权限", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("无权访问部门管理")
+                            }
                         }
                     }
                 }
+                composable(MainNavItem.SystemInfo.route) {
+                    SystemInfoScreen()
+                }
             }
-            composable(MainNavItem.SystemInfo.route) {
-                SystemInfoScreen()
-            }
-        }
         }
     }
 }
@@ -203,6 +210,7 @@ sealed class MainNavItem(val route: String, val title: String, val icon: ImageVe
     object Equipment : MainNavItem("equipment", "物资管理", Icons.Default.Inventory)
     object History : MainNavItem("history", "借用记录", Icons.Default.History)
     object Profile : MainNavItem("profile", "个人中心", Icons.Default.Person)
+    object BorrowApprovals : MainNavItem("borrow_approvals", "借用审批", Icons.Default.Assignment)
     object Approvals : MainNavItem("approvals", "注册审批", Icons.Default.CheckCircle)
     object Users : MainNavItem("users", "用户管理", Icons.Default.Group)
     object SystemInfo : MainNavItem("system_info", "系统说明", Icons.Default.Info)

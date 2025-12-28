@@ -272,6 +272,20 @@ fun EquipmentItemCard(
                                 fontWeight = FontWeight.Bold
                             )
                         }
+
+                        Column {
+                            Text(
+                                text = "审批中",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "${item.pendingApprovalQuantity}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
                 

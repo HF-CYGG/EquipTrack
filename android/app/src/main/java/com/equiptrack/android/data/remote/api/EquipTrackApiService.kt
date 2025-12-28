@@ -126,4 +126,27 @@ interface EquipTrackApiService {
         @Query("userRole") userRole: String,
         @Query("departmentId") departmentId: String? = null
     ): Response<List<BorrowHistoryEntry>>
+
+    // Borrow request approval endpoints
+    @POST("api/borrow-requests")
+    suspend fun createBorrowRequest(
+        @Body request: BorrowRequestCreateRequest
+    ): Response<BorrowRequestEntry>
+
+    @GET("api/borrow-requests/review")
+    suspend fun getBorrowReviewRequests(
+        @Query("status") status: String? = null
+    ): Response<List<BorrowRequestEntry>>
+
+    @POST("api/borrow-requests/{id}/approve")
+    suspend fun approveBorrowRequest(
+        @Path("id") requestId: String,
+        @Body request: BorrowReviewActionRequest
+    ): Response<BorrowRequestEntry>
+
+    @POST("api/borrow-requests/{id}/reject")
+    suspend fun rejectBorrowRequest(
+        @Path("id") requestId: String,
+        @Body request: BorrowReviewActionRequest
+    ): Response<BorrowRequestEntry>
 }
