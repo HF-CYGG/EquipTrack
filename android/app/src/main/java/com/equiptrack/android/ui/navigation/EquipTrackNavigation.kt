@@ -1,6 +1,7 @@
 package com.equiptrack.android.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -24,6 +25,15 @@ fun EquipTrackNavigation(
     val navVm: NavigationViewModel = hiltViewModel()
     val authRepository = navVm.authRepository
     val settingsRepository = navVm.settingsRepository
+
+    // Listen for session expiry events
+    LaunchedEffect(Unit) {
+        navVm.sessionExpiredEvent.collect {
+            navController.navigate(Screen.Login.route) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
     
     // Determine start destination based on login state
     val startDestination = if (authRepository.isLoggedIn()) {

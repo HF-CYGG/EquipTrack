@@ -2,12 +2,14 @@ package com.equiptrack.android.data.remote
 
 import android.content.SharedPreferences
 import android.util.Log
+import com.equiptrack.android.data.session.SessionManager
 import okhttp3.Interceptor
 import okhttp3.Response
 import javax.inject.Inject
 
 class AuthInterceptor @Inject constructor(
-    private val sharedPreferences: SharedPreferences
+    private val sharedPreferences: SharedPreferences,
+    private val sessionManager: SessionManager
 ) : Interceptor {
 
     companion object {
@@ -43,7 +45,8 @@ class AuthInterceptor @Inject constructor(
 
         val response = chain.proceed(newRequest)
         if (response.code == 401) {
-            sharedPreferences.edit().clear().apply()
+            Log.w(TAG, "Received 401 Unauthorized. Triggering session expiry.")
+            sessionManager.onSessionExpired()
         }
         return response
     }

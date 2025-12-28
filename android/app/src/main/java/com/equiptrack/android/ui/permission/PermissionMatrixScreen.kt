@@ -123,6 +123,7 @@ private fun PermissionMatrix() {
 private fun PermissionType.toReadable(): String = when (this) {
     PermissionType.MANAGE_ALL_DEPARTMENTS -> "管理所有部门"
     PermissionType.VIEW_REGISTRATION_APPROVALS -> "查看注册审批"
+    PermissionType.VIEW_BORROW_APPROVALS -> "查看借用审批"
     PermissionType.VIEW_USER_MANAGEMENT -> "查看用户管理"
     PermissionType.VIEW_DEPARTMENT_MANAGEMENT -> "查看部门管理"
     PermissionType.MANAGE_EQUIPMENT_ITEMS -> "管理物资信息"

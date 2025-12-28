@@ -11,6 +11,7 @@ enum class PermissionType {
 
     // Management Permissions (Admin & Super Admin)
     VIEW_REGISTRATION_APPROVALS,
+    VIEW_BORROW_APPROVALS,
     VIEW_USER_MANAGEMENT,
     VIEW_DEPARTMENT_MANAGEMENT,
 
@@ -31,6 +32,7 @@ object RolePermissionsMatrix {
         UserRole.SUPER_ADMIN to setOf(
             PermissionType.MANAGE_ALL_DEPARTMENTS,
             PermissionType.VIEW_REGISTRATION_APPROVALS,
+            PermissionType.VIEW_BORROW_APPROVALS,
             PermissionType.VIEW_USER_MANAGEMENT,
             PermissionType.VIEW_DEPARTMENT_MANAGEMENT,
             PermissionType.MANAGE_EQUIPMENT_ITEMS,
@@ -40,6 +42,7 @@ object RolePermissionsMatrix {
         ),
         UserRole.ADMIN to setOf(
             PermissionType.VIEW_REGISTRATION_APPROVALS,
+            PermissionType.VIEW_BORROW_APPROVALS,
             PermissionType.VIEW_USER_MANAGEMENT,
             PermissionType.VIEW_DEPARTMENT_MANAGEMENT,
             PermissionType.MANAGE_EQUIPMENT_ITEMS,

@@ -3,6 +3,7 @@ package com.equiptrack.android.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.equiptrack.android.data.local.LocalDebugSeeder
+import com.equiptrack.android.data.session.SessionManager
 import com.equiptrack.android.data.settings.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -17,7 +18,8 @@ import java.net.URL
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val localDebugSeeder: LocalDebugSeeder,
-    private val httpLoggingInterceptor: HttpLoggingInterceptor
+    private val httpLoggingInterceptor: HttpLoggingInterceptor,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
     fun getServerUrl(): String = settingsRepository.getServerUrl() ?: ""
     fun isLocalDebug(): Boolean = settingsRepository.isLocalDebug()
@@ -56,6 +58,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             localDebugSeeder.resetLocalSeed()
         }
+    }
+
+    fun triggerSessionExpiry() {
+        sessionManager.onSessionExpired()
     }
 
     fun testConnection(serverUrlRaw: String, onResult: (Boolean, String?) -> Unit) {

@@ -106,7 +106,18 @@ class AuthRepository @Inject constructor(
     }
     
     fun logout() {
-        sharedPreferences.edit().clear().apply()
+        sharedPreferences.edit().apply {
+            remove(KEY_USER_ID)
+            remove(KEY_USER_NAME)
+            remove(KEY_USER_CONTACT)
+            remove(KEY_USER_ROLE)
+            remove(KEY_USER_DEPARTMENT_ID)
+            remove(KEY_USER_DEPARTMENT_NAME)
+            remove(KEY_USER_INVITATION_CODE)
+            remove(KEY_IS_LOGGED_IN)
+            remove(KEY_AUTH_TOKEN)
+            apply()
+        }
     }
     
     fun isLoggedIn(): Boolean {

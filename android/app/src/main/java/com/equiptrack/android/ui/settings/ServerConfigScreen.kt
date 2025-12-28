@@ -155,6 +155,14 @@ fun ServerConfigScreen(
                 }
             }
             
+            // Debug: Test Session Expiry
+            OutlinedButton(
+                onClick = { viewModel.triggerSessionExpiry() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Test Session Expiry (Debug)")
+            }
+            
             testMessage?.let {
                 Text(
                     text = it,
