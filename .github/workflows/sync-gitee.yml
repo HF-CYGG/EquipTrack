@@ -1,0 +1,31 @@
+name: Sync to Gitee
+
+on:
+  release:
+    types: [published]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to Gitee
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # Add Gitee remote with Token authentication
+          # Format: https://<username>:<token>@gitee.com/<owner>/<repo>.git
+          git remote add gitee "https://YeMiao_cats:${{ secrets.GITEE_TOKEN }}@gitee.com/YeMiao_cats/EquipTrack.git"
+          
+          # Push main branch and tags
+          # Using --force to ensure Gitee stays exactly in sync with GitHub
+          git push gitee main --force
+          git push gitee --tags --force
