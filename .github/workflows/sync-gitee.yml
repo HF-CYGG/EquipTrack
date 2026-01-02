@@ -48,26 +48,26 @@ jobs:
               let giteeId = null;
               
               try {
-                // 1. Try to get existing release first
-                let createRes = null;
-                const getRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases/tags/${encodeURIComponent(tag_name)}?access_token=${process.env.GITEE_TOKEN}`);
+                // 1. Check for existing release via List API (more reliable than Get by Tag)
+                const listRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases?access_token=${process.env.GITEE_TOKEN}&page=1&per_page=100`);
                 
-                if (getRes.ok) {
-                   const getData = await getRes.json();
-                   console.log('🔍 Get Release Response:', JSON.stringify(getData));
-                   
-                   if (getData && getData.id) {
-                       giteeId = getData.id;
-                       console.log('✅ Found existing release ID:', giteeId);
-                   } else {
-                       console.error('❌ Release found but returned invalid data:', getData);
-                       // If data is null/invalid, we probably can't proceed with this release
-                       return;
+                if (listRes.ok) {
+                   const releasesList = await listRes.json();
+                   if (Array.isArray(releasesList)) {
+                       const existingRelease = releasesList.find(r => r.tag_name === tag_name);
+                       if (existingRelease) {
+                           giteeId = existingRelease.id;
+                           console.log('✅ Found existing release ID:', giteeId);
+                       }
                    }
-                } else if (getRes.status === 404) {
-                   console.log('ℹ️ Release not found, creating new one...');
-                   // 2. Create release if not found
-                   createRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases`, {
+                } else {
+                   console.warn(`⚠️ Failed to list releases: ${listRes.status} ${listRes.statusText}`);
+                }
+
+                // 2. Create release if not found
+                if (!giteeId) {
+                   console.log('ℹ️ Creating new release...');
+                   const createRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases`, {
                      method: 'POST',
                      headers: { 'Content-Type': 'application/json;charset=UTF-8' },
                      body: JSON.stringify({
@@ -76,7 +76,7 @@ jobs:
                        name, 
                        body, 
                        prerelease,
-                       target_commitish: 'main' // Required by Gitee API
+                       target_commitish: 'main'
                      })
                    });
                    
@@ -88,9 +88,6 @@ jobs:
                      console.error(`❌ Failed to create release: ${JSON.stringify(createData)}`);
                      return;
                    }
-                } else {
-                   console.error(`❌ Failed to check for existing release: ${getRes.status} ${getRes.statusText}`);
-                   return;
                 }
                 
                 // 2. Upload Assets
