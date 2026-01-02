@@ -92,17 +92,24 @@ jobs:
                     // For simplicity, we try to upload and handle errors.
                     
                     console.log(`⬇️ Downloading ${asset.name} from GitHub...`);
+                    // GitHub assets require correct headers or redirects handling
+                    // Using a simpler fetch might fail on redirects or auth for private repos (though releases are usually public)
                     const fileRes = await fetch(asset.browser_download_url);
                     if (!fileRes.ok) {
-                       console.warn(`⚠️ Failed to download ${asset.name}, skipping.`);
+                       console.warn(`⚠️ Failed to download ${asset.name}: ${fileRes.status} ${fileRes.statusText}`);
                        continue;
                     }
-                    const blob = await fileRes.blob();
+                    const arrayBuffer = await fileRes.arrayBuffer();
+                    const buffer = Buffer.from(arrayBuffer); // Convert to Node.js Buffer
                     
                     console.log(`⬆️ Uploading ${asset.name} to Gitee...`);
                     const formData = new FormData();
                     formData.append('access_token', process.env.GITEE_TOKEN);
-                    formData.append('file', blob, asset.name);
+                    // Append Buffer directly with filename options
+                    formData.append('file', buffer, {
+                      filename: asset.name,
+                      contentType: asset.content_type || 'application/octet-stream'
+                    });
                     
                     const uploadRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases/${giteeId}/attach_files`, {
                       method: 'POST',
