@@ -19,11 +19,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Restore Gradle Wrapper
+      - name: Use GitHub Gradle mirror for CI
         run: |
-          sed -i 's|mirrors.cloud.tencent.com/gradle|services.gradle.org/distributions|g' android/gradle/wrapper/gradle-wrapper.properties
-
-
+          sed -i 's|https\\://mirrors.cloud.tencent.com/gradle/gradle-8.10.2-bin.zip|https\\://github.com/gradle/gradle-distributions/releases/download/v8.10.2/gradle-8.10.2-bin.zip|g' android/gradle/wrapper/gradle-wrapper.properties
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -310,7 +308,6 @@ jobs:
       - name: Sync Code to Gitee
         if: always()
         run: |
-          git remote add gitee https://${{ secrets.GITEE_TOKEN }}@gitee.com/YeMiao_cats/EquipTrack.git
+          git remote add gitee https://${{ secrets.GITEE_TOKEN }}:@gitee.com/YeMiao_cats/EquipTrack.git
           git push gitee origin/main:main --force
           git push gitee --tags --force
-
