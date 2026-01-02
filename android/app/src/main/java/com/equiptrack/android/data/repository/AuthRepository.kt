@@ -36,9 +36,35 @@ class AuthRepository @Inject constructor(
         private const val KEY_USER_INVITATION_CODE = "user_invitation_code"
         private const val KEY_IS_LOGGED_IN = "is_logged_in"
         private const val KEY_AUTH_TOKEN = "auth_token"
+        private const val KEY_FCM_TOKEN = "fcm_token"
         private const val TAG = "AuthRepository"
     }
     
+    suspend fun registerDeviceToken(token: String) {
+        try {
+            val response = apiService.registerDeviceToken(mapOf("token" to token, "platform" to "android"))
+            if (response.isSuccessful && response.body()?.success == true) {
+                Log.d(TAG, "FCM Token registered successfully")
+            } else {
+                Log.e(TAG, "Failed to register FCM token: ${response.errorBody()?.string()}")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error registering FCM token", e)
+        }
+    }
+
+    fun saveFCMToken(token: String) {
+        sharedPreferences.edit().putString(KEY_FCM_TOKEN, token).apply()
+    }
+
+    fun getFCMToken(): String? {
+        return sharedPreferences.getString(KEY_FCM_TOKEN, null)
+    }
+
+    fun isLoggedIn(): Boolean {
+        return sharedPreferences.getBoolean(KEY_IS_LOGGED_IN, false)
+    }
+
     suspend fun login(contact: String, password: String): Flow<NetworkResult<User>> = flow {
         emit(NetworkResult.Loading())
         val remoteResult = try {
@@ -105,25 +131,6 @@ class AuthRepository @Inject constructor(
         }
     }
     
-    fun logout() {
-        sharedPreferences.edit().apply {
-            remove(KEY_USER_ID)
-            remove(KEY_USER_NAME)
-            remove(KEY_USER_CONTACT)
-            remove(KEY_USER_ROLE)
-            remove(KEY_USER_DEPARTMENT_ID)
-            remove(KEY_USER_DEPARTMENT_NAME)
-            remove(KEY_USER_INVITATION_CODE)
-            remove(KEY_IS_LOGGED_IN)
-            remove(KEY_AUTH_TOKEN)
-            apply()
-        }
-    }
-    
-    fun isLoggedIn(): Boolean {
-        return sharedPreferences.getBoolean(KEY_IS_LOGGED_IN, false)
-    }
-
     fun getAuthToken(): String? {
         return sharedPreferences.getString(KEY_AUTH_TOKEN, null)
     }

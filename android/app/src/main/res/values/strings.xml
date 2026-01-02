@@ -90,4 +90,7 @@
     <string name="delete_confirm_message">此操作不可撤销，确定要删除吗？</string>
     <string name="logout_confirm_title">确认退出</string>
     <string name="logout_confirm_message">确定要退出登录吗？</string>
+    
+    <!-- Notifications -->
+    <string name="default_notification_channel_id">fcm_default_channel</string>
 </resources>

@@ -14,6 +14,9 @@ interface EquipTrackApiService {
     @POST("api/signup")
     suspend fun signup(@Body request: SignupRequest): Response<ApiResponse<String>>
     
+    @POST("api/notifications/register")
+    suspend fun registerDeviceToken(@Body body: Map<String, String>): Response<ApiResponse<Boolean>>
+    
     // Public Data
     @Multipart
     @POST("api/upload")

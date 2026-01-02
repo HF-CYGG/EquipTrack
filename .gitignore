@@ -15,6 +15,7 @@ local.properties
 # Android 模块构建文件
 android/app/build/
 android/.gradle/
+android/app/google-services.json
 
 # 通用临时文件
 *.log

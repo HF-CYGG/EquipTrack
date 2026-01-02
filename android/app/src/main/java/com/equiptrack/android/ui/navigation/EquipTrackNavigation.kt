@@ -70,6 +70,7 @@ fun EquipTrackNavigation(
             ) {
                 LoginScreen(
                     onLoginSuccess = {
+                        navVm.checkAndUploadFcmToken()
                         val needsSetup = !navVm.settingsRepository.isSetupCompleted()
                         if (needsSetup) {
                             navController.navigate(Screen.ServerConfig.route) {

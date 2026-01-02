@@ -14,10 +14,22 @@ services:
       - ./server/uploads:/app/uploads
       - ./server/config:/app/config
       - ./server/.env:/app/.env:ro
-    restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', r=>{process.exit(r.statusCode===200?0:1)})"]
-      interval: 10s
-      timeout: 3s
-      retries: 10
-      start_period: 5s
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    # 启用自动更新标签
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  # 自动更新服务 (Watchtower)
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 60 --cleanup --label-enable
+    environment:
+      - WATCHTOWER_REVIVE_STOPPED=true
