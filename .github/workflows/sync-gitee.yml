@@ -54,7 +54,11 @@ jobs:
                   headers: { 'Content-Type': 'application/json;charset=UTF-8' },
                   body: JSON.stringify({
                     access_token: process.env.GITEE_TOKEN,
-                    tag_name, name, body, prerelease
+                    tag_name, 
+                    name, 
+                    body, 
+                    prerelease,
+                    target_commitish: 'main' // Required by Gitee API
                   })
                 });
                 
