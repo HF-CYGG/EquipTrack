@@ -38,11 +38,16 @@ import coil.compose.AsyncImage
 import androidx.compose.ui.draw.blur
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import javax.inject.Inject
+import androidx.activity.viewModels
+import com.equiptrack.android.viewmodel.MainViewModel
+import com.equiptrack.android.utils.UpdateStatus
+import com.equiptrack.android.ui.components.UpdateDialog
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var localDebugSeeder: LocalDebugSeeder
     @Inject lateinit var settingsRepository: SettingsRepository
+    private val mainViewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -54,7 +59,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             RootApp(
                 settingsRepository = settingsRepository,
-                localDebugSeeder = localDebugSeeder
+                localDebugSeeder = localDebugSeeder,
+                mainViewModel = mainViewModel
             )
         }
     }
@@ -99,13 +105,16 @@ object PreloadManager {
 @Composable
 fun RootApp(
     settingsRepository: SettingsRepository,
-    localDebugSeeder: LocalDebugSeeder
+    localDebugSeeder: LocalDebugSeeder,
+    mainViewModel: MainViewModel
 ) {
     var stage by remember { mutableStateOf(Stage.Shell) }
+    val updateStatus by mainViewModel.updateStatus.collectAsState()
 
     LaunchedEffect(Unit) {
         PreloadManager.preloadCore()
         stage = Stage.Full
+        mainViewModel.checkForUpdates()
     }
 
     when (stage) {
@@ -142,6 +151,14 @@ fun RootApp(
                 }
 
                 Box(modifier = Modifier.fillMaxSize()) {
+                    if (updateStatus is UpdateStatus.Available) {
+                        val version = (updateStatus as UpdateStatus.Available).version
+                        UpdateDialog(
+                            version = version,
+                            onUpdate = { mainViewModel.startDownload(version.downloadUrl) },
+                            onDismiss = { mainViewModel.dismissUpdate() }
+                        )
+                    }
                     if (showBackground) {
                         val uri = overrides.backgroundUri
                         uri?.let {

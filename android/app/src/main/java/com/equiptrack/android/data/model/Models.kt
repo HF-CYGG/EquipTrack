@@ -263,3 +263,14 @@ data class ApiResponse<T>(
     val message: String? = null,
     val data: T? = null
 )
+
+@Immutable
+@Parcelize
+data class AppVersion(
+    val versionCode: Int,
+    val versionName: String,
+    val updateContent: String,
+    val downloadUrl: String,
+    val forceUpdate: Boolean,
+    val releaseDate: String
+) : Parcelable

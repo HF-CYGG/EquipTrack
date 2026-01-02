@@ -17,6 +17,10 @@ interface EquipTrackApiService {
     @POST("api/notifications/register")
     suspend fun registerDeviceToken(@Body body: Map<String, String>): Response<ApiResponse<Boolean>>
     
+    // System
+    @GET("api/system/android-version")
+    suspend fun getAppVersion(): Response<AppVersion>
+
     // Public Data
     @Multipart
     @POST("api/upload")
