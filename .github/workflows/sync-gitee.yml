@@ -1,4 +1,4 @@
-name: Sync Release and Code to Gitee
+name: Sync to Gitee
 
 on:
   release:
@@ -26,206 +26,129 @@ jobs:
             const fs = require('fs');
             const path = require('path');
             const manifestPath = path.join(process.env.RUNNER_TEMP || '/tmp', 'gitee-release-manifest.json');
-            let giteeReleasesCache = null;
-
+            
+            // 1. 获取 Gitee 现有 Releases
             async function getGiteeReleases() {
-              if (giteeReleasesCache) return giteeReleasesCache;
-              const res = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases?access_token=${process.env.GITEE_TOKEN}&page=1&per_page=100`);
-              if (!res.ok) {
-                console.warn(`⚠️ Failed to list releases: ${res.status} ${res.statusText}`);
-                giteeReleasesCache = [];
-                return giteeReleasesCache;
-              }
-              const data = await res.json();
-              giteeReleasesCache = Array.isArray(data) ? data : [];
-              return giteeReleasesCache;
+              const res = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases?access_token=${process.env.GITEE_TOKEN}&page=1&per_page=20`);
+              if (!res.ok) return [];
+              return await res.json();
             }
 
+            // 2. 同步单个 Release
             async function syncRelease(release) {
               const { name, body, tag_name, prerelease, assets } = release;
-              console.log(`🚀 Starting sync for release: ${tag_name}`);
+              console.log(`Processing release: ${tag_name}`);
 
-              let giteeId = null;
+              const giteeReleases = await getGiteeReleases();
+              let targetRelease = giteeReleases.find(r => r.tag_name === tag_name);
+              let giteeId = targetRelease ? targetRelease.id : null;
+
+              // 如果 Gitee 不存在该 Release，则创建
+              if (!giteeId) {
+                console.log(`Creating release ${tag_name} on Gitee...`);
+                const createRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json;charset=UTF-8' },
+                  body: JSON.stringify({
+                    access_token: process.env.GITEE_TOKEN,
+                    tag_name, name, body, prerelease,
+                    target_commitish: 'main'
+                  })
+                });
+                if (createRes.ok) {
+                  const data = await createRes.json();
+                  giteeId = data.id;
+                  console.log(`Created Gitee release ID: ${giteeId}`);
+                } else {
+                  console.error('Failed to create release on Gitee');
+                  return null;
+                }
+              }
+
+              // 准备需要上传的 Assets
+              const existingAssets = targetRelease ? (targetRelease.assets || []) : [];
+              const existingNames = new Set(existingAssets.map(a => a.name));
               
-              try {
-                let existingAssets = [];
-                const releasesList = await getGiteeReleases();
-                const existingRelease = releasesList.find(r => r.tag_name === tag_name);
-                if (existingRelease) {
-                  giteeId = existingRelease.id;
-                  existingAssets = existingRelease.assets || [];
-                  console.log(`✅ Found existing release ID: ${giteeId}, with ${existingAssets.length} assets.`);
-                }
+              const assetsToUpload = (assets || []).map(a => ({
+                name: a.name,
+                url: a.browser_download_url
+              })).filter(a => !existingNames.has(a.name));
 
-                if (!giteeId) {
-                   console.log('ℹ️ Creating new release on Gitee...');
-                   const createRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases`, {
-                     method: 'POST',
-                     headers: { 'Content-Type': 'application/json;charset=UTF-8' },
-                     body: JSON.stringify({
-                       access_token: process.env.GITEE_TOKEN,
-                       tag_name, 
-                       name, 
-                       body, 
-                       prerelease,
-                       target_commitish: 'main'
-                     })
-                   });
-                   
-                   const createData = await createRes.json();
-                   if (createRes.ok) {
-                     console.log('✅ Created new release on Gitee:', createData.name);
-                     giteeId = createData.id;
-                     if (giteeReleasesCache) giteeReleasesCache.push({ tag_name, id: giteeId, assets: [] });
-                   } else {
-                     console.error(`❌ Failed to create release: ${JSON.stringify(createData)}`);
-                     return null;
-                   }
-                }
-                
-                const existingAssetNames = (existingAssets || []).map(a => a && a.name).filter(Boolean);
-                return {
-                  tag_name,
-                  giteeId,
-                  existingAssetNames,
-                  assets: Array.isArray(assets)
-                    ? assets.map(a => ({
-                        name: a.name,
-                        url: a.browser_download_url,
-                        size: a.size,
-                      }))
-                    : [],
-                };
-              } catch (e) {
-                console.error(`🔥 Error syncing ${tag_name}: ${e.message}`);
-                return null;
-              }
+              return {
+                tag_name,
+                giteeId,
+                assets: assetsToUpload
+              };
             }
 
+            // Main Logic
             try {
+              let entries = [];
               if (context.eventName === 'release') {
-                 const release = context.payload.release;
-                 console.log(`Trigger: Release Published ${release.tag_name}`);
-                 const entry = await syncRelease(release);
-                 const manifest = entry ? [entry] : [];
-                 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
-                 core.setOutput('manifest_path', manifestPath);
+                const entry = await syncRelease(context.payload.release);
+                if (entry) entries.push(entry);
               } else if (context.eventName === 'workflow_dispatch') {
-                 console.log('Trigger: Manual Dispatch');
-                 const releases = await github.rest.repos.listReleases({
-                   owner: context.repo.owner,
-                   repo: context.repo.repo,
-                   per_page: 20
-                 });
-                 const manifest = [];
-                 for (const release of releases.data.reverse()) {
-                    const entry = await syncRelease(release);
-                    if (entry) manifest.push(entry);
-                 }
-                 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
-                 core.setOutput('manifest_path', manifestPath);
-              } else {
-                 console.log(`Trigger: ${context.eventName} (No specific handler)`);
+                const releases = await github.rest.repos.listReleases({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  per_page: 5
+                });
+                // 只同步最新的 5 个
+                for (const rel of releases.data) {
+                   const entry = await syncRelease(rel);
+                   if (entry) entries.push(entry);
+                }
               }
-            } catch (error) {
-              core.setFailed(`Global Sync Error: ${error.message}`);
+              
+              fs.writeFileSync(manifestPath, JSON.stringify(entries, null, 2));
+              core.setOutput('manifest_path', manifestPath);
+            } catch (err) {
+              core.setFailed(err.message);
             }
 
-      - name: Upload Release Assets to Gitee (curl)
+      - name: Upload Assets to Gitee
         if: steps.sync_releases.outputs.manifest_path != ''
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           MANIFEST_PATH: ${{ steps.sync_releases.outputs.manifest_path }}
         run: |
-          node - <<'NODE'
-          const fs = require('fs');
-          const path = require('path');
-          const { execFileSync } = require('child_process');
-
-          const owner = 'YeMiao_cats';
-          const repo = 'EquipTrack';
-          const manifestPath = process.env.MANIFEST_PATH;
-          const token = process.env.GITEE_TOKEN;
-          const tmpDir = process.env.RUNNER_TEMP || process.cwd();
-
-          function runCurl(args) {
-            try {
-               execFileSync('curl', args, { stdio: 'inherit' });
-            } catch (e) {
-               console.error("Curl failed", e);
-               // Don't exit process to allow other assets to try
-            }
-          }
-
-          if (!fs.existsSync(manifestPath)) {
-            console.log("No manifest found.");
-            process.exit(0);
-          }
-
-          const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-          for (const rel of manifest) {
-            const tag = rel.tag_name;
-            const giteeId = rel.giteeId;
-            const existing = new Set(rel.existingAssetNames || []);
-            const assets = Array.isArray(rel.assets) ? rel.assets : [];
-
-            if (!giteeId || assets.length === 0) continue;
-
-            for (const asset of assets) {
-              if (!asset || !asset.name || !asset.url) continue;
-              if (existing.has(asset.name)) {
-                process.stdout.write(`⏩ Skip ${tag}: ${asset.name}\n`);
-                continue;
-              }
-
-              const safeTag = String(tag).replace(/[^a-zA-Z0-9._-]/g, '_');
-              const safeName = String(asset.name).replace(/[^a-zA-Z0-9._-]/g, '_');
-              const localPath = path.join(tmpDir, `${safeTag}-${Date.now()}-${safeName}`);
-
-              try {
-                process.stdout.write(`⬇️ Download ${tag}: ${asset.name}\n`);
-                runCurl([
-                  '-L',
-                  '--http1.1',
-                  '--fail-with-body',
-                  '--retry', '6',
-                  '--retry-all-errors',
-                  '--retry-delay', '2',
-                  '--connect-timeout', '30',
-                  '--max-time', '1800',
-                  '-o', localPath,
-                  asset.url,
-                ]);
-
-                if (fs.existsSync(localPath)) {
-                  process.stdout.write(`⬆️ Upload ${tag}: ${asset.name}\n`);
-                  runCurl([
-                    '--http1.1',
-                    '--fail-with-body',
-                    '--retry', '6',
-                    '--retry-all-errors',
-                    '--retry-delay', '2',
-                    '--connect-timeout', '30',
-                    '--max-time', '3600',
-                    '-sS',
-                    '-X', 'POST',
-                    `https://gitee.com/api/v5/repos/${owner}/${repo}/releases/${giteeId}/attach_files`,
-                    '-F', `access_token=${token}`,
-                    '-F', `file=@${localPath};filename=${asset.name}`,
+          node -e '
+            const fs = require("fs");
+            const { execFileSync } = require("child_process");
+            const manifest = JSON.parse(fs.readFileSync(process.env.MANIFEST_PATH));
+            const token = process.env.GITEE_TOKEN;
+            
+            for (const rel of manifest) {
+              if (!rel.giteeId || rel.assets.length === 0) continue;
+              console.log(`Uploading assets for ${rel.tag_name}...`);
+              
+              for (const asset of rel.assets) {
+                console.log(`Downloading ${asset.name}...`);
+                try {
+                  execFileSync("curl", ["-L", "-o", asset.name, asset.url]);
+                  
+                  console.log(`Uploading ${asset.name} to Gitee...`);
+                  execFileSync("curl", [
+                    "-X", "POST",
+                    `https://gitee.com/api/v5/repos/YeMiao_cats/EquipTrack/releases/${rel.giteeId}/attach_files`,
+                    "-F", `access_token=${token}`,
+                    "-F", `file=@${asset.name}`
                   ]);
-                } else {
-                  console.error(`❌ Download failed for ${asset.name}`);
+                  fs.unlinkSync(asset.name);
+                } catch (e) {
+                  console.error(`Failed to sync asset ${asset.name}:`, e.message);
                 }
-              } finally {
-                try { fs.unlinkSync(localPath); } catch {}
               }
             }
-          }
-          NODE
+          '
 
       - name: Sync Code to Gitee
         if: always()
         run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+          git remote remove gitee 2>/dev/null || true
           git remote add gitee https://YeMiao_cats:${{ secrets.GITEE_TOKEN }}@gitee.com/YeMiao_cats/EquipTrack.git
+          git fetch origin main
           git push gitee origin/main:main --force
           git push gitee --tags --force
