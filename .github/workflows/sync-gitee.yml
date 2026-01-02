@@ -100,16 +100,13 @@ jobs:
                        continue;
                     }
                     const arrayBuffer = await fileRes.arrayBuffer();
-                    const buffer = Buffer.from(arrayBuffer); // Convert to Node.js Buffer
+                    // Convert to Blob for standard FormData
+                    const blob = new Blob([arrayBuffer], { type: asset.content_type || 'application/octet-stream' });
                     
                     console.log(`⬆️ Uploading ${asset.name} to Gitee...`);
                     const formData = new FormData();
                     formData.append('access_token', process.env.GITEE_TOKEN);
-                    // Append Buffer directly with filename options
-                    formData.append('file', buffer, {
-                      filename: asset.name,
-                      contentType: asset.content_type || 'application/octet-stream'
-                    });
+                    formData.append('file', blob, asset.name);
                     
                     const uploadRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases/${giteeId}/attach_files`, {
                       method: 'POST',
