@@ -112,35 +112,62 @@ jobs:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           MANIFEST_PATH: ${{ steps.sync_releases.outputs.manifest_path }}
         run: |
-          node -e '
-            const fs = require("fs");
-            const { execFileSync } = require("child_process");
-            const manifest = JSON.parse(fs.readFileSync(process.env.MANIFEST_PATH));
-            const token = process.env.GITEE_TOKEN;
+          # Check if jq is installed (should be on ubuntu-latest)
+          if ! command -v jq &> /dev/null; then
+              sudo apt-get update && sudo apt-get install -y jq
+          fi
+
+          cat "$MANIFEST_PATH" | jq -c '.[]' | while read -r rel; do
+            gitee_id=$(echo "$rel" | jq -r '.giteeId')
+            tag_name=$(echo "$rel" | jq -r '.tag_name')
             
-            for (const rel of manifest) {
-              if (!rel.giteeId || rel.assets.length === 0) continue;
-              console.log(`Uploading assets for ${rel.tag_name}...`);
+            if [ "$gitee_id" == "null" ]; then
+              echo "Skipping $tag_name: No Gitee ID found."
+              continue
+            fi
+
+            echo "$rel" | jq -c '.assets[]' | while read -r asset; do
+              name=$(echo "$asset" | jq -r '.name')
+              url=$(echo "$asset" | jq -r '.url')
               
-              for (const asset of rel.assets) {
-                console.log(`Downloading ${asset.name}...`);
-                try {
-                  execFileSync("curl", ["-L", "-o", asset.name, asset.url]);
-                  
-                  console.log(`Uploading ${asset.name} to Gitee...`);
-                  execFileSync("curl", [
-                    "-X", "POST",
-                    `https://gitee.com/api/v5/repos/YeMiao_cats/EquipTrack/releases/${rel.giteeId}/attach_files`,
-                    "-F", `access_token=${token}`,
-                    "-F", `file=@${asset.name}`
-                  ]);
-                  fs.unlinkSync(asset.name);
-                } catch (e) {
-                  console.error(`Failed to sync asset ${asset.name}:`, e.message);
-                }
-              }
-            }
-          '
+              if [ -z "$name" ] || [ "$name" == "null" ]; then continue; fi
+
+              echo "📦 Processing $name for $tag_name..."
+              
+              # 1. Download from GitHub
+              echo "   ⬇️ Downloading..."
+              if curl -L -o "$name" "$url" --retry 5 --retry-delay 5 --fail; then
+                  echo "   ✅ Downloaded."
+              else
+                  echo "   ❌ Failed to download $name"
+                  continue
+              fi
+
+              # 2. Upload to Gitee
+              echo "   ⬆️ Uploading to Gitee..."
+              # Use a temporary file for response to check status
+              resp_file=$(mktemp)
+              http_code=$(curl -o "$resp_file" -w "%{http_code}" -X POST \
+                "https://gitee.com/api/v5/repos/YeMiao_cats/EquipTrack/releases/$gitee_id/attach_files" \
+                -F "access_token=$GITEE_TOKEN" \
+                -F "file=@$name" \
+                --retry 3 \
+                --retry-delay 5 \
+                --connect-timeout 60 \
+                --max-time 1800)
+              
+              if [ "$http_code" -eq 201 ] || [ "$http_code" -eq 200 ]; then
+                  echo "   ✅ Upload success ($http_code)"
+              else
+                  echo "   ❌ Upload failed ($http_code)"
+                  cat "$resp_file"
+                  # Attempt fallback: Delete and Retry once if it's a conflict? 
+                  # Usually 400/500 errors. Gitee might return 403 if token invalid.
+              fi
+              
+              rm -f "$name" "$resp_file"
+            done
+          done
 
       - name: Sync Code to Gitee
         if: always()
