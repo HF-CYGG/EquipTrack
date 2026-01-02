@@ -2,6 +2,11 @@
 server/
 
 # Android 临时构建文件
+# Keystore files
+*.jks
+*.keystore
+key.properties
+
 .gradle/
 local.properties
 .idea/
