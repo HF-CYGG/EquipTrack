@@ -1,13 +1,71 @@
-name: Sync to Gitee
+name: Build, Release and Sync
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
-  sync:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x android/gradlew
+
+      - name: Build Release APK
+        run: |
+          cd android
+          ./gradlew assembleRelease
+
+      - name: Sign Release APK
+        id: sign_app
+        if: ${{ secrets.SIGNING_KEY }}
+        uses: r0adkll/sign-android-release@v1
+        with:
+          releaseDirectory: android/app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "34.0.0"
+
+      - name: Rename APK
+        run: |
+          mkdir -p dist
+          if [ "${{ steps.sign_app.outputs.signedReleaseFile }}" != "" ]; then
+            cp "${{ steps.sign_app.outputs.signedReleaseFile }}" dist/EquipTrack-${{ github.ref_name }}.apk
+          else
+            cp android/app/build/outputs/apk/release/app-release-unsigned.apk dist/EquipTrack-${{ github.ref_name }}-unsigned.apk
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sync:
+    needs: build
+    runs-on: ubuntu-latest
+    if: always() # Run even if build/release skipped (e.g. manual dispatch without tag?) - actually needs tag for sync
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -15,7 +73,6 @@ jobs:
           fetch-depth: 0
 
       - name: Sync Releases to Gitee
-        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
         id: sync_releases
         uses: actions/github-script@v7
         env:
@@ -42,7 +99,6 @@ jobs:
               return giteeReleasesCache;
             }
 
-            // Helper function to sync a single release
             async function syncRelease(release) {
               const { name, body, tag_name, prerelease, assets } = release;
               console.log(`🚀 Starting sync for release: ${tag_name}`);
@@ -51,7 +107,6 @@ jobs:
               
               try {
                 let existingAssets = [];
-
                 const releasesList = await getGiteeReleases();
                 const existingRelease = releasesList.find(r => r.tag_name === tag_name);
                 if (existingRelease) {
@@ -60,9 +115,8 @@ jobs:
                   console.log(`✅ Found existing release ID: ${giteeId}, with ${existingAssets.length} assets.`);
                 }
 
-                // 2. Create release if not found
                 if (!giteeId) {
-                   console.log('ℹ️ Creating new release...');
+                   console.log('ℹ️ Creating new release on Gitee...');
                    const createRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases`, {
                      method: 'POST',
                      headers: { 'Content-Type': 'application/json;charset=UTF-8' },
@@ -80,12 +134,10 @@ jobs:
                    if (createRes.ok) {
                      console.log('✅ Created new release on Gitee:', createData.name);
                      giteeId = createData.id;
-                     if (giteeReleasesCache) {
-                       giteeReleasesCache.push({ tag_name, id: giteeId, assets: [] });
-                     }
+                     if (giteeReleasesCache) giteeReleasesCache.push({ tag_name, id: giteeId, assets: [] });
                    } else {
                      console.error(`❌ Failed to create release: ${JSON.stringify(createData)}`);
-                     return;
+                     return null;
                    }
                 }
                 
@@ -108,45 +160,44 @@ jobs:
               }
             }
 
-            // Main Execution Logic
             try {
-              if (context.eventName === 'release') {
-                 console.log('Trigger: Release Event');
-                 const entry = await syncRelease(context.payload.release);
+              if (context.eventName === 'push' && context.ref.startsWith('refs/tags/')) {
+                 const tag = context.ref.replace('refs/tags/', '');
+                 console.log(`Trigger: Push Tag ${tag}`);
+                 // Wait a bit for GitHub Release to be fully ready?
+                 await new Promise(r => setTimeout(r, 5000));
+                 
+                 const release = await github.rest.repos.getReleaseByTag({
+                   owner: context.repo.owner,
+                   repo: context.repo.repo,
+                   tag
+                 });
+                 
+                 const entry = await syncRelease(release.data);
                  const manifest = entry ? [entry] : [];
                  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
                  core.setOutput('manifest_path', manifestPath);
-                 console.log(`✅ Manifest written: ${manifestPath} (${manifest.length} releases)`);
               } else if (context.eventName === 'workflow_dispatch') {
-                 console.log('Trigger: Manual Dispatch (Syncing ALL releases)');
-                 
-                 // Fetch all releases from GitHub
+                 console.log('Trigger: Manual Dispatch');
                  const releases = await github.rest.repos.listReleases({
                    owner: context.repo.owner,
                    repo: context.repo.repo,
-                   per_page: 100 // Adjust if you have more than 100 releases
+                   per_page: 20
                  });
-                 
-                 console.log(`Found ${releases.data.length} releases on GitHub.`);
-                 
                  const manifest = [];
-                 // Process in reverse order (oldest first) to maintain timeline if creating new
-                 // or just iterate.
                  for (const release of releases.data.reverse()) {
                     const entry = await syncRelease(release);
                     if (entry) manifest.push(entry);
                  }
-
                  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
                  core.setOutput('manifest_path', manifestPath);
-                 console.log(`✅ Manifest written: ${manifestPath} (${manifest.length} releases)`);
               }
             } catch (error) {
               core.setFailed(`Global Sync Error: ${error.message}`);
             }
 
       - name: Upload Release Assets to Gitee (curl)
-        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        if: steps.sync_releases.outputs.manifest_path != ''
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           MANIFEST_PATH: ${{ steps.sync_releases.outputs.manifest_path }}
@@ -163,7 +214,17 @@ jobs:
           const tmpDir = process.env.RUNNER_TEMP || process.cwd();
 
           function runCurl(args) {
-            execFileSync('curl', args, { stdio: 'inherit' });
+            try {
+               execFileSync('curl', args, { stdio: 'inherit' });
+            } catch (e) {
+               console.error("Curl failed", e);
+               // Don't exit process to allow other assets to try
+            }
+          }
+
+          if (!fs.existsSync(manifestPath)) {
+            console.log("No manifest found.");
+            process.exit(0);
           }
 
           const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -201,21 +262,25 @@ jobs:
                   asset.url,
                 ]);
 
-                process.stdout.write(`⬆️ Upload ${tag}: ${asset.name}\n`);
-                runCurl([
-                  '--http1.1',
-                  '--fail-with-body',
-                  '--retry', '6',
-                  '--retry-all-errors',
-                  '--retry-delay', '2',
-                  '--connect-timeout', '30',
-                  '--max-time', '3600',
-                  '-sS',
-                  '-X', 'POST',
-                  `https://gitee.com/api/v5/repos/${owner}/${repo}/releases/${giteeId}/attach_files`,
-                  '-F', `access_token=${token}`,
-                  '-F', `file=@${localPath};filename=${asset.name}`,
-                ]);
+                if (fs.existsSync(localPath)) {
+                  process.stdout.write(`⬆️ Upload ${tag}: ${asset.name}\n`);
+                  runCurl([
+                    '--http1.1',
+                    '--fail-with-body',
+                    '--retry', '6',
+                    '--retry-all-errors',
+                    '--retry-delay', '2',
+                    '--connect-timeout', '30',
+                    '--max-time', '3600',
+                    '-sS',
+                    '-X', 'POST',
+                    `https://gitee.com/api/v5/repos/${owner}/${repo}/releases/${giteeId}/attach_files`,
+                    '-F', `access_token=${token}`,
+                    '-F', `file=@${localPath};filename=${asset.name}`,
+                  ]);
+                } else {
+                  console.error(`❌ Download failed for ${asset.name}`);
+                }
               } finally {
                 try { fs.unlinkSync(localPath); } catch {}
               }
