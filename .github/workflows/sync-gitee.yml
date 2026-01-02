@@ -32,6 +32,7 @@ jobs:
 
       - name: Sync Releases to Gitee
         if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        id: sync_releases
         uses: actions/github-script@v7
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
@@ -39,6 +40,23 @@ jobs:
           script: |
             const owner = 'YeMiao_cats';
             const repo = 'EquipTrack';
+            const fs = require('fs');
+            const path = require('path');
+            const manifestPath = path.join(process.env.RUNNER_TEMP || '/tmp', 'gitee-release-manifest.json');
+            let giteeReleasesCache = null;
+
+            async function getGiteeReleases() {
+              if (giteeReleasesCache) return giteeReleasesCache;
+              const res = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases?access_token=${process.env.GITEE_TOKEN}&page=1&per_page=100`);
+              if (!res.ok) {
+                console.warn(`⚠️ Failed to list releases: ${res.status} ${res.statusText}`);
+                giteeReleasesCache = [];
+                return giteeReleasesCache;
+              }
+              const data = await res.json();
+              giteeReleasesCache = Array.isArray(data) ? data : [];
+              return giteeReleasesCache;
+            }
 
             // Helper function to sync a single release
             async function syncRelease(release) {
@@ -48,23 +66,14 @@ jobs:
               let giteeId = null;
               
               try {
-                // 1. Check for existing release via List API (more reliable than Get by Tag)
-                const listRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases?access_token=${process.env.GITEE_TOKEN}&page=1&per_page=100`);
-                
                 let existingAssets = [];
 
-                if (listRes.ok) {
-                   const releasesList = await listRes.json();
-                   if (Array.isArray(releasesList)) {
-                       const existingRelease = releasesList.find(r => r.tag_name === tag_name);
-                       if (existingRelease) {
-                           giteeId = existingRelease.id;
-                           existingAssets = existingRelease.assets || [];
-                           console.log(`✅ Found existing release ID: ${giteeId}, with ${existingAssets.length} assets.`);
-                       }
-                   }
-                } else {
-                   console.warn(`⚠️ Failed to list releases: ${listRes.status} ${listRes.statusText}`);
+                const releasesList = await getGiteeReleases();
+                const existingRelease = releasesList.find(r => r.tag_name === tag_name);
+                if (existingRelease) {
+                  giteeId = existingRelease.id;
+                  existingAssets = existingRelease.assets || [];
+                  console.log(`✅ Found existing release ID: ${giteeId}, with ${existingAssets.length} assets.`);
                 }
 
                 // 2. Create release if not found
@@ -87,65 +96,31 @@ jobs:
                    if (createRes.ok) {
                      console.log('✅ Created new release on Gitee:', createData.name);
                      giteeId = createData.id;
+                     if (giteeReleasesCache) {
+                       giteeReleasesCache.push({ tag_name, id: giteeId, assets: [] });
+                     }
                    } else {
                      console.error(`❌ Failed to create release: ${JSON.stringify(createData)}`);
                      return;
                    }
                 }
                 
-                // 2. Upload Assets
-                if (giteeId && assets && assets.length > 0) {
-                  console.log(`📦 Found ${assets.length} assets to sync.`);
-                  
-                  // Use Promise.all to upload assets in parallel
-                  await Promise.all(assets.map(async (asset) => {
-                    try {
-                        // Check if asset already exists on Gitee to avoid unnecessary download/upload
-                        if (existingAssets.some(a => a.name === asset.name)) {
-                            console.log(`⏩ Asset ${asset.name} already exists on Gitee, skipping.`);
-                            return;
-                        }
-                        
-                        console.log(`⬇️ Downloading ${asset.name} (${(asset.size / 1024 / 1024).toFixed(2)} MB) from GitHub...`);
-                        const fileRes = await fetch(asset.browser_download_url);
-                        if (!fileRes.ok) {
-                           console.warn(`⚠️ Failed to download ${asset.name}: ${fileRes.status} ${fileRes.statusText}`);
-                           return;
-                        }
-                        const arrayBuffer = await fileRes.arrayBuffer();
-                        // Convert to Blob for standard FormData
-                        const blob = new Blob([arrayBuffer], { type: asset.content_type || 'application/octet-stream' });
-                        
-                        console.log(`⬆️ Uploading ${asset.name} to Gitee...`);
-                        const formData = new FormData();
-                        formData.append('access_token', process.env.GITEE_TOKEN);
-                        formData.append('file', blob, asset.name);
-                        
-                        const uploadRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases/${giteeId}/attach_files`, {
-                          method: 'POST',
-                          body: formData
-                        });
-                        
-                        if (uploadRes.ok) {
-                           console.log(`✅ Uploaded ${asset.name}`);
-                        } else {
-                           const uploadData = await uploadRes.json();
-                           // Ignore if file already exists error
-                           if (uploadData.message && uploadData.message.includes('已存在')) {
-                              console.log(`ℹ️ Asset ${asset.name} already exists.`);
-                           } else {
-                              console.warn(`⚠️ Failed to upload ${asset.name}:`, uploadData);
-                           }
-                        }
-                    } catch (assetError) {
-                        console.error(`🔥 Error processing asset ${asset.name}: ${assetError.message}`);
-                    }
-                  }));
-                } else {
-                   console.log('ℹ️ No assets to upload or Release ID missing.');
-                }
+                const existingAssetNames = (existingAssets || []).map(a => a && a.name).filter(Boolean);
+                return {
+                  tag_name,
+                  giteeId,
+                  existingAssetNames,
+                  assets: Array.isArray(assets)
+                    ? assets.map(a => ({
+                        name: a.name,
+                        url: a.browser_download_url,
+                        size: a.size,
+                      }))
+                    : [],
+                };
               } catch (e) {
                 console.error(`🔥 Error syncing ${tag_name}: ${e.message}`);
+                return null;
               }
             }
 
@@ -153,7 +128,11 @@ jobs:
             try {
               if (context.eventName === 'release') {
                  console.log('Trigger: Release Event');
-                 await syncRelease(context.payload.release);
+                 const entry = await syncRelease(context.payload.release);
+                 const manifest = entry ? [entry] : [];
+                 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
+                 core.setOutput('manifest_path', manifestPath);
+                 console.log(`✅ Manifest written: ${manifestPath} (${manifest.length} releases)`);
               } else if (context.eventName === 'workflow_dispatch') {
                  console.log('Trigger: Manual Dispatch (Syncing ALL releases)');
                  
@@ -166,12 +145,96 @@ jobs:
                  
                  console.log(`Found ${releases.data.length} releases on GitHub.`);
                  
+                 const manifest = [];
                  // Process in reverse order (oldest first) to maintain timeline if creating new
                  // or just iterate.
                  for (const release of releases.data.reverse()) {
-                    await syncRelease(release);
+                    const entry = await syncRelease(release);
+                    if (entry) manifest.push(entry);
                  }
+
+                 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
+                 core.setOutput('manifest_path', manifestPath);
+                 console.log(`✅ Manifest written: ${manifestPath} (${manifest.length} releases)`);
               }
             } catch (error) {
               core.setFailed(`Global Sync Error: ${error.message}`);
             }
+
+      - name: Upload Release Assets to Gitee (curl)
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          MANIFEST_PATH: ${{ steps.sync_releases.outputs.manifest_path }}
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const { execFileSync } = require('child_process');
+
+          const owner = 'YeMiao_cats';
+          const repo = 'EquipTrack';
+          const manifestPath = process.env.MANIFEST_PATH;
+          const token = process.env.GITEE_TOKEN;
+          const tmpDir = process.env.RUNNER_TEMP || process.cwd();
+
+          function runCurl(args) {
+            execFileSync('curl', args, { stdio: 'inherit' });
+          }
+
+          const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+          for (const rel of manifest) {
+            const tag = rel.tag_name;
+            const giteeId = rel.giteeId;
+            const existing = new Set(rel.existingAssetNames || []);
+            const assets = Array.isArray(rel.assets) ? rel.assets : [];
+
+            if (!giteeId || assets.length === 0) continue;
+
+            for (const asset of assets) {
+              if (!asset || !asset.name || !asset.url) continue;
+              if (existing.has(asset.name)) {
+                process.stdout.write(`⏩ Skip ${tag}: ${asset.name}\n`);
+                continue;
+              }
+
+              const safeTag = String(tag).replace(/[^a-zA-Z0-9._-]/g, '_');
+              const safeName = String(asset.name).replace(/[^a-zA-Z0-9._-]/g, '_');
+              const localPath = path.join(tmpDir, `${safeTag}-${Date.now()}-${safeName}`);
+
+              try {
+                process.stdout.write(`⬇️ Download ${tag}: ${asset.name}\n`);
+                runCurl([
+                  '-L',
+                  '--http1.1',
+                  '--fail-with-body',
+                  '--retry', '6',
+                  '--retry-all-errors',
+                  '--retry-delay', '2',
+                  '--connect-timeout', '30',
+                  '--max-time', '1800',
+                  '-o', localPath,
+                  asset.url,
+                ]);
+
+                process.stdout.write(`⬆️ Upload ${tag}: ${asset.name}\n`);
+                runCurl([
+                  '--http1.1',
+                  '--fail-with-body',
+                  '--retry', '6',
+                  '--retry-all-errors',
+                  '--retry-delay', '2',
+                  '--connect-timeout', '30',
+                  '--max-time', '3600',
+                  '-sS',
+                  '-X', 'POST',
+                  `https://gitee.com/api/v5/repos/${owner}/${repo}/releases/${giteeId}/attach_files`,
+                  '-F', `access_token=${token}`,
+                  '-F', `file=@${localPath};filename=${asset.name}`,
+                ]);
+              } finally {
+                try { fs.unlinkSync(localPath); } catch {}
+              }
+            }
+          }
+          NODE
