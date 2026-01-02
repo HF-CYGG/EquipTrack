@@ -54,8 +54,16 @@ jobs:
                 
                 if (getRes.ok) {
                    const getData = await getRes.json();
-                   giteeId = getData.id;
-                   console.log('✅ Found existing release ID:', giteeId);
+                   console.log('🔍 Get Release Response:', JSON.stringify(getData));
+                   
+                   if (getData && getData.id) {
+                       giteeId = getData.id;
+                       console.log('✅ Found existing release ID:', giteeId);
+                   } else {
+                       console.error('❌ Release found but returned invalid data:', getData);
+                       // If data is null/invalid, we probably can't proceed with this release
+                       return;
+                   }
                 } else if (getRes.status === 404) {
                    console.log('ℹ️ Release not found, creating new one...');
                    // 2. Create release if not found
