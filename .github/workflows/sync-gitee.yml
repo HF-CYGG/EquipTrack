@@ -311,6 +311,6 @@ jobs:
         if: always()
         run: |
           git remote add gitee https://${{ secrets.GITEE_TOKEN }}@gitee.com/YeMiao_cats/EquipTrack.git
-          git push gitee main --force
+          git push gitee origin/main:main --force
           git push gitee --tags --force
 
