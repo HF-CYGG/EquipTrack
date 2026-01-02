@@ -30,86 +30,124 @@ jobs:
           git push gitee main --force
           git push gitee --tags --force
 
-      - name: Sync Release to Gitee
-        if: github.event_name == 'release'
+      - name: Sync Releases to Gitee
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
         uses: actions/github-script@v7
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
         with:
           script: |
-            const { name, body, tag_name, prerelease, assets } = context.payload.release;
             const owner = 'YeMiao_cats';
             const repo = 'EquipTrack';
-            
-            console.log(`Syncing release ${tag_name} to Gitee...`);
-            
-            // 1. Get or Create Release
-            let giteeId = null;
-            
-            try {
-              // Try creating
-              const createRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json;charset=UTF-8' },
-                body: JSON.stringify({
-                  access_token: process.env.GITEE_TOKEN,
-                  tag_name, name, body, prerelease
-                })
-              });
-              
-              const createData = await createRes.json();
-              
-              if (createRes.ok) {
-                console.log('✅ Created new release on Gitee:', createData.name);
-                giteeId = createData.id;
-              } else if (createData.message && (createData.message.includes('已存在') || createData.message.includes('exists'))) {
-                 console.log('Release already exists, fetching ID...');
-                 const getRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases/tags/${encodeURIComponent(tag_name)}?access_token=${process.env.GITEE_TOKEN}`);
-                 if (getRes.ok) {
-                    const getData = await getRes.json();
-                    giteeId = getData.id;
-                    console.log('✅ Found existing release ID:', giteeId);
-                 } else {
-                    throw new Error(`Failed to fetch existing release: ${getRes.statusText}`);
-                 }
-              } else {
-                 throw new Error(`Failed to create release: ${JSON.stringify(createData)}`);
-              }
-              
-              // 2. Upload Assets
-              if (giteeId && assets && assets.length > 0) {
-                console.log(`Found ${assets.length} assets to sync.`);
-                
-                for (const asset of assets) {
-                  console.log(`Downloading ${asset.name} from GitHub...`);
-                  const fileRes = await fetch(asset.browser_download_url);
-                  if (!fileRes.ok) {
-                     console.warn(`Failed to download ${asset.name}, skipping.`);
-                     continue;
-                  }
-                  const blob = await fileRes.blob();
-                  
-                  console.log(`Uploading ${asset.name} to Gitee...`);
-                  const formData = new FormData();
-                  formData.append('access_token', process.env.GITEE_TOKEN);
-                  formData.append('file', blob, asset.name);
-                  
-                  const uploadRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases/${giteeId}/attach_files`, {
-                    method: 'POST',
-                    body: formData
-                  });
-                  
-                  if (uploadRes.ok) {
-                     console.log(`✅ Uploaded ${asset.name}`);
-                  } else {
-                     const uploadData = await uploadRes.json();
-                     console.warn(`⚠️ Failed to upload ${asset.name}:`, uploadData);
-                  }
-                }
-              } else {
-                 console.log('No assets to upload or Release ID missing.');
-              }
 
+            // Helper function to sync a single release
+            async function syncRelease(release) {
+              const { name, body, tag_name, prerelease, assets } = release;
+              console.log(`🚀 Starting sync for release: ${tag_name}`);
+
+              let giteeId = null;
+              
+              try {
+                // 1. Try creating release on Gitee
+                const createRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json;charset=UTF-8' },
+                  body: JSON.stringify({
+                    access_token: process.env.GITEE_TOKEN,
+                    tag_name, name, body, prerelease
+                  })
+                });
+                
+                const createData = await createRes.json();
+                
+                if (createRes.ok) {
+                  console.log('✅ Created new release on Gitee:', createData.name);
+                  giteeId = createData.id;
+                } else if (createData.message && (createData.message.includes('已存在') || createData.message.includes('exists'))) {
+                   console.log('ℹ️ Release already exists, fetching ID...');
+                   const getRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases/tags/${encodeURIComponent(tag_name)}?access_token=${process.env.GITEE_TOKEN}`);
+                   if (getRes.ok) {
+                      const getData = await getRes.json();
+                      giteeId = getData.id;
+                      console.log('✅ Found existing release ID:', giteeId);
+                   } else {
+                      console.error(`❌ Failed to fetch existing release: ${getRes.statusText}`);
+                      return; // Skip assets if we can't get the ID
+                   }
+                } else {
+                   console.error(`❌ Failed to create release: ${JSON.stringify(createData)}`);
+                   return;
+                }
+                
+                // 2. Upload Assets
+                if (giteeId && assets && assets.length > 0) {
+                  console.log(`📦 Found ${assets.length} assets to sync.`);
+                  
+                  for (const asset of assets) {
+                    // Check if asset already exists on Gitee (optional optimization, but Gitee might just reject duplicates)
+                    // For simplicity, we try to upload and handle errors.
+                    
+                    console.log(`⬇️ Downloading ${asset.name} from GitHub...`);
+                    const fileRes = await fetch(asset.browser_download_url);
+                    if (!fileRes.ok) {
+                       console.warn(`⚠️ Failed to download ${asset.name}, skipping.`);
+                       continue;
+                    }
+                    const blob = await fileRes.blob();
+                    
+                    console.log(`⬆️ Uploading ${asset.name} to Gitee...`);
+                    const formData = new FormData();
+                    formData.append('access_token', process.env.GITEE_TOKEN);
+                    formData.append('file', blob, asset.name);
+                    
+                    const uploadRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases/${giteeId}/attach_files`, {
+                      method: 'POST',
+                      body: formData
+                    });
+                    
+                    if (uploadRes.ok) {
+                       console.log(`✅ Uploaded ${asset.name}`);
+                    } else {
+                       const uploadData = await uploadRes.json();
+                       // Ignore if file already exists error
+                       if (uploadData.message && uploadData.message.includes('已存在')) {
+                          console.log(`ℹ️ Asset ${asset.name} already exists.`);
+                       } else {
+                          console.warn(`⚠️ Failed to upload ${asset.name}:`, uploadData);
+                       }
+                    }
+                  }
+                } else {
+                   console.log('ℹ️ No assets to upload or Release ID missing.');
+                }
+              } catch (e) {
+                console.error(`🔥 Error syncing ${tag_name}: ${e.message}`);
+              }
+            }
+
+            // Main Execution Logic
+            try {
+              if (context.eventName === 'release') {
+                 console.log('Trigger: Release Event');
+                 await syncRelease(context.payload.release);
+              } else if (context.eventName === 'workflow_dispatch') {
+                 console.log('Trigger: Manual Dispatch (Syncing ALL releases)');
+                 
+                 // Fetch all releases from GitHub
+                 const releases = await github.rest.repos.listReleases({
+                   owner: context.repo.owner,
+                   repo: context.repo.repo,
+                   per_page: 100 // Adjust if you have more than 100 releases
+                 });
+                 
+                 console.log(`Found ${releases.data.length} releases on GitHub.`);
+                 
+                 // Process in reverse order (oldest first) to maintain timeline if creating new
+                 // or just iterate.
+                 for (const release of releases.data.reverse()) {
+                    await syncRelease(release);
+                 }
+              }
             } catch (error) {
-              core.setFailed(`Sync Error: ${error.message}`);
+              core.setFailed(`Global Sync Error: ${error.message}`);
             }
