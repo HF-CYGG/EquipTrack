@@ -51,13 +51,16 @@ jobs:
                 // 1. Check for existing release via List API (more reliable than Get by Tag)
                 const listRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases?access_token=${process.env.GITEE_TOKEN}&page=1&per_page=100`);
                 
+                let existingAssets = [];
+
                 if (listRes.ok) {
                    const releasesList = await listRes.json();
                    if (Array.isArray(releasesList)) {
                        const existingRelease = releasesList.find(r => r.tag_name === tag_name);
                        if (existingRelease) {
                            giteeId = existingRelease.id;
-                           console.log('✅ Found existing release ID:', giteeId);
+                           existingAssets = existingRelease.assets || [];
+                           console.log(`✅ Found existing release ID: ${giteeId}, with ${existingAssets.length} assets.`);
                        }
                    }
                 } else {
@@ -94,44 +97,50 @@ jobs:
                 if (giteeId && assets && assets.length > 0) {
                   console.log(`📦 Found ${assets.length} assets to sync.`);
                   
-                  for (const asset of assets) {
-                    // Check if asset already exists on Gitee (optional optimization, but Gitee might just reject duplicates)
-                    // For simplicity, we try to upload and handle errors.
-                    
-                    console.log(`⬇️ Downloading ${asset.name} from GitHub...`);
-                    // GitHub assets require correct headers or redirects handling
-                    // Using a simpler fetch might fail on redirects or auth for private repos (though releases are usually public)
-                    const fileRes = await fetch(asset.browser_download_url);
-                    if (!fileRes.ok) {
-                       console.warn(`⚠️ Failed to download ${asset.name}: ${fileRes.status} ${fileRes.statusText}`);
-                       continue;
+                  // Use Promise.all to upload assets in parallel
+                  await Promise.all(assets.map(async (asset) => {
+                    try {
+                        // Check if asset already exists on Gitee to avoid unnecessary download/upload
+                        if (existingAssets.some(a => a.name === asset.name)) {
+                            console.log(`⏩ Asset ${asset.name} already exists on Gitee, skipping.`);
+                            return;
+                        }
+                        
+                        console.log(`⬇️ Downloading ${asset.name} (${(asset.size / 1024 / 1024).toFixed(2)} MB) from GitHub...`);
+                        const fileRes = await fetch(asset.browser_download_url);
+                        if (!fileRes.ok) {
+                           console.warn(`⚠️ Failed to download ${asset.name}: ${fileRes.status} ${fileRes.statusText}`);
+                           return;
+                        }
+                        const arrayBuffer = await fileRes.arrayBuffer();
+                        // Convert to Blob for standard FormData
+                        const blob = new Blob([arrayBuffer], { type: asset.content_type || 'application/octet-stream' });
+                        
+                        console.log(`⬆️ Uploading ${asset.name} to Gitee...`);
+                        const formData = new FormData();
+                        formData.append('access_token', process.env.GITEE_TOKEN);
+                        formData.append('file', blob, asset.name);
+                        
+                        const uploadRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases/${giteeId}/attach_files`, {
+                          method: 'POST',
+                          body: formData
+                        });
+                        
+                        if (uploadRes.ok) {
+                           console.log(`✅ Uploaded ${asset.name}`);
+                        } else {
+                           const uploadData = await uploadRes.json();
+                           // Ignore if file already exists error
+                           if (uploadData.message && uploadData.message.includes('已存在')) {
+                              console.log(`ℹ️ Asset ${asset.name} already exists.`);
+                           } else {
+                              console.warn(`⚠️ Failed to upload ${asset.name}:`, uploadData);
+                           }
+                        }
+                    } catch (assetError) {
+                        console.error(`🔥 Error processing asset ${asset.name}: ${assetError.message}`);
                     }
-                    const arrayBuffer = await fileRes.arrayBuffer();
-                    // Convert to Blob for standard FormData
-                    const blob = new Blob([arrayBuffer], { type: asset.content_type || 'application/octet-stream' });
-                    
-                    console.log(`⬆️ Uploading ${asset.name} to Gitee...`);
-                    const formData = new FormData();
-                    formData.append('access_token', process.env.GITEE_TOKEN);
-                    formData.append('file', blob, asset.name);
-                    
-                    const uploadRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases/${giteeId}/attach_files`, {
-                      method: 'POST',
-                      body: formData
-                    });
-                    
-                    if (uploadRes.ok) {
-                       console.log(`✅ Uploaded ${asset.name}`);
-                    } else {
-                       const uploadData = await uploadRes.json();
-                       // Ignore if file already exists error
-                       if (uploadData.message && uploadData.message.includes('已存在')) {
-                          console.log(`ℹ️ Asset ${asset.name} already exists.`);
-                       } else {
-                          console.warn(`⚠️ Failed to upload ${asset.name}:`, uploadData);
-                       }
-                    }
-                  }
+                  }));
                 } else {
                    console.log('ℹ️ No assets to upload or Release ID missing.');
                 }
