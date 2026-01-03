@@ -54,6 +54,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         // TODO: Implement this method to send token to your app server.
         // Since we are in a Service, we should probably use WorkManager or a Repository.
         // For now, we just log it. The UI layer can also retrieve the token.
+        Log.d(TAG, "Token to send: $token")
     }
 
     private fun sendNotification(title: String, messageBody: String) {

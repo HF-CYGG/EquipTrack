@@ -28,9 +28,10 @@ import com.equiptrack.android.ui.components.AnimatedOutlinedButton
 fun AddEditDepartmentDialog(
     department: Department?,
     onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
+    onConfirm: (String, Boolean) -> Unit
 ) {
     var departmentName by remember { mutableStateOf(department?.name ?: "") }
+    var requiresApproval by remember { mutableStateOf(department?.requiresApproval ?: true) }
     var nameError by remember { mutableStateOf<String?>(null) }
     
     val focusManager = LocalFocusManager.current
@@ -106,7 +107,7 @@ fun AddEditDepartmentDialog(
                                     return@KeyboardActions
                                 }
                                 
-                                onConfirm(trimmedName)
+                                onConfirm(trimmedName, requiresApproval)
                             }
                         ),
                         modifier = Modifier.fillMaxWidth(),
@@ -121,6 +122,26 @@ fun AddEditDepartmentDialog(
                         )
                     }
                     
+                    // Approval switch
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { requiresApproval = !requiresApproval }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "借用需要审批", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = if (requiresApproval) "该部门物资借用需要审批" else "该部门物资可直接借用",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(checked = requiresApproval, onCheckedChange = { requiresApproval = it })
+                    }
+
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     // Action buttons
@@ -155,7 +176,7 @@ fun AddEditDepartmentDialog(
                                     return@AnimatedButton
                                 }
                                 
-                                onConfirm(trimmedName)
+                                onConfirm(trimmedName, requiresApproval)
                             },
                             modifier = Modifier.weight(1f)
                         ) {

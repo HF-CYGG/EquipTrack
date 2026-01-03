@@ -26,6 +26,7 @@ import com.equiptrack.android.data.model.User
 import com.equiptrack.android.data.model.UserRole
 import com.equiptrack.android.ui.components.AnimatedTextButton
 import com.equiptrack.android.ui.components.AnimatedIconButton
+import com.equiptrack.android.ui.department.components.OrganizationTree
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -201,10 +202,12 @@ fun DepartmentDetailsView(
                     )
                     Spacer(Modifier.height(8.dp))
                     
-                    HierarchicalDepartmentTree(
+                    OrganizationTree(
                         departments = departments,
                         selectedDepartmentId = selectedDepartmentId,
-                        onSelect = onSelectDepartment
+                        onSelect = onSelectDepartment,
+                        onEdit = { /* No edit in details view */ },
+                        onDelete = { /* No delete in details view */ }
                     )
                 }
             }

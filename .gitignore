@@ -28,3 +28,6 @@ android/app/google-services.json
 .vscode/
 *.zip
 
+# Trae AI IDE
+.trae/
+

@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.with
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,7 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.equiptrack.android.ui.department.components.AddEditDepartmentDialog
 import com.equiptrack.android.ui.department.components.DepartmentCard
 import com.equiptrack.android.ui.department.components.DepartmentDetailsView
-import com.equiptrack.android.ui.department.components.HierarchicalDepartmentTree
+import com.equiptrack.android.ui.department.components.OrganizationTree
 import com.equiptrack.android.ui.equipment.components.DeleteConfirmDialog
 import com.equiptrack.android.ui.components.ToastMessage
 import com.equiptrack.android.ui.components.ToastType
@@ -150,10 +151,10 @@ fun DepartmentScreen(
                     targetState = currentTab,
                     transitionSpec = {
                         if (targetState > initialState) {
-                            slideInHorizontally { width -> width } + fadeIn() with
+                            slideInHorizontally { width -> width } + fadeIn() togetherWith
                                     slideOutHorizontally { width -> -width } + fadeOut()
                         } else {
-                            slideInHorizontally { width -> -width } + fadeIn() with
+                            slideInHorizontally { width -> -width } + fadeIn() togetherWith
                                     slideOutHorizontally { width -> width } + fadeOut()
                         }
                     },
@@ -216,7 +217,7 @@ fun DepartmentScreen(
                                                     fontWeight = FontWeight.Bold,
                                                     modifier = Modifier.padding(bottom = 8.dp)
                                                 )
-                                                HierarchicalDepartmentTree(
+                                                OrganizationTree(
                                                     departments = filteredDepartments,
                                                     selectedDepartmentId = null,
                                                     onSelect = { deptId ->
@@ -302,8 +303,8 @@ fun DepartmentScreen(
         AddEditDepartmentDialog(
             department = null,
             onDismiss = { viewModel.hideAddDialog() },
-            onConfirm = { name ->
-                viewModel.createDepartment(name)
+            onConfirm = { name, requiresApproval ->
+                viewModel.createDepartment(name, requiresApproval)
             }
         )
     }
@@ -312,9 +313,8 @@ fun DepartmentScreen(
         AddEditDepartmentDialog(
             department = uiState.selectedDepartment,
             onDismiss = { viewModel.hideEditDialog() },
-            onConfirm = { name ->
-                val updatedDepartment = uiState.selectedDepartment!!.copy(name = name)
-                viewModel.updateDepartment(updatedDepartment)
+            onConfirm = { name, requiresApproval ->
+                viewModel.updateDepartment(uiState.selectedDepartment!!.id, name, requiresApproval)
             }
         )
     }

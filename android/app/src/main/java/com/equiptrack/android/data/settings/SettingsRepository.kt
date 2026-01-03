@@ -210,7 +210,6 @@ class SettingsRepository @Inject constructor(
     }
 
     fun getHttpLogLevel(): HttpLoggingInterceptor.Level {
-        val levelStr = prefs.getString(KEY_HTTP_LOG_LEVEL, HttpLoggingInterceptor.Level.BASIC.name)
         val stored = prefs.getString(KEY_HTTP_LOG_LEVEL, null)
         return when (stored) {
             HttpLoggingInterceptor.Level.NONE.name -> HttpLoggingInterceptor.Level.NONE

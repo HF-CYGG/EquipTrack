@@ -40,7 +40,7 @@ class ApprovalViewModel @Inject constructor(
         _searchQuery,
         when (currentUser?.role) {
             UserRole.SUPER_ADMIN -> approvalRepository.getAllRequests()
-            UserRole.ADMIN -> approvalRepository.getRequestsByDepartment(currentUser!!.departmentId)
+            UserRole.ADMIN -> if (currentUser.departmentId.isNotEmpty()) approvalRepository.getRequestsByDepartment(currentUser.departmentId) else flowOf(emptyList())
             else -> flowOf(emptyList())
         }
     ) { query, requests ->

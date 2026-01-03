@@ -74,6 +74,39 @@ jobs:
                 url: a.browser_download_url
               })).filter(a => !existingNames.has(a.name));
 
+              // 3. 上传 Assets
+              if (assetsToUpload.length > 0) {
+                console.log(`Found ${assetsToUpload.length} assets to upload.`);
+                
+                for (const asset of assetsToUpload) {
+                  console.log(`Downloading ${asset.name} from GitHub...`);
+                  try {
+                    const downloadRes = await fetch(asset.url);
+                    if (!downloadRes.ok) throw new Error(`Download failed: ${downloadRes.statusText}`);
+                    const blob = await downloadRes.blob();
+                    
+                    console.log(`Uploading ${asset.name} to Gitee...`);
+                    const formData = new FormData();
+                    formData.append('access_token', process.env.GITEE_TOKEN);
+                    formData.append('file', blob, asset.name);
+                    
+                    const uploadRes = await fetch(`https://gitee.com/api/v5/repos/${owner}/${repo}/releases/${giteeId}/attach_files`, {
+                      method: 'POST',
+                      body: formData
+                    });
+                    
+                    if (!uploadRes.ok) {
+                      const errText = await uploadRes.text();
+                      console.error(`Failed to upload ${asset.name}: ${uploadRes.status} ${errText}`);
+                    } else {
+                      console.log(`Successfully uploaded ${asset.name}`);
+                    }
+                  } catch (err) {
+                    console.error(`Error processing ${asset.name}: ${err.message}`);
+                  }
+                }
+              }
+
               return {
                 tag_name,
                 giteeId,

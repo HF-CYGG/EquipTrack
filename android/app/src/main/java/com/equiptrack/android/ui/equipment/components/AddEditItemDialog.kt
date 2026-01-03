@@ -75,6 +75,7 @@ fun AddEditItemDialog(
     var selectedCategoryId by remember { mutableStateOf(item?.categoryId ?: "") }
     var quantity by remember { mutableStateOf(item?.quantity?.toString() ?: "1") }
     var availableQuantity by remember { mutableStateOf(item?.availableQuantity?.toString() ?: "1") }
+    var requiresApproval by remember { mutableStateOf(item?.requiresApproval ?: true) }
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var showImageOptions by remember { mutableStateOf(false) }
     
@@ -423,6 +424,21 @@ fun AddEditItemDialog(
                             maxLines = 5,
                             shape = RoundedCornerShape(12.dp)
                         )
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "需要审批",
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Switch(
+                                checked = requiresApproval,
+                                onCheckedChange = { requiresApproval = it }
+                            )
+                        }
                     }
                     
                     Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -459,6 +475,7 @@ fun AddEditItemDialog(
                                     departmentId = item?.departmentId ?: departmentId,
                                     quantity = quantity.toIntOrNull() ?: 0,
                                     availableQuantity = availableQuantity.toIntOrNull() ?: 0,
+                                    requiresApproval = requiresApproval,
                                     image = imageUri?.toString() ?: item?.image ?: "",
                                     imageFull = if (imageUri != null) null else item?.imageFull
                                 )

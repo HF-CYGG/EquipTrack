@@ -82,7 +82,7 @@ fun BorrowItemDialog(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val haptic = LocalHapticFeedback.current
-    val hapticEnabled = LocalHapticFeedbackEnabled.current
+    val hapticEnabled = true
     val scope = rememberCoroutineScope()
     
     var isPersonalBorrow by remember { mutableStateOf(true) }
@@ -311,9 +311,9 @@ fun BorrowItemDialog(
                                         UrlUtils.resolveImageUrl(serverUrl, item.image)
                                     }
                                     if (!previewUrl.isNullOrEmpty()) {
-                                        val context = LocalContext.current
+                                        val ctx = LocalContext.current
                                         AsyncImage(
-                                            model = ImageRequest.Builder(context)
+                                            model = ImageRequest.Builder(ctx)
                                                 .data(previewUrl)
                                                 .crossfade(false)
                                                 .build(),

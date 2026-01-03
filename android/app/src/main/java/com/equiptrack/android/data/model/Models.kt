@@ -19,7 +19,8 @@ data class Department(
     @PrimaryKey
     val id: String,
     val name: String,
-    val parentId: String? = null
+    val parentId: String? = null,
+    val requiresApproval: Boolean = true // Default: true
 ) : Parcelable
 
 @Immutable
@@ -60,6 +61,7 @@ data class EquipmentItem(
     val quantity: Int,
     val availableQuantity: Int,
     val pendingApprovalQuantity: Int = 0,
+    val requiresApproval: Boolean = true, // Default: true
     val borrowPhoto: String? = null, // Data URI for the photo taken on borrow
     val lastReturnPhoto: String? = null // Data URI for the photo
 ) : Parcelable {

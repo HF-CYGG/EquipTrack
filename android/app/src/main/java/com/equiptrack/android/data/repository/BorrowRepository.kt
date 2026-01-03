@@ -391,7 +391,7 @@ class BorrowRepository @Inject constructor(
                         operatorName = (entry.operatorName as? String) ?: "未知操作员",
                         operatorContact = (entry.operatorContact as? String) ?: "",
                         // Ensure status is not null (handle potential Gson unsafe deserialization nulls)
-                        status = try { entry.status } catch (e: NullPointerException) { BorrowStatus.BORROWING } ?: BorrowStatus.BORROWING
+                        status = try { entry.status } catch (e: NullPointerException) { BorrowStatus.BORROWING }
                     )
                 }
                 // Clear old history before inserting new ones to prevent duplicates if IDs changed or if we want a fresh sync

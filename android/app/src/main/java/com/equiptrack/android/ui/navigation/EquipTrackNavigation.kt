@@ -125,7 +125,7 @@ fun EquipTrackNavigation(
 
         composable(Screen.ServerConfig.route) {
             // Obtain ViewModel in a @Composable context, use inside callbacks
-            val navVm: NavigationViewModel = hiltViewModel()
+            // val navVm: NavigationViewModel = hiltViewModel() // Shadowed variable removed
             AnimatedPage(
                 transitionType = PageTransitionType.SLIDE_DOWN
             ) {

@@ -20,6 +20,7 @@ class MainViewModel @Inject constructor(
     fun checkForUpdates() {
         viewModelScope.launch {
             try {
+                updateManager.setChecking()
                 val response = apiService.getAppVersion()
                 if (response.isSuccessful && response.body() != null) {
                     val remoteVersion = response.body()!!

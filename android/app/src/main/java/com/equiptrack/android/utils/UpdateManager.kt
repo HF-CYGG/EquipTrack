@@ -35,6 +35,10 @@ class UpdateManager @Inject constructor(
 
     private var downloadId: Long = -1
 
+    fun setChecking() {
+        _updateStatus.value = UpdateStatus.Checking
+    }
+
     fun checkForUpdate(remoteVersion: AppVersion, currentVersionCode: Int) {
         if (remoteVersion.versionCode > currentVersionCode) {
             _updateStatus.value = UpdateStatus.Available(remoteVersion)

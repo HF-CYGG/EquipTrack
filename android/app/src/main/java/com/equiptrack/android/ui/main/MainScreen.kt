@@ -171,8 +171,7 @@ fun MainScreen(
                 }
                 composable(MainNavItem.Profile.route) {
                     ProfileScreen(
-                        onLogout = onLogout,
-                        onNavigateToSettings = { onNavigateToServerConfig() },
+                        onNavigateToLogin = onLogout,
                         onNavigateToSystemInfo = { navController.navigate(MainNavItem.SystemInfo.route) }
                     )
                 }

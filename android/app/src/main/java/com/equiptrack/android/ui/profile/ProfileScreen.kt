@@ -40,24 +40,50 @@ import com.equiptrack.android.data.model.UserRole
 import com.equiptrack.android.ui.components.AnimatedButton
 import com.equiptrack.android.ui.components.AnimatedOutlinedButton
 import com.equiptrack.android.ui.components.AnimatedTextButton
+import com.equiptrack.android.BuildConfig
+import com.equiptrack.android.viewmodel.MainViewModel
+import com.equiptrack.android.utils.UpdateStatus
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun ProfileScreen(
-    onLogout: () -> Unit,
-    onNavigateToSettings: () -> Unit,
+    onNavigateToLogin: () -> Unit,
     onNavigateToSystemInfo: () -> Unit
 ) {
     val authRepository: AuthRepository = hiltViewModel<NavigationViewModel>().authRepository
     val profileViewModel: ProfileViewModel = hiltViewModel()
+    val mainViewModel: MainViewModel = hiltViewModel()
     val currentUser = authRepository.getCurrentUser()
     val context = LocalContext.current
     val avatarMessage by profileViewModel.avatarUpdateMessage.collectAsState(initial = null)
     val passwordMessage by profileViewModel.passwordUpdateMessage.collectAsState(initial = null)
     val isRefreshing by profileViewModel.isRefreshing.collectAsState()
+    val updateStatus by mainViewModel.updateStatus.collectAsState()
     val toastState = rememberToastState()
     
     var showEditDialog by remember { mutableStateOf(false) }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+
+    // Handle update status changes
+    LaunchedEffect(updateStatus) {
+        if (isCheckingUpdate) {
+            when (updateStatus) {
+                is UpdateStatus.NoUpdate -> {
+                    toastState.showSuccess("当前已是最新版本")
+                    isCheckingUpdate = false
+                }
+                is UpdateStatus.Available -> {
+                    // UpdateDialog is handled in MainScreen, just reset flag
+                    isCheckingUpdate = false
+                }
+                is UpdateStatus.Error -> {
+                    toastState.showError("检查更新失败")
+                    isCheckingUpdate = false
+                }
+                else -> {}
+            }
+        }
+    }
     
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
@@ -231,7 +257,8 @@ fun ProfileScreen(
                                 Text(
                                     text = currentUser?.invitationCode ?: "无邀请码",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
@@ -261,7 +288,18 @@ fun ProfileScreen(
                             Text("关于", style = MaterialTheme.typography.labelLarge)
                         }
                         Text("EquipTrack 现代化智能物资管理系统", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("版本：0.4.1", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = "版本：${BuildConfig.VERSION_NAME}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.clickable {
+                                if (!isCheckingUpdate) {
+                                    toastState.showSuccess("正在检查更新...")
+                                    isCheckingUpdate = true
+                                    mainViewModel.checkForUpdates()
+                                }
+                            }
+                        )
                         Text("说明：支持多部门、角色权限、带拍照的借还流程、借用审批与历史审计。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("开发者：夜喵cats（https://github.com/HF-CYGG）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(8.dp))
@@ -280,7 +318,7 @@ fun ProfileScreen(
             AnimatedButton(
                 onClick = {
                     authRepository.logout()
-                    onLogout()
+                    onNavigateToLogin()
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(

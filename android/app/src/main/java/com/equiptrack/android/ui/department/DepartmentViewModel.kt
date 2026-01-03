@@ -157,7 +157,7 @@ class DepartmentViewModel @Inject constructor(
         _selectedDepartmentId.value = deptId
     }
     
-    fun createDepartment(name: String) {
+    fun createDepartment(name: String, requiresApproval: Boolean) {
         viewModelScope.launch {
             // Check if name already exists
             val nameExists = departmentRepository.isDepartmentNameExists(name)
@@ -168,7 +168,7 @@ class DepartmentViewModel @Inject constructor(
                 return@launch
             }
             
-            departmentRepository.createDepartment(name).collect { result ->
+            departmentRepository.createDepartment(name, requiresApproval).collect { result ->
                 when (result) {
                     is NetworkResult.Success -> {
                         _uiState.value = _uiState.value.copy(
@@ -189,18 +189,29 @@ class DepartmentViewModel @Inject constructor(
         }
     }
     
-    fun updateDepartment(department: Department) {
+    fun updateDepartment(id: String, name: String, requiresApproval: Boolean) {
         viewModelScope.launch {
             // Check if name already exists (excluding current department)
-            val nameExists = departmentRepository.isDepartmentNameExists(department.name, department.id)
+            val nameExists = departmentRepository.isDepartmentNameExists(name, id)
             if (nameExists) {
                 _uiState.value = _uiState.value.copy(
                     errorMessage = "部门名称已存在"
                 )
                 return@launch
             }
+
+            // Fetch current department to preserve other fields if any
+            val currentDepartment = departmentRepository.getDepartmentById(id)
+            if (currentDepartment == null) {
+                 _uiState.value = _uiState.value.copy(
+                    errorMessage = "部门不存在"
+                )
+                return@launch
+            }
+
+            val updatedDepartment = currentDepartment.copy(name = name, requiresApproval = requiresApproval)
             
-            departmentRepository.updateDepartment(department).collect { result ->
+            departmentRepository.updateDepartment(updatedDepartment).collect { result ->
                 when (result) {
                     is NetworkResult.Success -> {
                         _uiState.value = _uiState.value.copy(

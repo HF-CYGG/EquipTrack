@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.equiptrack.android.data.model.Department
 
 @Composable
-fun HierarchicalDepartmentTree(
+fun OrganizationTree(
     departments: List<Department>,
     selectedDepartmentId: String?,
     onSelect: (String) -> Unit,
