@@ -10,6 +10,7 @@ import com.equiptrack.android.data.repository.EquipmentRepository
 import com.equiptrack.android.data.settings.SettingsRepository
 import com.equiptrack.android.utils.NetworkResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -17,9 +18,11 @@ import android.content.Context
 import android.net.Uri
 import java.io.File
 import java.io.FileOutputStream
+import com.equiptrack.android.notifications.ApprovalNotificationHelper
 
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val borrowRepository: BorrowRepository,
     private val equipmentRepository: EquipmentRepository,
     private val authRepository: AuthRepository,
@@ -36,6 +39,10 @@ class HistoryViewModel @Inject constructor(
     private val _filterDepartmentId = MutableStateFlow<String?>(null)
     val filterDepartmentId: StateFlow<String?> = _filterDepartmentId.asStateFlow()
 
+    private val _borrowRequests = MutableStateFlow<List<BorrowHistoryEntry>>(emptyList())
+    // Keep track of previously pending requests to detect status changes
+    private var _previousPendingRequests = setOf<String>()
+
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
     
@@ -48,10 +55,21 @@ class HistoryViewModel @Inject constructor(
             UserRole.NORMAL_USER -> borrowRepository.getHistoryByBorrower(currentUser.contact)
             else -> borrowRepository.getHistoryByDepartment(currentUser?.departmentId ?: "")
         },
+        _borrowRequests,
         _filterStatus,
         _filterDepartmentId
-    ) { entries, status, deptId ->
-        var result = entries
+    ) { entries, requests, status, deptId ->
+        // Merge entries and requests
+        // Only show PENDING and REJECTED requests.
+        // APPROVED requests are ignored here because they should appear in 'entries' as BORROWING/RETURNED.
+        val validRequests = requests.filter { 
+            it.status == BorrowStatus.PENDING || it.status == BorrowStatus.REJECTED 
+        }
+        
+        var result = entries + validRequests
+        // Sort by date descending
+        result = result.sortedByDescending { it.borrowDate }
+
         if (status != null) {
             result = result.filter { it.status == status }
         }
@@ -122,6 +140,31 @@ class HistoryViewModel @Inject constructor(
                     // 同时同步部门信息，以便显示部门名称
                     if (user.role == UserRole.SUPER_ADMIN || user.role == UserRole.ADMIN) {
                         departmentRepository.syncDepartments().collect()
+                    }
+
+                    // 获取我的申请记录 (Pending/Rejected/Approved)
+                    launch {
+                        borrowRepository.getMyRequests().collect { result ->
+                            if (result is NetworkResult.Success) {
+                                val requests = result.data ?: emptyList()
+                                _borrowRequests.value = requests
+                                
+                                // Check for status changes (Pending -> Approved)
+                                val currentApprovedRequests = requests.filter { it.status == BorrowStatus.APPROVED }
+                                for (req in currentApprovedRequests) {
+                                    if (_previousPendingRequests.contains(req.id)) {
+                                        // Status changed from Pending to Approved
+                                        ApprovalNotificationHelper.showBorrowApprovedNotification(context, req.itemName)
+                                    }
+                                }
+                                
+                                // Update previous pending requests set
+                                _previousPendingRequests = requests
+                                    .filter { it.status == BorrowStatus.PENDING }
+                                    .map { it.id }
+                                    .toSet()
+                            }
+                        }
                     }
 
                     borrowRepository.syncHistory(user.role, departmentId).collect { result ->

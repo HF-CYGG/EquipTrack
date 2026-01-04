@@ -69,7 +69,36 @@ class ApprovalCheckWorker @AssistedInject constructor(
             ApprovalNotificationHelper.showRegistrationApprovalNotification(applicationContext)
         }
 
+        // Check for approved requests for the current user (borrower)
+        checkApprovedRequests(user.id, prefs)
+
         return Result.success()
+    }
+
+    private suspend fun checkApprovedRequests(userId: String, prefs: android.content.SharedPreferences) {
+        // Fetch my requests
+        borrowRepository.getMyRequests().collect { result ->
+            if (result is NetworkResult.Success) {
+                val requests = result.data ?: emptyList()
+                // Filter approved requests
+                val approved = requests.filter { it.status == com.equiptrack.android.data.model.BorrowStatus.APPROVED }
+                
+                // Get previously notified approved IDs
+                val notifiedSet = prefs.getStringSet("notified_approved_requests", emptySet()) ?: emptySet()
+                val newNotifiedSet = notifiedSet.toMutableSet()
+                
+                for (req in approved) {
+                    if (!notifiedSet.contains(req.id)) {
+                        // New approval found!
+                        ApprovalNotificationHelper.showBorrowApprovedNotification(applicationContext, req.itemName)
+                        newNotifiedSet.add(req.id)
+                    }
+                }
+                
+                // Save updated set
+                prefs.edit().putStringSet("notified_approved_requests", newNotifiedSet).apply()
+            }
+        }
     }
 
     private suspend fun getPendingBorrowRequestsCount(): Int {

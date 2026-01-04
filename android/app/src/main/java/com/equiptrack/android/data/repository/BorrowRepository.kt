@@ -111,6 +111,57 @@ class BorrowRepository @Inject constructor(
         }
     }
 
+    suspend fun getMyRequests(): Flow<NetworkResult<List<BorrowHistoryEntry>>> = flow {
+        if (settingsRepository.isLocalDebug()) {
+            emit(NetworkResult.Success(emptyList()))
+            return@flow
+        }
+
+        emit(NetworkResult.Loading())
+        val result = safeApiCall {
+            apiService.getMyBorrowRequests()
+        }
+
+        when (result) {
+            is NetworkResult.Success -> {
+                val requests = result.data ?: emptyList()
+                val historyEntries = requests.mapNotNull { req ->
+                    val status = when (req.status) {
+                        "pending" -> BorrowStatus.PENDING
+                        "approved" -> BorrowStatus.APPROVED
+                        "rejected" -> BorrowStatus.REJECTED
+                        else -> null
+                    }
+
+                    if (status != null) {
+                        BorrowHistoryEntry(
+                            id = req.id,
+                            itemId = req.itemId,
+                            itemName = req.itemName ?: "未知物品",
+                            departmentId = req.itemDepartmentId,
+                            borrowerName = req.borrower?.name ?: "",
+                            borrowerContact = req.borrower?.phone ?: "",
+                            operatorUserId = "",
+                            operatorName = "",
+                            operatorContact = "",
+                            borrowDate = req.createdAt,
+                            expectedReturnDate = req.expectedReturnDate,
+                            status = status,
+                            photo = req.photo
+                        )
+                    } else null
+                }
+                emit(NetworkResult.Success(historyEntries))
+            }
+            is NetworkResult.Error -> {
+                emit(NetworkResult.Error(result.message ?: "获取申请记录失败"))
+            }
+            is NetworkResult.Loading -> {
+                emit(NetworkResult.Loading())
+            }
+        }
+    }
+
     suspend fun fetchBorrowRequestsForReview(
         status: String? = null
     ): Flow<NetworkResult<List<BorrowRequestEntry>>> = flow {
@@ -411,13 +462,26 @@ class BorrowRepository @Inject constructor(
                 // If users see "duplicates", it implies different IDs for same content.
                 // Let's check if we should clear table for the relevant scope (all or dept).
                 // For now, let's try clearing all history before inserting to guarantee 1:1 sync with server.
-                if (departmentId != null) {
-                     // borrowHistoryDao.deleteHistoryByDepartment(departmentId) // Need to add this DAO method if we go this route
-                } else {
-                     borrowHistoryDao.deleteAllHistory()
-                }
+                // CAUTION: Clearing table inside the flow can cause UI flicker or empty state if collection is observing.
+                // BUT, since we are inside a 'Success' block, we have the new data ready.
+                // The Dao.getAllHistory() flow will emit the empty list when we delete, then the new list when we insert.
+                // This causes the "jump" effect!
+                // To avoid jump: Use a transaction or just INSERT/UPDATE without delete, or delete strictly what's needed.
+                // If we don't delete, we might keep stale records.
+                // A better way is to delete only IDs that are NOT in sanitizedHistories.
+                
+                // Refined Strategy:
+                // 1. Insert new histories (REPLACE)
+                // 2. Delete histories that are NOT in the new list (stale)
+                // This ensures there is never an "empty" state emitted between delete and insert.
                 
                 borrowHistoryDao.insertHistories(sanitizedHistories)
+                
+                // Optional: Delete stale records (implementation depends on DAO capabilities)
+                // For now, to fix the "jump" issue caused by `deleteAllHistory`, we REMOVE the deleteAllHistory call.
+                // If stale records become an issue, we will implement a smarter delete.
+                // borrowHistoryDao.deleteAllHistory() // REMOVED to prevent UI flicker/jump
+                
                 emit(NetworkResult.Success(sanitizedHistories))
             }
             is NetworkResult.Error -> {

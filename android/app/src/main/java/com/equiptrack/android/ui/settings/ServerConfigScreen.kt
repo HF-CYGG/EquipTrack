@@ -14,6 +14,14 @@ import com.equiptrack.android.ui.components.AnimatedButton
 import com.equiptrack.android.ui.components.AnimatedOutlinedButton
 import com.equiptrack.android.ui.components.AnimatedTextButton
 
+import androidx.compose.ui.platform.LocalContext
+
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServerConfigScreen(
@@ -21,11 +29,23 @@ fun ServerConfigScreen(
     onConfigSaved: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     var serverUrl by remember { mutableStateOf(viewModel.getServerUrl()) }
     var isLocalDebug by remember { mutableStateOf(viewModel.isLocalDebug()) }
     var showLogMenu by remember { mutableStateOf(false) }
     var logLevel by remember { mutableStateOf(viewModel.getHttpLogLevel()) }
     var testMessage by remember { mutableStateOf<String?>(null) }
+    val showAutoStart = remember { viewModel.checkAutoStartPermission(context) }
+    var isPollingEnabled by remember { mutableStateOf(viewModel.isPollingServiceRunning(context)) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isPollingEnabled && isGranted) {
+                viewModel.togglePollingService(context, true)
+            }
+        }
+    )
 
     Scaffold(
         topBar = {
@@ -50,6 +70,77 @@ fun ServerConfigScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            // Auto Start Permission Guide (Xiaomi/Vivo/Oppo etc)
+            if (showAutoStart) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "后台运行权限优化",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "为了确保通知功能在国产手机（小米/Vivo等）上正常工作，建议手动开启“自启动”权限。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        AnimatedButton(
+                            onClick = { viewModel.requestAutoStartPermission(context) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("去设置自启动权限")
+                        }
+                    }
+                }
+            }
+
+            // Real-time Polling Service Switch
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "启用实时通知服务",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "在通知栏显示常驻服务，确保在无谷歌服务环境下也能及时收到通知",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = isPollingEnabled,
+                    onCheckedChange = { checked ->
+                        isPollingEnabled = checked
+                        if (checked) {
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    viewModel.togglePollingService(context, true)
+                                }
+                            } else {
+                                viewModel.togglePollingService(context, true)
+                            }
+                        } else {
+                            viewModel.togglePollingService(context, false)
+                        }
+                    }
+                )
+            }
+            
+            Divider()
 
             // Local Debug Switch
             Row(

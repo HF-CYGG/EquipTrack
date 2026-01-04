@@ -7,9 +7,9 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -44,6 +44,7 @@ fun CameraCapture(
     
     var imageCapture: ImageCapture? by remember { mutableStateOf(null) }
     var cameraExecutor: ExecutorService? by remember { mutableStateOf(null) }
+    var flashMode by remember { mutableStateOf(ImageCapture.FLASH_MODE_OFF) }
     
     LaunchedEffect(Unit) {
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -55,7 +56,7 @@ fun CameraCapture(
         }
     }
     
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         when {
             cameraPermissionState.status.isGranted -> {
                 // Camera permission granted, show camera
@@ -73,6 +74,7 @@ fun CameraCapture(
                             
                             imageCapture = ImageCapture.Builder()
                                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                                .setFlashMode(flashMode)
                                 .build()
                             
                             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -95,26 +97,25 @@ fun CameraCapture(
                     modifier = Modifier.fillMaxSize()
                 )
                 
+                // Grid Overlay
+                CameraGridOverlay()
+                
                 // Camera controls overlay
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
+                    modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Top bar with close button
+                    // Top bar
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.Black.copy(alpha = 0.3f))
+                            .padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(
-                            onClick = onClose,
-                            modifier = Modifier
-                                .background(
-                                    Color.Black.copy(alpha = 0.5f),
-                                    CircleShape
-                                )
+                            onClick = onClose
                         ) {
                             Icon(
                                 Icons.Default.Close,
@@ -123,55 +124,68 @@ fun CameraCapture(
                             )
                         }
                         
-                        Text(
-                            text = "拍照记录",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
-                            modifier = Modifier
-                                .background(
-                                    Color.Black.copy(alpha = 0.5f),
-                                    RoundedCornerShape(16.dp)
-                                )
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.width(48.dp))
+                        // Flash Toggle
+                        IconButton(
+                            onClick = {
+                                val newMode = when (flashMode) {
+                                    ImageCapture.FLASH_MODE_OFF -> ImageCapture.FLASH_MODE_ON
+                                    ImageCapture.FLASH_MODE_ON -> ImageCapture.FLASH_MODE_AUTO
+                                    else -> ImageCapture.FLASH_MODE_OFF
+                                }
+                                flashMode = newMode
+                                imageCapture?.flashMode = newMode
+                            }
+                        ) {
+                            Icon(
+                                imageVector = when (flashMode) {
+                                    ImageCapture.FLASH_MODE_ON -> Icons.Default.FlashOn
+                                    ImageCapture.FLASH_MODE_AUTO -> Icons.Default.FlashAuto
+                                    else -> Icons.Default.FlashOff
+                                },
+                                contentDescription = "闪光灯",
+                                tint = if (flashMode == ImageCapture.FLASH_MODE_OFF) Color.White else Color.Yellow
+                            )
+                        }
                     }
                     
                     // Bottom controls
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.Black.copy(alpha = 0.3f))
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        // Capture button
-                        FloatingActionButton(
-                            onClick = {
-                                val capture = imageCapture ?: return@FloatingActionButton
-                                val outputFile = CameraUtils.createImageFile(context)
-                                
-                                CameraUtils.takePhoto(
-                                    imageCapture = capture,
-                                    outputFile = outputFile,
-                                    context = context,
-                                    onImageCaptured = { uri ->
-                                        onImageCaptured(uri)
-                                    },
-                                    onError = { exception ->
-                                        onError(exception)
-                                    }
-                                )
-                            },
+                        // Shutter button
+                        Box(
                             modifier = Modifier
                                 .size(80.dp)
-                                .border(4.dp, Color.White, CircleShape),
-                            containerColor = MaterialTheme.colorScheme.primary
+                                .clip(CircleShape)
+                                .background(Color.Transparent)
+                                .border(4.dp, Color.White, CircleShape)
+                                .clickable(onClick = {
+                                    val capture = imageCapture ?: return@clickable
+                                    val outputFile = CameraUtils.createImageFile(context)
+                                    
+                                    CameraUtils.takePhoto(
+                                        imageCapture = capture,
+                                        outputFile = outputFile,
+                                        context = context,
+                                        onImageCaptured = { uri ->
+                                            onImageCaptured(uri)
+                                        },
+                                        onError = { exception ->
+                                            onError(exception)
+                                        }
+                                    )
+                                }),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                Icons.Default.CameraAlt,
-                                contentDescription = "拍照",
-                                modifier = Modifier.size(32.dp),
-                                tint = Color.White
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.8f))
                             )
                         }
                     }
@@ -183,72 +197,70 @@ fun CameraCapture(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
                         .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Icon(
-                        Icons.Default.Camera,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Text(
-                        text = "需要相机权限",
-                        style = MaterialTheme.typography.headlineSmall
-                    )
-                    
+                    Text("需要相机权限来拍照")
                     Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Text(
-                        text = "为了拍照记录物资状态，需要访问相机权限。",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = onClose,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("取消")
-                        }
-                        
-                        Button(
-                            onClick = { cameraPermissionState.launchPermissionRequest() },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("授权")
-                        }
+                    Button(onClick = { cameraPermissionState.launchPermissionRequest() }) {
+                        Text("请求权限")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = onClose) {
+                        Text("取消")
                     }
                 }
             }
             
             else -> {
-                // Request camera permission
+                // First time request
                 LaunchedEffect(Unit) {
                     cameraPermissionState.launchPermissionRequest()
                 }
-                
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("请求相机权限...")
                 }
             }
         }
+    }
+}
+
+@Composable
+fun CameraGridOverlay() {
+    androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+        val width = size.width
+        val height = size.height
+        val strokeWidth = 1.dp.toPx()
+        val color = Color.White.copy(alpha = 0.3f)
+
+        // Vertical lines
+        drawLine(
+            color = color,
+            start = androidx.compose.ui.geometry.Offset(width / 3, 0f),
+            end = androidx.compose.ui.geometry.Offset(width / 3, height),
+            strokeWidth = strokeWidth
+        )
+        drawLine(
+            color = color,
+            start = androidx.compose.ui.geometry.Offset(2 * width / 3, 0f),
+            end = androidx.compose.ui.geometry.Offset(2 * width / 3, height),
+            strokeWidth = strokeWidth
+        )
+
+        // Horizontal lines
+        drawLine(
+            color = color,
+            start = androidx.compose.ui.geometry.Offset(0f, height / 3),
+            end = androidx.compose.ui.geometry.Offset(width, height / 3),
+            strokeWidth = strokeWidth
+        )
+        drawLine(
+            color = color,
+            start = androidx.compose.ui.geometry.Offset(0f, 2 * height / 3),
+            end = androidx.compose.ui.geometry.Offset(width, 2 * height / 3),
+            strokeWidth = strokeWidth
+        )
     }
 }

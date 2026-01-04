@@ -195,6 +195,9 @@ fun HistoryEntryCard(
                         BorrowStatus.OVERDUE_RETURNED -> Warning.copy(alpha = 0.1f)
                         BorrowStatus.BORROWING -> Info.copy(alpha = 0.1f)
                         BorrowStatus.OVERDUE_NOT_RETURNED -> Error.copy(alpha = 0.1f)
+                        BorrowStatus.PENDING -> Warning.copy(alpha = 0.1f)
+                        BorrowStatus.APPROVED -> Available.copy(alpha = 0.1f)
+                        BorrowStatus.REJECTED -> Error.copy(alpha = 0.1f)
                     },
                     shape = RoundedCornerShape(8.dp),
                     border = androidx.compose.foundation.BorderStroke(1.dp, when (entry.status) {
@@ -202,6 +205,9 @@ fun HistoryEntryCard(
                         BorrowStatus.OVERDUE_RETURNED -> Warning
                         BorrowStatus.BORROWING -> Info
                         BorrowStatus.OVERDUE_NOT_RETURNED -> Error
+                        BorrowStatus.PENDING -> Warning
+                        BorrowStatus.APPROVED -> Available
+                        BorrowStatus.REJECTED -> Error
                     })
                 ) {
                     Row(
@@ -213,6 +219,9 @@ fun HistoryEntryCard(
                                 BorrowStatus.RETURNED, BorrowStatus.OVERDUE_RETURNED -> Icons.Default.CheckCircle
                                 BorrowStatus.BORROWING -> Icons.Default.AccessTime
                                 BorrowStatus.OVERDUE_NOT_RETURNED -> Icons.Default.Warning
+                                BorrowStatus.PENDING -> Icons.Default.HourglassEmpty
+                                BorrowStatus.APPROVED -> Icons.Default.CheckCircle
+                                BorrowStatus.REJECTED -> Icons.Default.Cancel
                             },
                             contentDescription = null,
                             modifier = Modifier.size(14.dp),
@@ -221,6 +230,9 @@ fun HistoryEntryCard(
                                 BorrowStatus.OVERDUE_RETURNED -> Warning
                                 BorrowStatus.BORROWING -> Info
                                 BorrowStatus.OVERDUE_NOT_RETURNED -> Error
+                                BorrowStatus.PENDING -> Warning
+                                BorrowStatus.APPROVED -> Available
+                                BorrowStatus.REJECTED -> Error
                             }
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -233,6 +245,9 @@ fun HistoryEntryCard(
                                 BorrowStatus.OVERDUE_RETURNED -> Warning
                                 BorrowStatus.BORROWING -> Info
                                 BorrowStatus.OVERDUE_NOT_RETURNED -> Error
+                                BorrowStatus.PENDING -> Warning
+                                BorrowStatus.APPROVED -> Available
+                                BorrowStatus.REJECTED -> Error
                             }
                         )
                     }

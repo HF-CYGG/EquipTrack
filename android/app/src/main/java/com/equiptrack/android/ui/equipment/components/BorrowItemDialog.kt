@@ -67,6 +67,8 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
+import androidx.compose.runtime.saveable.rememberSaveable
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun BorrowItemDialog(
@@ -85,21 +87,21 @@ fun BorrowItemDialog(
     val hapticEnabled = true
     val scope = rememberCoroutineScope()
     
-    var isPersonalBorrow by remember { mutableStateOf(true) }
-    var borrowerName by remember { mutableStateOf("") }
-    var borrowerPhone by remember { mutableStateOf("") }
-    var borrowerId by remember { mutableStateOf<String?>(null) }
+    var isPersonalBorrow by rememberSaveable { mutableStateOf(true) }
+    var borrowerName by rememberSaveable { mutableStateOf("") }
+    var borrowerPhone by rememberSaveable { mutableStateOf("") }
+    var borrowerId by rememberSaveable { mutableStateOf<String?>(null) }
     var expectedReturnDate by remember { mutableStateOf<Date?>(null) }
-    var capturedImageUri by remember { mutableStateOf<Uri?>(null) }
-    var photoBase64 by remember { mutableStateOf<String?>(null) }
-    var borrowQuantity by remember { mutableStateOf(1) }
+    var capturedImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var photoBase64 by rememberSaveable { mutableStateOf<String?>(null) }
+    var borrowQuantity by rememberSaveable { mutableStateOf(1) }
     
-    var nameError by remember { mutableStateOf<String?>(null) }
-    var phoneError by remember { mutableStateOf<String?>(null) }
-    var dateError by remember { mutableStateOf<String?>(null) }
-    var photoError by remember { mutableStateOf<String?>(null) }
+    var nameError by rememberSaveable { mutableStateOf<String?>(null) }
+    var phoneError by rememberSaveable { mutableStateOf<String?>(null) }
+    var dateError by rememberSaveable { mutableStateOf<String?>(null) }
+    var photoError by rememberSaveable { mutableStateOf<String?>(null) }
     
-    var showCamera by remember { mutableStateOf(false) }
+    var showCamera by rememberSaveable { mutableStateOf(false) }
     
     val isPhotoRequired = currentUser?.role != UserRole.SUPER_ADMIN
     

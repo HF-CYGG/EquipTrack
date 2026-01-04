@@ -140,6 +140,10 @@ interface EquipTrackApiService {
         @Body request: BorrowRequestCreateRequest
     ): Response<BorrowRequestEntry>
 
+    @GET("api/borrow-requests/mine")
+    suspend fun getMyBorrowRequests(): Response<List<BorrowRequestEntry>>
+
+    // Review endpoints
     @GET("api/borrow-requests/review")
     suspend fun getBorrowReviewRequests(
         @Query("status") status: String? = null

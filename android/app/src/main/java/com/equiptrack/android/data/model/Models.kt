@@ -138,7 +138,13 @@ enum class BorrowStatus(val displayName: String) {
     @SerializedName("借用中")
     BORROWING("借用中"),
     @SerializedName("逾期未归还")
-    OVERDUE_NOT_RETURNED("逾期未归还")
+    OVERDUE_NOT_RETURNED("逾期未归还"),
+    @SerializedName("pending")
+    PENDING("审核中"),
+    @SerializedName("approved")
+    APPROVED("已批准"),
+    @SerializedName("rejected")
+    REJECTED("已拒绝")
 }
 
 @Immutable

@@ -31,3 +31,6 @@ android/app/google-services.json
 # Trae AI IDE
 .trae/
 
+# Documentation
+docs/
+

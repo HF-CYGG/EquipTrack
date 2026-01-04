@@ -42,6 +42,7 @@ import com.equiptrack.android.ui.components.AnimatedOutlinedButton
 import com.equiptrack.android.ui.components.CameraCapture
 import com.equiptrack.android.utils.CameraUtils
 import com.equiptrack.android.ui.theme.LocalHapticFeedbackEnabled
+import androidx.compose.runtime.saveable.rememberSaveable
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -58,10 +59,10 @@ fun ReturnItemDialog(
     val haptic = LocalHapticFeedback.current
     val hapticEnabled = LocalHapticFeedbackEnabled.current
     
-    var capturedImageUri by remember { mutableStateOf<Uri?>(null) }
-    var photoBase64 by remember { mutableStateOf<String?>(null) }
-    var photoError by remember { mutableStateOf<String?>(null) }
-    var showCamera by remember { mutableStateOf(false) }
+    var capturedImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var photoBase64 by rememberSaveable { mutableStateOf<String?>(null) }
+    var photoError by rememberSaveable { mutableStateOf<String?>(null) }
+    var showCamera by rememberSaveable { mutableStateOf(false) }
     
     val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
     val isOverdue = Date().after(historyEntry.expectedReturnDate)

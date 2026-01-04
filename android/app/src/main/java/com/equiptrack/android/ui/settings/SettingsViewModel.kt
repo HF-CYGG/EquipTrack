@@ -14,18 +14,75 @@ import javax.inject.Inject
 import java.net.HttpURLConnection
 import java.net.URL
 
+import com.equiptrack.android.utils.AutoStartPermissionHelper
+import android.content.Context
+import android.content.Intent
+
+import com.equiptrack.android.services.NotificationPollingService
+
+import com.equiptrack.android.data.repository.AuthRepository
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val localDebugSeeder: LocalDebugSeeder,
     private val httpLoggingInterceptor: HttpLoggingInterceptor,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
     fun getServerUrl(): String = settingsRepository.getServerUrl() ?: ""
     fun isLocalDebug(): Boolean = settingsRepository.isLocalDebug()
     fun isSetupCompleted(): Boolean = settingsRepository.isSetupCompleted()
+
+    fun checkAutoStartPermission(context: Context): Boolean {
+        return AutoStartPermissionHelper.isAutoStartPermissionAvailable(context)
+    }
+
+    fun requestAutoStartPermission(context: Context) {
+        val intent = AutoStartPermissionHelper.getAutoStartPermissionIntent(context)
+        if (intent != null) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        }
+    }
+    
+    fun togglePollingService(context: Context, enabled: Boolean) {
+        val intent = Intent(context, NotificationPollingService::class.java)
+        if (enabled) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        } else {
+            intent.action = NotificationPollingService.ACTION_STOP
+            context.startService(intent)
+        }
+    }
+    
+    fun isPollingServiceRunning(context: Context): Boolean {
+        val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        for (service in manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (NotificationPollingService::class.java.name == service.service.className) {
+                return true
+            }
+        }
+        return false
+    }
+
     fun saveServerUrl(url: String) {
         viewModelScope.launch {
+            val oldUrl = settingsRepository.getServerUrl()
+            // 如果旧地址存在且与新地址不同，则清理数据
+            if (!oldUrl.isNullOrBlank() && oldUrl != url) {
+                // 清理所有本地数据库数据
+                localDebugSeeder.clearAllData()
+                // 退出登录（清理Auth Token等）
+                authRepository.logout()
+                // 触发会话过期（这将导航回登录页，并确保后续重新加载数据）
+                sessionManager.onSessionExpired()
+            }
+
             settingsRepository.saveServerUrl(url)
             settingsRepository.setSetupCompleted(true)
             // 当启用本地调试后，自动初始化本地示例数据
