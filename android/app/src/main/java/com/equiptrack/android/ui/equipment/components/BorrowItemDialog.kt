@@ -101,6 +101,10 @@ fun BorrowItemDialog(
     var dateError by rememberSaveable { mutableStateOf<String?>(null) }
     var photoError by rememberSaveable { mutableStateOf<String?>(null) }
     
+    // State for manual quantity input dialog
+    var showQuantityDialog by remember { mutableStateOf(false) }
+    var tempQuantityStr by remember { mutableStateOf("") }
+    
     var showCamera by rememberSaveable { mutableStateOf(false) }
     
     val isPhotoRequired = currentUser?.role != UserRole.SUPER_ADMIN
@@ -375,7 +379,11 @@ fun BorrowItemDialog(
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier
                                         .padding(horizontal = 20.dp) // Reduced padding
-                                        .widthIn(min = 32.dp),
+                                        .widthIn(min = 32.dp)
+                                        .clickable {
+                                            tempQuantityStr = borrowQuantity.toString()
+                                            showQuantityDialog = true
+                                        },
                                     textAlign = TextAlign.Center
                                 )
                                 
@@ -758,6 +766,57 @@ fun BorrowItemDialog(
         }
     }
     
+    if (showQuantityDialog) {
+        AlertDialog(
+            onDismissRequest = { showQuantityDialog = false },
+            title = { Text("输入借用数量") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = tempQuantityStr,
+                        onValueChange = { newValue ->
+                            if (newValue.all { it.isDigit() }) {
+                                tempQuantityStr = newValue
+                            }
+                        },
+                        label = { Text("数量") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isError = (tempQuantityStr.toIntOrNull() ?: 0) > item.availableQuantity
+                    )
+                    val inputQty = tempQuantityStr.toIntOrNull() ?: 0
+                    if (inputQty > item.availableQuantity) {
+                        Text(
+                            text = "超出可用库存 (最大: ${item.availableQuantity})",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val qty = tempQuantityStr.toIntOrNull() ?: 0
+                        if (qty > 0 && qty <= item.availableQuantity) {
+                            borrowQuantity = qty
+                            showQuantityDialog = false
+                        }
+                    },
+                    enabled = (tempQuantityStr.toIntOrNull() ?: 0) in 1..item.availableQuantity
+                ) {
+                    Text("确定")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showQuantityDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
     if (showCamera) {
         Dialog(
             onDismissRequest = { showCamera = false },

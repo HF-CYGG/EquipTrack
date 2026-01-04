@@ -164,6 +164,14 @@ private fun UsageGuideSection() {
         Spacer(modifier = Modifier.height(4.dp))
         Text("5. 个性化设置：", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
         Text("   支持自定义主题颜色、背景壁纸。自定义壁纸支持调整磨砂（模糊）程度，顶部栏将自动适配磨砂效果。", style = MaterialTheme.typography.bodyMedium)
+
+        Spacer(modifier = Modifier.height(4.dp))
+        Text("6. 服务器配置：", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+        Text("   在登录页或设置中可修改服务器地址。注意：修改服务器地址将自动清除本地所有数据并退出登录，以防止数据冲突。", style = MaterialTheme.typography.bodyMedium)
+
+        Spacer(modifier = Modifier.height(4.dp))
+        Text("7. 通知系统：", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+        Text("   系统集成了FCM推送服务。借用申请、审批结果、归还提醒等关键事件将通过通知栏即时触达（需开启系统通知权限）。", style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -180,6 +188,10 @@ private fun FAQSection() {
         Spacer(modifier = Modifier.height(8.dp))
         Text("Q：借用记录显示不准确怎么办？", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
         Text("A：下拉刷新列表。系统会自动同步最新数据并清除本地陈旧缓存，确保数据一致。", style = MaterialTheme.typography.bodyMedium)
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("Q：修改服务器地址后为什么会被登出？", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        Text("A：为了保证数据安全性与一致性，切换服务器意味着连接到不同的数据源，因此必须清除旧数据并重新认证。", style = MaterialTheme.typography.bodyMedium)
     }
 }
 
