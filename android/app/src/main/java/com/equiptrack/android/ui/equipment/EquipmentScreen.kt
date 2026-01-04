@@ -62,6 +62,7 @@ import com.equiptrack.android.ui.components.AnimatedIconButton
 import com.equiptrack.android.ui.components.AnimatedSmallFloatingActionButton
 import com.equiptrack.android.ui.components.EquipmentListSkeleton
 import com.equiptrack.android.ui.components.AnimatedListItem
+import com.equiptrack.android.ui.components.verticalFadingEdge
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -404,9 +405,11 @@ fun EquipmentScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .weight(1f)
+                        .verticalFadingEdge(topFadeHeight = 32.dp, bottomFadeHeight = 32.dp),
                     state = listState,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(vertical = 12.dp)
                 ) {
                     if (filteredItems.isEmpty() && !uiState.isLoading) {
                         item {

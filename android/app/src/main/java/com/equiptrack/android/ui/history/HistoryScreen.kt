@@ -18,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -120,7 +121,7 @@ fun HistoryScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp)
+                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 4.dp)
                 ) {
                     // Department Filter for Super Admin
                     if (viewModel.getCurrentUser()?.role == com.equiptrack.android.data.model.UserRole.SUPER_ADMIN) {
@@ -141,10 +142,16 @@ fun HistoryScreen(
                         val listAnimationType = themeOverrides.listAnimationType ?: navVm.settingsRepository.getListAnimationType()
                         val enableAnimations = !lowPerformanceMode && listAnimationType != "None"
                         
-                        LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            state = listState
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .verticalFadingEdge(topFadeHeight = 32.dp, bottomFadeHeight = 32.dp)
                         ) {
+                            LazyColumn(
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                state = listState,
+                                contentPadding = PaddingValues(vertical = 12.dp)
+                            ) {
                             if (historyEntries.isEmpty()) {
                                 item {
                                     Card(
@@ -208,6 +215,7 @@ fun HistoryScreen(
                                 }
                             }
                         }
+                    }
                     }
                 }
             }
