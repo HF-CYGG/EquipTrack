@@ -133,25 +133,6 @@ fun BorrowItemDialog(
         }
     }
     
-    if (showCamera) {
-        Dialog(
-            onDismissRequest = { showCamera = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            CameraCapture(
-                onImageCaptured = { uri ->
-                    capturedImageUri = uri
-                    showCamera = false
-                },
-                onError = { exception ->
-                    photoError = "拍照失败: ${exception.message}"
-                    showCamera = false
-                },
-                onClose = { showCamera = false }
-            )
-        }
-    }
-    
     val today = java.time.LocalDate.now()
     val m3Colors = MaterialTheme.colorScheme
     val dialogColors = remember(m3Colors) {
@@ -774,6 +755,25 @@ fun BorrowItemDialog(
                     }
                 }
             }
+        }
+    }
+    
+    if (showCamera) {
+        Dialog(
+            onDismissRequest = { showCamera = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            CameraCapture(
+                onImageCaptured = { uri ->
+                    capturedImageUri = uri
+                    showCamera = false
+                },
+                onError = { exception ->
+                    photoError = "拍照失败: ${exception.message}"
+                    showCamera = false
+                },
+                onClose = { showCamera = false }
+            )
         }
     }
 }

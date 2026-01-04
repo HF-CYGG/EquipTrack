@@ -94,25 +94,6 @@ fun ReturnItemDialog(
         }
     }
     
-    if (showCamera) {
-        Dialog(
-            onDismissRequest = { showCamera = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            CameraCapture(
-                onImageCaptured = { uri ->
-                    capturedImageUri = uri
-                    showCamera = false
-                },
-                onError = { exception ->
-                    photoError = "拍照失败: ${exception.message}"
-                    showCamera = false
-                },
-                onClose = { showCamera = false }
-            )
-        }
-    }
-    
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -452,6 +433,25 @@ fun ReturnItemDialog(
                     }
                 }
             }
+        }
+    }
+    
+    if (showCamera) {
+        Dialog(
+            onDismissRequest = { showCamera = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            CameraCapture(
+                onImageCaptured = { uri ->
+                    capturedImageUri = uri
+                    showCamera = false
+                },
+                onError = { exception ->
+                    photoError = "拍照失败: ${exception.message}"
+                    showCamera = false
+                },
+                onClose = { showCamera = false }
+            )
         }
     }
 }

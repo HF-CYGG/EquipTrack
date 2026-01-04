@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,7 +19,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
@@ -45,6 +50,7 @@ fun CameraCapture(
     var imageCapture: ImageCapture? by remember { mutableStateOf(null) }
     var cameraExecutor: ExecutorService? by remember { mutableStateOf(null) }
     var flashMode by remember { mutableStateOf(ImageCapture.FLASH_MODE_OFF) }
+    var isCapturing by remember { mutableStateOf(false) }
     
     LaunchedEffect(Unit) {
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -100,22 +106,26 @@ fun CameraCapture(
                 // Grid Overlay
                 CameraGridOverlay()
                 
-                // Camera controls overlay
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.SpaceBetween
+                // Top Gradient Scrim & Controls
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent)
+                            )
+                        )
+                        .padding(16.dp)
                 ) {
-                    // Top bar
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color.Black.copy(alpha = 0.3f))
-                            .padding(16.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(
-                            onClick = onClose
+                            onClick = onClose,
+                            modifier = Modifier.background(Color.Black.copy(alpha = 0.2f), CircleShape)
                         ) {
                             Icon(
                                 Icons.Default.Close,
@@ -134,7 +144,8 @@ fun CameraCapture(
                                 }
                                 flashMode = newMode
                                 imageCapture?.flashMode = newMode
-                            }
+                            },
+                            modifier = Modifier.background(Color.Black.copy(alpha = 0.2f), CircleShape)
                         ) {
                             Icon(
                                 imageVector = when (flashMode) {
@@ -147,47 +158,85 @@ fun CameraCapture(
                             )
                         }
                     }
+                }
+                
+                // Center Reticle (Visual only)
+                Box(modifier = Modifier.align(Alignment.Center)) {
+                    Canvas(modifier = Modifier.size(48.dp)) {
+                        val stroke = Stroke(width = 2.dp.toPx())
+                        val color = Color.White.copy(alpha = 0.5f)
+                        val length = 12.dp.toPx()
+                        
+                        // Corners
+                        // Top-Left
+                        drawLine(color, start = androidx.compose.ui.geometry.Offset(0f, length), end = androidx.compose.ui.geometry.Offset(0f, 0f), strokeWidth = stroke.width)
+                        drawLine(color, start = androidx.compose.ui.geometry.Offset(0f, 0f), end = androidx.compose.ui.geometry.Offset(length, 0f), strokeWidth = stroke.width)
+                        
+                        // Top-Right
+                        drawLine(color, start = androidx.compose.ui.geometry.Offset(size.width - length, 0f), end = androidx.compose.ui.geometry.Offset(size.width, 0f), strokeWidth = stroke.width)
+                        drawLine(color, start = androidx.compose.ui.geometry.Offset(size.width, 0f), end = androidx.compose.ui.geometry.Offset(size.width, length), strokeWidth = stroke.width)
+                        
+                        // Bottom-Left
+                        drawLine(color, start = androidx.compose.ui.geometry.Offset(0f, size.height - length), end = androidx.compose.ui.geometry.Offset(0f, size.height), strokeWidth = stroke.width)
+                        drawLine(color, start = androidx.compose.ui.geometry.Offset(0f, size.height), end = androidx.compose.ui.geometry.Offset(length, size.height), strokeWidth = stroke.width)
+                        
+                        // Bottom-Right
+                        drawLine(color, start = androidx.compose.ui.geometry.Offset(size.width - length, size.height), end = androidx.compose.ui.geometry.Offset(size.width, size.height), strokeWidth = stroke.width)
+                        drawLine(color, start = androidx.compose.ui.geometry.Offset(size.width, size.height), end = androidx.compose.ui.geometry.Offset(size.width, size.height - length), strokeWidth = stroke.width)
+                    }
+                }
+
+                // Bottom Gradient Scrim & Controls
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
+                            )
+                        )
+                        .padding(vertical = 40.dp, horizontal = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Shutter button
+                    val scale by animateFloatAsState(if (isCapturing) 0.85f else 1f, label = "shutter")
                     
-                    // Bottom controls
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color.Black.copy(alpha = 0.3f))
-                            .padding(vertical = 32.dp),
+                            .scale(scale)
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .background(Color.Transparent)
+                            .border(4.dp, Color.White, CircleShape)
+                            .clickable(enabled = !isCapturing, onClick = {
+                                if (isCapturing) return@clickable
+                                isCapturing = true
+                                val capture = imageCapture ?: return@clickable
+                                val outputFile = CameraUtils.createImageFile(context)
+                                
+                                CameraUtils.takePhoto(
+                                    imageCapture = capture,
+                                    outputFile = outputFile,
+                                    context = context,
+                                    onImageCaptured = { uri ->
+                                        isCapturing = false
+                                        onImageCaptured(uri)
+                                    },
+                                    onError = { exception ->
+                                        isCapturing = false
+                                        onError(exception)
+                                    }
+                                )
+                            }),
                         contentAlignment = Alignment.Center
                     ) {
-                        // Shutter button
                         Box(
                             modifier = Modifier
-                                .size(80.dp)
+                                .size(68.dp)
                                 .clip(CircleShape)
-                                .background(Color.Transparent)
-                                .border(4.dp, Color.White, CircleShape)
-                                .clickable(onClick = {
-                                    val capture = imageCapture ?: return@clickable
-                                    val outputFile = CameraUtils.createImageFile(context)
-                                    
-                                    CameraUtils.takePhoto(
-                                        imageCapture = capture,
-                                        outputFile = outputFile,
-                                        context = context,
-                                        onImageCaptured = { uri ->
-                                            onImageCaptured(uri)
-                                        },
-                                        onError = { exception ->
-                                            onError(exception)
-                                        }
-                                    )
-                                }),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.8f))
-                            )
-                        }
+                                .background(if (isCapturing) Color.LightGray else Color.White)
+                        )
                     }
                 }
             }
@@ -220,7 +269,7 @@ fun CameraCapture(
                     cameraPermissionState.launchPermissionRequest()
                 }
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(color = Color.White)
                 }
             }
         }
@@ -229,11 +278,11 @@ fun CameraCapture(
 
 @Composable
 fun CameraGridOverlay() {
-    androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
         val width = size.width
         val height = size.height
         val strokeWidth = 1.dp.toPx()
-        val color = Color.White.copy(alpha = 0.3f)
+        val color = Color.White.copy(alpha = 0.2f)
 
         // Vertical lines
         drawLine(
