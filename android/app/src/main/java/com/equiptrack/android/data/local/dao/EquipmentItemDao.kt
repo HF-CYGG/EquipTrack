@@ -42,6 +42,19 @@ interface EquipmentItemDao {
     
     @Query("DELETE FROM equipment_items")
     suspend fun deleteAllItems()
+
+    @Query("DELETE FROM equipment_items WHERE departmentId = :departmentId")
+    suspend fun deleteItemsByDepartment(departmentId: String)
+    
+    @Transaction
+    suspend fun replaceItems(items: List<EquipmentItem>, departmentId: String?) {
+        if (departmentId != null) {
+            deleteItemsByDepartment(departmentId)
+        } else {
+            deleteAllItems()
+        }
+        insertItems(items)
+    }
     
     @Query("UPDATE equipment_items SET availableQuantity = availableQuantity - 1 WHERE id = :itemId AND availableQuantity > 0")
     suspend fun decreaseAvailableQuantity(itemId: String): Int

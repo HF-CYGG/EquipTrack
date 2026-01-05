@@ -132,8 +132,11 @@ class UserViewModel @Inject constructor(
         syncUsers()
     }
 
+    private var syncJob: kotlinx.coroutines.Job? = null
+
     fun syncUsers() {
-        viewModelScope.launch {
+        syncJob?.cancel()
+        syncJob = viewModelScope.launch {
             try {
                 if (!_isRefreshing.value) {
                     _uiState.value = _uiState.value.copy(isLoading = true)

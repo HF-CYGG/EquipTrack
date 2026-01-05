@@ -156,8 +156,11 @@ class EquipmentViewModel @Inject constructor(
         syncData(isUserRefresh = true)
     }
 
+    private var syncJob: kotlinx.coroutines.Job? = null
+
     fun syncData(isUserRefresh: Boolean = false) {
-        viewModelScope.launch {
+        syncJob?.cancel()
+        syncJob = viewModelScope.launch {
             try {
                 if (!_isRefreshing.value) {
                     _uiState.update { it.copy(isLoading = true) }
@@ -185,8 +188,8 @@ class EquipmentViewModel @Inject constructor(
                     launch {
                         if (user != null) {
                             // 允许所有用户同步指定部门或所有部门数据
-                            // 如果未选择部门 (null)，则请求 "all" 以获取所有数据
-                            val departmentId = _filterDepartmentId.value ?: "all"
+                            // 如果未选择部门 (null)，则传递 null 以获取所有数据 (触发 deleteAllItems)
+                            val departmentId = _filterDepartmentId.value
                             equipmentRepository.syncItems(user.role, departmentId).collect { result ->
                                 if (result is NetworkResult.Error) {
                                     hasError = true

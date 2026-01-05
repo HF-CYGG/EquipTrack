@@ -100,7 +100,7 @@ class EquipmentRepository @Inject constructor(
         when (result) {
             is NetworkResult.Success -> {
                 val items = result.data ?: emptyList()
-                equipmentItemDao.insertItems(items)
+                equipmentItemDao.replaceItems(items, departmentId)
                 
                 // Sync borrow history
                 val histories = items.flatMap { item ->
@@ -125,9 +125,7 @@ class EquipmentRepository @Inject constructor(
                         )
                     }
                 }
-                if (histories.isNotEmpty()) {
-                    borrowHistoryDao.insertHistories(histories)
-                }
+                borrowHistoryDao.replaceHistory(histories, departmentId)
                 
                 emit(NetworkResult.Success(items))
             }

@@ -90,6 +90,9 @@ class LocalDebugSeeder @Inject constructor(
         ensureCategory("cat-tools", Category(id = "cat-tools", name = "工具器材", color = "#8E44AD"))
 
         // Seed equipment items
+        // NOTE: Commented out to satisfy the requirement of empty equipment list in local debug mode.
+        // Users should manually add items or start with an empty list.
+        /*
         ensureItem(
             id = "item-laptop-001",
             item = EquipmentItem(
@@ -108,8 +111,8 @@ class LocalDebugSeeder @Inject constructor(
             item = EquipmentItem(
                 id = "item-camera-001",
                 name = "索尼 A7M4",
-                categoryId = "cat-camera",
-                departmentId = deptId2,
+                categoryId = "cat-camera", // Fixed: deptId2 was undefined, should verify
+                departmentId = deptId, // Use deptId as deptId2 was not defined in this scope
                 description = "全画幅微单相机",
                 image = null,
                 quantity = 5,
@@ -129,8 +132,11 @@ class LocalDebugSeeder @Inject constructor(
                 availableQuantity = 12
             )
         )
+        */
 
         // Seed borrow history examples
+        // Also commented out since items are gone.
+        /*
         ensureBorrow(
             id = "bh-001",
             history = BorrowHistoryEntry(
@@ -156,7 +162,7 @@ class LocalDebugSeeder @Inject constructor(
                 id = "bh-002",
                 itemId = "item-camera-001",
                 itemName = "索尼 A7M4",
-                departmentId = deptId2,
+                departmentId = deptId, // Fixed deptId2
                 borrowerName = "张老师",
                 borrowerContact = "advanced",
                 operatorUserId = "user-002",
@@ -169,6 +175,7 @@ class LocalDebugSeeder @Inject constructor(
                 forcedReturnBy = "王管理"
             )
         )
+        */
     }
 
     suspend fun resetLocalSeed() = withContext(Dispatchers.IO) {

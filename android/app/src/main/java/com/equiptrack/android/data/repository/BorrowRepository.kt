@@ -445,42 +445,10 @@ class BorrowRepository @Inject constructor(
                         status = try { entry.status } catch (e: NullPointerException) { BorrowStatus.BORROWING }
                     )
                 }
-                // Clear old history before inserting new ones to prevent duplicates if IDs changed or if we want a fresh sync
-                // However, wiping all history might be too aggressive if sync fails later.
-                // But since we get the FULL history from server for the user/department, we can safely replace.
-                // Ideally we should delete only those that are not in the new list, or just rely on REPLACE strategy.
-                // If the server returns duplicates (which it shouldn't), REPLACE will handle ID collisions.
-                // But if the server returns the SAME logical entry with a DIFFERENT ID (e.g. generated on fly), we get duplicates.
-                // Based on items.json, the IDs look stable ("id": "hist_...").
                 
-                // To be safe and ensure clean state matching server:
-                // 1. Get all local IDs
-                // 2. Delete local items that are NOT in the new list (optional, for cleanup)
-                // 3. Insert/Replace new items
-                
-                // Simple approach for now: Since `insertHistories` uses REPLACE, existing IDs are updated.
-                // If users see "duplicates", it implies different IDs for same content.
-                // Let's check if we should clear table for the relevant scope (all or dept).
-                // For now, let's try clearing all history before inserting to guarantee 1:1 sync with server.
-                // CAUTION: Clearing table inside the flow can cause UI flicker or empty state if collection is observing.
-                // BUT, since we are inside a 'Success' block, we have the new data ready.
-                // The Dao.getAllHistory() flow will emit the empty list when we delete, then the new list when we insert.
-                // This causes the "jump" effect!
-                // To avoid jump: Use a transaction or just INSERT/UPDATE without delete, or delete strictly what's needed.
-                // If we don't delete, we might keep stale records.
-                // A better way is to delete only IDs that are NOT in sanitizedHistories.
-                
-                // Refined Strategy:
-                // 1. Insert new histories (REPLACE)
-                // 2. Delete histories that are NOT in the new list (stale)
-                // This ensures there is never an "empty" state emitted between delete and insert.
-                
-                borrowHistoryDao.insertHistories(sanitizedHistories)
-                
-                // Optional: Delete stale records (implementation depends on DAO capabilities)
-                // For now, to fix the "jump" issue caused by `deleteAllHistory`, we REMOVE the deleteAllHistory call.
-                // If stale records become an issue, we will implement a smarter delete.
-                // borrowHistoryDao.deleteAllHistory() // REMOVED to prevent UI flicker/jump
+                // Use replaceHistory to clear old data and insert new data in a single transaction
+                // This prevents UI flicker and ensures clean state (no duplicates)
+                borrowHistoryDao.replaceHistory(sanitizedHistories, departmentId)
                 
                 emit(NetworkResult.Success(sanitizedHistories))
             }

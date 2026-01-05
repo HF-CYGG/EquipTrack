@@ -30,4 +30,10 @@ interface DepartmentDao {
     
     @Query("DELETE FROM departments")
     suspend fun deleteAllDepartments()
+
+    @Transaction
+    suspend fun replaceDepartments(departments: List<Department>) {
+        deleteAllDepartments()
+        insertDepartments(departments)
+    }
 }

@@ -52,7 +52,7 @@ class UserRepository @Inject constructor(
         when (result) {
             is NetworkResult.Success -> {
                 val users = result.data ?: emptyList()
-                userDao.insertUsers(users)
+                userDao.replaceUsers(users, departmentId)
                 emit(NetworkResult.Success(users))
             }
             is NetworkResult.Error -> {

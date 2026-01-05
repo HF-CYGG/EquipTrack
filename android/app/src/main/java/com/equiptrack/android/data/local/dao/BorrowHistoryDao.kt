@@ -50,6 +50,21 @@ interface BorrowHistoryDao {
     
     @Query("DELETE FROM borrow_history")
     suspend fun deleteAllHistory()
+
+    @Query("DELETE FROM borrow_history WHERE departmentId = :departmentId")
+    suspend fun deleteHistoryByDepartment(departmentId: String)
+
+    @Transaction
+    suspend fun replaceHistory(histories: List<BorrowHistoryEntry>, departmentId: String?) {
+        if (departmentId != null) {
+            deleteHistoryByDepartment(departmentId)
+        } else {
+            deleteAllHistory()
+        }
+        if (histories.isNotEmpty()) {
+            insertHistories(histories)
+        }
+    }
     
     @Query("UPDATE borrow_history SET status = :status, returnDate = :returnDate WHERE id = :historyId")
     suspend fun updateReturnStatus(historyId: String, status: BorrowStatus, returnDate: Date)

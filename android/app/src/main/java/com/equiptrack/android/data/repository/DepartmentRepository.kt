@@ -39,7 +39,7 @@ class DepartmentRepository @Inject constructor(
         when (result) {
             is NetworkResult.Success -> {
                 val departments = result.data ?: emptyList()
-                departmentDao.insertDepartments(departments)
+                departmentDao.replaceDepartments(departments)
                 emit(NetworkResult.Success(departments))
             }
             is NetworkResult.Error -> {

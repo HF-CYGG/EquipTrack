@@ -51,6 +51,19 @@ interface UserDao {
     
     @Query("DELETE FROM users")
     suspend fun deleteAllUsers()
+
+    @Query("DELETE FROM users WHERE departmentId = :departmentId")
+    suspend fun deleteUsersByDepartment(departmentId: String)
+
+    @Transaction
+    suspend fun replaceUsers(users: List<User>, departmentId: String?) {
+        if (departmentId != null) {
+            deleteUsersByDepartment(departmentId)
+        } else {
+            deleteAllUsers()
+        }
+        insertUsers(users)
+    }
     
     @Query("UPDATE users SET status = :status WHERE id = :userId")
     suspend fun updateUserStatus(userId: String, status: UserStatus)
