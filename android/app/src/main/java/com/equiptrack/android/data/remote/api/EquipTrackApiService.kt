@@ -18,6 +18,7 @@ interface EquipTrackApiService {
     suspend fun registerDeviceToken(@Body body: Map<String, String>): Response<ApiResponse<Boolean>>
     
     // System
+    @Headers("Cache-Control: no-cache")
     @GET("api/system/android-version")
     suspend fun getAppVersion(): Response<AppVersion>
 

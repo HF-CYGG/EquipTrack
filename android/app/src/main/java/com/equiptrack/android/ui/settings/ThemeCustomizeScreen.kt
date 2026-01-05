@@ -110,6 +110,7 @@ fun ThemeCustomizeScreen(
                 e.printStackTrace()
             }
             bgUri = uri.toString()
+            repo.setBackgroundUri(uri.toString())
         }
     }
 
