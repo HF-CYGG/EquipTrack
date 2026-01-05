@@ -18,14 +18,15 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
 fun UpdateDialog(
     version: AppVersion,
+    isUpdate: Boolean = true,
     onUpdate: () -> Unit,
     onDismiss: () -> Unit
 ) {
     Dialog(
-        onDismissRequest = { if (!version.forceUpdate) onDismiss() },
+        onDismissRequest = { if (!version.forceUpdate || !isUpdate) onDismiss() },
         properties = DialogProperties(
-            dismissOnBackPress = !version.forceUpdate,
-            dismissOnClickOutside = !version.forceUpdate
+            dismissOnBackPress = !version.forceUpdate || !isUpdate,
+            dismissOnClickOutside = !version.forceUpdate || !isUpdate
         )
     ) {
         Card(
@@ -42,7 +43,7 @@ fun UpdateDialog(
             ) {
                 // Header
                 Text(
-                    text = "发现新版本",
+                    text = if (isUpdate) "发现新版本" else "版本信息",
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
@@ -70,7 +71,7 @@ fun UpdateDialog(
 
                 // Content
                 Text(
-                    text = "更新内容：",
+                    text = if (isUpdate) "更新内容：" else "当前版本特性：",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -88,18 +89,24 @@ fun UpdateDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    if (!version.forceUpdate) {
-                        TextButton(onClick = onDismiss) {
-                            Text("稍后再说")
+                    if (isUpdate) {
+                        if (!version.forceUpdate) {
+                            TextButton(onClick = onDismiss) {
+                                Text("稍后再说")
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    
-                    Button(
-                        onClick = onUpdate,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        Text("立即更新")
+                        
+                        Button(
+                            onClick = onUpdate,
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        ) {
+                            Text("下载更新")
+                        }
+                    } else {
+                        TextButton(onClick = onDismiss) {
+                            Text("确定")
+                        }
                     }
                 }
             }

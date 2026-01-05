@@ -66,6 +66,25 @@ class AuthRepository @Inject constructor(
     }
 
     suspend fun login(contact: String, password: String): Flow<NetworkResult<User>> = flow {
+        // Local Debug Mode Logic
+        if (settingsRepository.isLocalDebug()) {
+            emit(NetworkResult.Loading())
+            // Simulate network delay
+            kotlinx.coroutines.delay(500)
+            
+            // Authenticate against local database
+            val localUser = userDao.authenticateUser(contact, password)
+            if (localUser != null) {
+                // In local mode, admin is "free to use" (no extra checks needed beyond seeding)
+                // Other users password checked by DAO (seeded as 020414)
+                saveUserSession(localUser)
+                emit(NetworkResult.Success(localUser))
+            } else {
+                emit(NetworkResult.Error("用户名或密码错误"))
+            }
+            return@flow
+        }
+
         emit(NetworkResult.Loading())
         val remoteResult = try {
             safeApiCall { apiService.login(LoginRequest(contact, password)) }
@@ -133,6 +152,49 @@ class AuthRepository @Inject constructor(
     
     fun getAuthToken(): String? {
         return sharedPreferences.getString(KEY_AUTH_TOKEN, null)
+    }
+
+    fun backupRemoteSession() {
+        if (!isLoggedIn()) return
+        val user = getCurrentUser() ?: return
+        val token = getAuthToken()
+        
+        settingsRepository.backupSession(
+            token = token,
+            userId = user.id,
+            userName = user.name,
+            userRole = user.role.displayName,
+            userContact = user.contact,
+            deptId = user.departmentId,
+            deptName = user.departmentName
+        )
+    }
+
+    fun restoreRemoteSession(): Boolean {
+        val backup = settingsRepository.getBackupSession()
+        val token = backup["token"]
+        val userId = backup["userId"]
+        
+        if (token != null && userId != null) {
+            sharedPreferences.edit().apply {
+                putString(KEY_AUTH_TOKEN, token)
+                putString(KEY_USER_ID, userId)
+                putString(KEY_USER_NAME, backup["userName"])
+                putString(KEY_USER_ROLE, backup["userRole"])
+                putString(KEY_USER_CONTACT, backup["userContact"])
+                putString(KEY_USER_DEPARTMENT_ID, backup["deptId"])
+                putString(KEY_USER_DEPARTMENT_NAME, backup["deptName"])
+                putBoolean(KEY_IS_LOGGED_IN, true)
+                apply()
+            }
+            settingsRepository.clearBackupSession()
+            return true
+        }
+        return false
+    }
+
+    fun logout() {
+        sharedPreferences.edit().clear().apply()
     }
     
     fun getCurrentUser(): User? {

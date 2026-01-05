@@ -175,6 +175,66 @@ class SettingsRepository @Inject constructor(
         private const val KEY_TAG_STYLE = "tag_style"
         private const val KEY_LOW_PERFORMANCE_MODE = "low_performance_mode"
         private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_NOTIFICATION_SERVICE_ENABLED = "notification_service_enabled"
+        
+        // Session Backup Keys
+        private const val KEY_BACKUP_AUTH_TOKEN = "backup_auth_token"
+        private const val KEY_BACKUP_USER_ID = "backup_user_id"
+        private const val KEY_BACKUP_USER_NAME = "backup_user_name"
+        private const val KEY_BACKUP_USER_ROLE = "backup_user_role"
+        private const val KEY_BACKUP_USER_CONTACT = "backup_user_contact"
+        private const val KEY_BACKUP_USER_DEPT_ID = "backup_user_dept_id"
+        private const val KEY_BACKUP_USER_DEPT_NAME = "backup_user_dept_name"
+    }
+
+    fun isNotificationServiceEnabled(): Boolean = prefs.getBoolean(KEY_NOTIFICATION_SERVICE_ENABLED, false)
+    fun setNotificationServiceEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_NOTIFICATION_SERVICE_ENABLED, enabled).apply()
+    }
+    
+    // Session Backup Methods
+    fun backupSession(
+        token: String?,
+        userId: String?,
+        userName: String?,
+        userRole: String?,
+        userContact: String?,
+        deptId: String?,
+        deptName: String?
+    ) {
+        val editor = prefs.edit()
+        editor.putString(KEY_BACKUP_AUTH_TOKEN, token)
+        editor.putString(KEY_BACKUP_USER_ID, userId)
+        editor.putString(KEY_BACKUP_USER_NAME, userName)
+        editor.putString(KEY_BACKUP_USER_ROLE, userRole)
+        editor.putString(KEY_BACKUP_USER_CONTACT, userContact)
+        editor.putString(KEY_BACKUP_USER_DEPT_ID, deptId)
+        editor.putString(KEY_BACKUP_USER_DEPT_NAME, deptName)
+        editor.apply()
+    }
+
+    fun getBackupSession(): Map<String, String?> {
+        return mapOf(
+            "token" to prefs.getString(KEY_BACKUP_AUTH_TOKEN, null),
+            "userId" to prefs.getString(KEY_BACKUP_USER_ID, null),
+            "userName" to prefs.getString(KEY_BACKUP_USER_NAME, null),
+            "userRole" to prefs.getString(KEY_BACKUP_USER_ROLE, null),
+            "userContact" to prefs.getString(KEY_BACKUP_USER_CONTACT, null),
+            "deptId" to prefs.getString(KEY_BACKUP_USER_DEPT_ID, null),
+            "deptName" to prefs.getString(KEY_BACKUP_USER_DEPT_NAME, null)
+        )
+    }
+
+    fun clearBackupSession() {
+        val editor = prefs.edit()
+        editor.remove(KEY_BACKUP_AUTH_TOKEN)
+        editor.remove(KEY_BACKUP_USER_ID)
+        editor.remove(KEY_BACKUP_USER_NAME)
+        editor.remove(KEY_BACKUP_USER_ROLE)
+        editor.remove(KEY_BACKUP_USER_CONTACT)
+        editor.remove(KEY_BACKUP_USER_DEPT_ID)
+        editor.remove(KEY_BACKUP_USER_DEPT_NAME)
+        editor.apply()
     }
 
     fun getServerUrl(): String? = prefs.getString(KEY_SERVER_URL, null)

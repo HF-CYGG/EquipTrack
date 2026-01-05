@@ -19,13 +19,19 @@ import com.equiptrack.android.notifications.ApprovalCheckWorker
 import com.equiptrack.android.notifications.ApprovalNotificationHelper
 import java.util.concurrent.TimeUnit
 
+import com.equiptrack.android.data.log.LogManager
+import kotlin.system.exitProcess
+
 @HiltAndroidApp
 class EquipTrackApplication : Application(), ImageLoaderFactory, Configuration.Provider {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
+    @Inject lateinit var logManager: LogManager
 
     override fun onCreate() {
         super.onCreate()
+
+        setupCrashHandler()
 
         ApprovalNotificationHelper.ensureChannel(this)
 
@@ -44,6 +50,21 @@ class EquipTrackApplication : Application(), ImageLoaderFactory, Configuration.P
             ExistingPeriodicWorkPolicy.UPDATE,
             workRequest
         )
+    }
+
+    private fun setupCrashHandler() {
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            try {
+                logManager.e("Crash", "Uncaught exception in thread ${thread.name}", throwable)
+                // Wait briefly for IO to complete (imperfect but better than nothing)
+                Thread.sleep(500)
+            } catch (e: Exception) {
+                // Ignore
+            } finally {
+                defaultHandler?.uncaughtException(thread, throwable) ?: exitProcess(1)
+            }
+        }
     }
 
     override fun newImageLoader(): ImageLoader {

@@ -6,26 +6,44 @@ node相关命令必须在.venv的虚拟环境下执行
 使用中文编写代码内注释内容
 尽量不更改后端服务器代码
 
-### 自动更新流程说明
-现在，您的完整自动化更新流程如下：
+### 版本发布与自动更新工作流
+为了确保客户端能够正确检测并提示更新，请严格遵守以下发布流程：
 
-1. 发布 (GitHub) :
-   - 开发者手动在 GitHub 发布新 Release (Tag)。
-   - 开发者手动构建并上传 APK 附件到 GitHub Release。
-   - GitHub Actions (sync-gitee) 自动同步 Release 信息及 APK 到 Gitee。
-2. 配置 (Server) :
-   - 您在服务器修改 server/data/app_version.json ，更新版本号 (例如 versionCode: 3 )，保持 downloadUrl 为空。
-3. 更新 (Client) :
-   - 客户端检测到服务器版本号更高。
-   - 服务器自动从 Gitee 获取最新的 APK 下载链接返回给客户端。
-   - 客户端自动下载并调用系统安装程序进行覆盖安装。
+1. **构建发行版 (Build Release)**:
+   - 在 `android/` 目录下构建正式版 APK (Release Build)。
+   - 确保 `android/app/build.gradle` 中的 `versionCode` 和 `versionName` 已更新。
+
+2. **发布托管 (Publish)**:
+   - 将构建好的 APK 上传至 Gitee 或 GitHub 的 Releases 页面进行发布。
+   - 发布页链接：`https://gitee.com/YeMiao_cats/EquipTrack/releases`
+
+3. **配置服务端 (Server Config)**:
+   - **必须步骤**：修改服务器端文件 `server/data/app_version.json`。
+   - 更新 `versionCode` (必须大于当前版本) 和 `versionName`。
+   - 更新 `updateContent` (更新日志)。
+   - **关键设置**：设置 `downloadUrl` 为 `https://gitee.com/YeMiao_cats/EquipTrack/releases`。
+   - 示例：
+     ```json
+     {
+       "versionCode": 7,
+       "versionName": "1.0.0",
+       "updateContent": "1. 新增功能A\n2. 修复问题B",
+       "downloadUrl": "https://gitee.com/YeMiao_cats/EquipTrack/releases",
+       "forceUpdate": false,
+       "releaseDate": "2026-01-05T00:00:00.000Z"
+     }
+     ```
+
+4. **客户端行为 (Client Behavior)**:
+   - 客户端会自动检测服务器上的 `versionCode`。
+   - 若发现新版本，弹出更新提示对话框。
+   - 用户点击“下载更新”时，应用将跳转到系统浏览器并打开 Gitee Releases 页面供用户手动下载。
 
 ### AI 构建与开发规则
-1. **构建流程遵从性**：
-   - AI 在协助构建时，应遵循上述“手动发布 + 自动同步”的混合流程。
-   - 不应主动建议更改为全自动发布（除非用户明确要求），以保持现有工作流的稳定性。
-2. **版本一致性检查**：
-   - 在协助发布新版本时，AI 应提醒用户同时更新 `android/app/build.gradle` (versionCode/versionName) 和 `server/data/app_version.json`。
-3. **环境约束**：
+1. **环境约束**：
    - 严格遵守 `.venv` 虚拟环境和绝对路径的使用规则。
    - Android 构建命令应在 `android/` 目录下执行。
+2. **版本一致性**：
+   - 在协助发布新版本时，必须检查 `android/app/build.gradle` 与 `server/data/app_version.json` 的版本号是否同步更新。
+3. **更新机制维护**：
+   - 任何涉及更新逻辑的修改，必须确保 `MainViewModel` 和 `UpdateManager` 正确处理 `downloadUrl` 的跳转逻辑（即 HTTP 链接应跳转浏览器）。

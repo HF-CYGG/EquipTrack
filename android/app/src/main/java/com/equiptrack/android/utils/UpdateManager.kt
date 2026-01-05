@@ -20,7 +20,7 @@ sealed class UpdateStatus {
     object Idle : UpdateStatus()
     object Checking : UpdateStatus()
     data class Available(val version: AppVersion) : UpdateStatus()
-    object NoUpdate : UpdateStatus()
+    data class NoUpdate(val version: AppVersion) : UpdateStatus()
     data class Downloading(val progress: Int) : UpdateStatus()
     object Downloaded : UpdateStatus()
     data class Error(val message: String) : UpdateStatus()
@@ -43,7 +43,17 @@ class UpdateManager @Inject constructor(
         if (remoteVersion.versionCode > currentVersionCode) {
             _updateStatus.value = UpdateStatus.Available(remoteVersion)
         } else {
-            _updateStatus.value = UpdateStatus.NoUpdate
+            _updateStatus.value = UpdateStatus.NoUpdate(remoteVersion)
+        }
+    }
+
+    fun openBrowser(url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            _updateStatus.value = UpdateStatus.Error("Failed to open link: ${e.message}")
         }
     }
 

@@ -36,7 +36,21 @@ fun ServerConfigScreen(
     var logLevel by remember { mutableStateOf(viewModel.getHttpLogLevel()) }
     var testMessage by remember { mutableStateOf<String?>(null) }
     val showAutoStart = remember { viewModel.checkAutoStartPermission(context) }
-    var isPollingEnabled by remember { mutableStateOf(viewModel.isPollingServiceRunning(context)) }
+    var isPollingEnabled by remember { mutableStateOf(viewModel.isNotificationServiceEnabled()) }
+
+    // Observe Navigation Events
+    LaunchedEffect(Unit) {
+        viewModel.navigationEvent.collect { event ->
+            when (event) {
+                is SettingsViewModel.NavigationEvent.NavigateToMain -> {
+                    onConfigSaved()
+                }
+                is SettingsViewModel.NavigationEvent.NavigateToLogin -> {
+                    onConfigSaved()
+                }
+            }
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -252,6 +266,14 @@ fun ServerConfigScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Test Session Expiry (Debug)")
+            }
+
+            // Share Logs
+            OutlinedButton(
+                onClick = { viewModel.shareLogs(context) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("分享错误日志")
             }
             
             testMessage?.let {

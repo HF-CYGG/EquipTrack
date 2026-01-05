@@ -63,13 +63,17 @@ fun ProfileScreen(
     
     var showEditDialog by remember { mutableStateOf(false) }
     var isCheckingUpdate by remember { mutableStateOf(false) }
+    var showVersionDialog by remember { mutableStateOf(false) }
+    var versionInfo by remember { mutableStateOf<com.equiptrack.android.data.model.AppVersion?>(null) }
 
     // Handle update status changes
     LaunchedEffect(updateStatus) {
         if (isCheckingUpdate) {
             when (updateStatus) {
                 is UpdateStatus.NoUpdate -> {
-                    toastState.showSuccess("当前已是最新版本")
+                    // Show current version details
+                    versionInfo = (updateStatus as UpdateStatus.NoUpdate).version
+                    showVersionDialog = true
                     isCheckingUpdate = false
                 }
                 is UpdateStatus.Available -> {
@@ -301,7 +305,14 @@ fun ProfileScreen(
                             }
                         )
                         Text("说明：支持多部门、角色权限、带拍照的借还流程、借用审批与历史审计。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("开发者：夜喵cats（https://github.com/HF-CYGG）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = "开发者：夜喵cats（https://github.com/HF-CYGG）",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable {
+                                mainViewModel.startDownload("https://github.com/HF-CYGG")
+                            }
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
                         AnimatedOutlinedButton(onClick = onNavigateToSystemInfo, modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Default.Info, contentDescription = null)
@@ -339,6 +350,15 @@ fun ProfileScreen(
             refreshing = isRefreshing,
             state = pullRefreshState,
             modifier = Modifier.align(Alignment.TopCenter)
+        )
+    }
+
+    if (showVersionDialog && versionInfo != null) {
+        com.equiptrack.android.ui.components.UpdateDialog(
+            version = versionInfo!!,
+            isUpdate = false,
+            onUpdate = {},
+            onDismiss = { showVersionDialog = false }
         )
     }
     

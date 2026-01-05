@@ -34,7 +34,12 @@ class MainViewModel @Inject constructor(
     }
     
     fun startDownload(url: String) {
-        updateManager.startDownload(url)
+        // Redirect to browser instead of downloading directly if it is a webpage
+        if (url.startsWith("http") && !url.endsWith(".apk")) {
+            updateManager.openBrowser(url)
+        } else {
+            updateManager.startDownload(url)
+        }
     }
     
     fun dismissUpdate() {

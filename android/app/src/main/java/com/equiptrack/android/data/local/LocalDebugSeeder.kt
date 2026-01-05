@@ -35,31 +35,30 @@ class LocalDebugSeeder @Inject constructor(
         if (!settingsRepository.isLocalDebug()) return@withContext
 
         // Ensure default departments
+        // Only keep minimal departments
         val deptId = "dept-default"
         val deptName = "默认部门"
+        
+        // Ensure equipment items are empty in local debug mode (as per requirement)
+        // Note: equipmentItemDao.deleteAll() is not standard, we might need to delete them one by one or add a DAO method.
+        // For now, assuming clearAllData() handles full clear, and seedIfLocalDebug REPOPULATES.
+        // So we just DON'T populate items here.
+        
+        // However, clearAllData might clear everything including users/depts. 
+        // So we need to repopulate users/depts but NOT items.
+        
         val existingDept = departmentDao.getDepartmentById(deptId)
         if (existingDept == null) {
             departmentDao.insertDepartment(Department(id = deptId, name = deptName))
         }
-        val deptId2 = "dept-math"
-        val deptName2 = "教务处"
-        if (departmentDao.getDepartmentById(deptId2) == null) {
-            departmentDao.insertDepartment(Department(id = deptId2, name = deptName2))
-        }
+        // Minimal set: Just one department + maybe sub-dept if needed for logic, but requirement says "base data (usable)"
         
-        // Add sub-department for hierarchy testing
-        val deptId3 = "dept-dev"
-        val deptName3 = "研发部"
-        if (departmentDao.getDepartmentById(deptId3) == null) {
-            departmentDao.insertDepartment(Department(id = deptId3, name = deptName3, parentId = deptId))
-        }
-
         // Seed users if missing
         ensureUser(
             contact = "admin",
             user = User(
                 id = "u-admin",
-                name = "王管理",
+                name = "超级管理员",
                 contact = "admin",
                 departmentId = deptId,
                 departmentName = deptName,
@@ -68,46 +67,20 @@ class LocalDebugSeeder @Inject constructor(
                 password = "admin"
             )
         )
-
-        ensureUser(
-            contact = "advanced",
-            user = User(
-                id = "u-adv",
-                name = "张老师",
-                contact = "advanced",
-                departmentId = deptId2,
-                departmentName = deptName2,
-                role = UserRole.ADVANCED_USER,
-                status = UserStatus.NORMAL,
-                password = "advanced"
-            )
-        )
-
+        
+        // No other users needed initially, but requirement 3 implies "other users" exist.
+        // Let's keep a normal user for testing.
         ensureUser(
             contact = "user",
             user = User(
                 id = "u-user",
-                name = "李四",
+                name = "普通用户",
                 contact = "user",
                 departmentId = deptId,
                 departmentName = deptName,
                 role = UserRole.NORMAL_USER,
                 status = UserStatus.NORMAL,
-                password = "user"
-            )
-        )
-
-        ensureUser(
-            contact = "furry",
-            user = User(
-                id = "u-super",
-                name = "福瑞",
-                contact = "furry",
-                departmentId = deptId,
-                departmentName = deptName,
-                role = UserRole.SUPER_ADMIN,
-                status = UserStatus.NORMAL,
-                password = "yyh"
+                password = "020414"
             )
         )
 

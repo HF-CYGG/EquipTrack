@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.equiptrack.android.data.remote.AuthInterceptor
 import com.equiptrack.android.data.remote.BaseUrlInterceptor
+import com.equiptrack.android.data.remote.FileLoggingInterceptor
 import com.equiptrack.android.data.remote.api.EquipTrackApiService
 import com.equiptrack.android.data.settings.SettingsRepository
 import com.google.gson.Gson
@@ -92,6 +93,7 @@ object NetworkModule {
         loggingInterceptor: HttpLoggingInterceptor,
         authInterceptor: AuthInterceptor,
         baseUrlInterceptor: BaseUrlInterceptor,
+        fileLoggingInterceptor: FileLoggingInterceptor,
         settingsRepository: SettingsRepository
     ): OkHttpClient {
         // Adjust logging level via settings, fallback by local debug
@@ -100,6 +102,7 @@ object NetworkModule {
         val builder = OkHttpClient.Builder()
             .addInterceptor(baseUrlInterceptor) // Add BaseUrlInterceptor first to rewrite URL
             .addInterceptor(authInterceptor)
+            .addInterceptor(fileLoggingInterceptor) // Add File Logger
             .addInterceptor(loggingInterceptor)
 
         if (settingsRepository.isLocalDebug()) {
