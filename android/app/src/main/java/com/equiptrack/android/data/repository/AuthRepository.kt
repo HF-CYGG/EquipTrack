@@ -262,7 +262,4 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    fun logout() {
-        sharedPreferences.edit().clear().apply()
-    }
 }

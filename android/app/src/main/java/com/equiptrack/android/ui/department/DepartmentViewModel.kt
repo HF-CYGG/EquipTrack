@@ -142,6 +142,7 @@ class DepartmentViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     errorMessage = "同步部门发生错误: ${e.message}"

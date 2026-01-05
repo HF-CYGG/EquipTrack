@@ -6,6 +6,7 @@ import androidx.core.content.FileProvider
 import com.equiptrack.android.data.log.LogManager
 import com.equiptrack.android.data.local.LocalDebugSeeder
 import com.equiptrack.android.data.session.SessionManager
+import com.equiptrack.android.data.repository.AuthRepository
 import com.equiptrack.android.data.settings.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
