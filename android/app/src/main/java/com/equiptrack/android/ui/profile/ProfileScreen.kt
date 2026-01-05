@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -72,8 +73,22 @@ fun ProfileScreen(
             when (updateStatus) {
                 is UpdateStatus.NoUpdate -> {
                     // Show current version details
-                    versionInfo = (updateStatus as UpdateStatus.NoUpdate).version
-                    showVersionDialog = true
+                    val remoteVersion = (updateStatus as UpdateStatus.NoUpdate).version
+                    // If remote version is older than local, show local version info with generic message
+                    if (remoteVersion.versionCode < BuildConfig.VERSION_CODE) {
+                        versionInfo = com.equiptrack.android.data.model.AppVersion(
+                            versionCode = BuildConfig.VERSION_CODE,
+                            versionName = BuildConfig.VERSION_NAME,
+                            updateContent = "当前已是最新版本",
+                            downloadUrl = "",
+                            forceUpdate = false,
+                            releaseDate = ""
+                        )
+                    } else {
+                        versionInfo = remoteVersion
+                    }
+                    showVersionDialog = true 
+                    toastState.showSuccess("已是最新版本")
                     isCheckingUpdate = false
                 }
                 is UpdateStatus.Available -> {
@@ -283,7 +298,6 @@ fun ProfileScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onNavigateToSystemInfo() }
                             .padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
@@ -292,18 +306,28 @@ fun ProfileScreen(
                             Text("关于", style = MaterialTheme.typography.labelLarge)
                         }
                         Text("EquipTrack 现代化智能物资管理系统", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(
-                            text = "版本：${BuildConfig.VERSION_NAME}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.clickable {
-                                if (!isCheckingUpdate) {
-                                    toastState.showSuccess("正在检查更新...")
-                                    isCheckingUpdate = true
-                                    mainViewModel.checkForUpdates()
-                                }
-                            }
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "版本：",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = BuildConfig.VERSION_NAME,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .clickable {
+                                        if (!isCheckingUpdate) {
+                                            toastState.showSuccess("正在检查更新...")
+                                            isCheckingUpdate = true
+                                            mainViewModel.checkForUpdates()
+                                        }
+                                    }
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
                         Text("说明：支持多部门、角色权限、带拍照的借还流程、借用审批与历史审计。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(
                             text = "开发者：夜喵cats（https://github.com/HF-CYGG）",

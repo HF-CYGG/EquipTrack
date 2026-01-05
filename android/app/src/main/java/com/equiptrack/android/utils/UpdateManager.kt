@@ -38,6 +38,10 @@ class UpdateManager @Inject constructor(
     fun setChecking() {
         _updateStatus.value = UpdateStatus.Checking
     }
+    
+    fun setError(message: String) {
+        _updateStatus.value = UpdateStatus.Error(message)
+    }
 
     fun checkForUpdate(remoteVersion: AppVersion, currentVersionCode: Int) {
         if (remoteVersion.versionCode > currentVersionCode) {

@@ -25,9 +25,11 @@ class MainViewModel @Inject constructor(
                 if (response.isSuccessful && response.body() != null) {
                     val remoteVersion = response.body()!!
                     updateManager.checkForUpdate(remoteVersion, BuildConfig.VERSION_CODE)
+                } else {
+                    updateManager.setError("检查更新失败: ${response.message()}")
                 }
             } catch (e: Exception) {
-                // Silent fail for update check
+                updateManager.setError("检查更新出错: ${e.message}")
                 e.printStackTrace()
             }
         }
