@@ -27,6 +27,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
@@ -159,9 +160,11 @@ fun BorrowItemDialog(
                 showTimePicker = false
                 tempSelectedDate = null
             },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
             Surface(
                 modifier = Modifier
+                    .padding(16.dp)
                     .wrapContentSize()
                     .shadow(elevation = 12.dp, shape = dialogShape)
                     .border(width = 1.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), shape = dialogShape),
@@ -190,6 +193,7 @@ fun BorrowItemDialog(
                         ) {
                             DatePicker(
                                 state = datePickerState,
+                                modifier = Modifier.scale(0.9f),
                                 title = { 
                                     Text(
                                         text = "选择归还日期", 
@@ -206,7 +210,7 @@ fun BorrowItemDialog(
                                     Text(
                                         text = selectedDateText,
                                         modifier = Modifier.padding(start = 24.dp, end = 12.dp, bottom = 12.dp),
-                                        style = MaterialTheme.typography.headlineLarge
+                                        style = MaterialTheme.typography.headlineMedium
                                     )
                                 },
                                 showModeToggle = true,
@@ -222,7 +226,7 @@ fun BorrowItemDialog(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
                                 horizontalArrangement = Arrangement.End
                             ) {
                                 TextButton(onClick = { 
@@ -251,24 +255,30 @@ fun BorrowItemDialog(
                     } else {
                         // Time Picker Step
                         Column(
-                            modifier = Modifier.padding(24.dp),
+                            modifier = Modifier.padding(bottom = 12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(
-                                text = "选择预期归还时间",
+                            Column(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 20.dp),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            
-                            TimePicker(state = timePickerState)
+                                    .padding(start = 24.dp, end = 24.dp, top = 24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "选择预期归还时间",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 20.dp),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                
+                                TimePicker(state = timePickerState)
+                            }
                             
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(top = 24.dp),
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
                                 horizontalArrangement = Arrangement.End
                             ) {
                                 TextButton(onClick = { showTimePicker = false }) {
