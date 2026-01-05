@@ -44,6 +44,8 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import com.equiptrack.android.ui.navigation.NavigationViewModel
+import com.equiptrack.android.data.model.Department
+import com.equiptrack.android.utils.getDepartmentPath
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
@@ -273,6 +275,7 @@ fun UsersScreen(
                             ) {
                                 UserCard(
                                     user = user,
+                                    departments = departments,
                                     canManage = canManage,
                                     onEdit = { viewModel.showEditDialog(user) },
                                     onResetPassword = { viewModel.showPasswordDialog(user) },
@@ -349,6 +352,7 @@ fun UsersScreen(
 @Composable
 fun UserCard(
     user: User,
+    departments: List<Department>,
     canManage: Boolean,
     onEdit: () -> Unit,
     onResetPassword: () -> Unit,
@@ -421,7 +425,7 @@ fun UserCard(
                         }
                         if (!user.departmentId.isNullOrBlank()) {
                             Text(
-                                text = user.departmentName ?: "",
+                                text = getDepartmentPath(user.departmentId, departments),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -577,7 +581,7 @@ fun AddEditUserDialog(
                             ExposedDropdownMenuBox(expanded = deptExpanded, onExpandedChange = { deptExpanded = it }) {
                                 OutlinedTextField(
                                     readOnly = true,
-                                    value = departments.find { it.id == deptId }?.name ?: "",
+                                    value = getDepartmentPath(deptId, departments),
                                     onValueChange = {},
                                     label = { Text("所属部门") },
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = deptExpanded) },
@@ -585,7 +589,10 @@ fun AddEditUserDialog(
                                 )
                                 ExposedDropdownMenu(expanded = deptExpanded, onDismissRequest = { deptExpanded = false }) {
                                     departments.forEach { d ->
-                                        DropdownMenuItem(text = { Text(d.name) }, onClick = { deptId = d.id; deptExpanded = false })
+                                        DropdownMenuItem(
+                                            text = { Text(getDepartmentPath(d.id, departments)) },
+                                            onClick = { deptId = d.id; deptExpanded = false }
+                                        )
                                     }
                                 }
                             }

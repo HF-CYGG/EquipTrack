@@ -24,18 +24,28 @@ import com.equiptrack.android.data.model.Department
 import com.equiptrack.android.ui.components.AnimatedButton
 import com.equiptrack.android.ui.components.AnimatedOutlinedButton
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditDepartmentDialog(
     department: Department?,
+    availableDepartments: List<Department>,
     onDismiss: () -> Unit,
-    onConfirm: (String, Boolean) -> Unit
+    onConfirm: (String, Boolean, String?) -> Unit
 ) {
     var departmentName by remember { mutableStateOf(department?.name ?: "") }
     var requiresApproval by remember { mutableStateOf(department?.requiresApproval ?: true) }
+    var selectedParentId by remember { mutableStateOf(department?.parentId) }
     var nameError by remember { mutableStateOf<String?>(null) }
+    var parentExpanded by remember { mutableStateOf(false) }
     
     val focusManager = LocalFocusManager.current
     val isEditing = department != null
+    
+    // Filter out self and circular dependencies (simple check: exclude self)
+    val validParents = remember(availableDepartments, department) {
+        if (department == null) availableDepartments
+        else availableDepartments.filter { it.id != department.id }
+    }
     
     Dialog(
         onDismissRequest = onDismiss,
@@ -84,35 +94,53 @@ fun AddEditDepartmentDialog(
                             Icon(Icons.Default.Business, contentDescription = null)
                         },
                         keyboardOptions = KeyboardOptions(
-                            imeAction = ImeAction.Done
+                            imeAction = ImeAction.Next
                         ),
                         keyboardActions = KeyboardActions(
-                            onDone = {
-                                focusManager.clearFocus()
-                                
-                                // Validate and submit
-                                val trimmedName = departmentName.trim()
-                                if (trimmedName.isBlank()) {
-                                    nameError = "请输入部门名称"
-                                    return@KeyboardActions
-                                }
-                                
-                                if (trimmedName.length < 2) {
-                                    nameError = "部门名称至少需要2个字符"
-                                    return@KeyboardActions
-                                }
-                                
-                                if (trimmedName.length > 50) {
-                                    nameError = "部门名称不能超过50个字符"
-                                    return@KeyboardActions
-                                }
-                                
-                                onConfirm(trimmedName, requiresApproval)
-                            }
+                            onNext = { focusManager.moveFocus(FocusDirection.Down) }
                         ),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
+
+                    // Parent Department Selection
+                    ExposedDropdownMenuBox(
+                        expanded = parentExpanded,
+                        onExpandedChange = { parentExpanded = !parentExpanded },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = validParents.find { it.id == selectedParentId }?.name ?: "无 (顶级部门)",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("上级部门") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = parentExpanded) },
+                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                            modifier = Modifier.fillMaxWidth().menuAnchor()
+                        )
+                        
+                        ExposedDropdownMenu(
+                            expanded = parentExpanded,
+                            onDismissRequest = { parentExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("无 (顶级部门)") },
+                                onClick = {
+                                    selectedParentId = null
+                                    parentExpanded = false
+                                }
+                            )
+                            validParents.forEach { parent ->
+                                DropdownMenuItem(
+                                    text = { Text(parent.name) },
+                                    onClick = {
+                                        selectedParentId = parent.id
+                                        parentExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
                     
                     if (isEditing) {
                         Text(
@@ -176,7 +204,7 @@ fun AddEditDepartmentDialog(
                                     return@AnimatedButton
                                 }
                                 
-                                onConfirm(trimmedName, requiresApproval)
+                                onConfirm(trimmedName, requiresApproval, selectedParentId)
                             },
                             modifier = Modifier.weight(1f)
                         ) {

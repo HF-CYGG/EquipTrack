@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.equiptrack.android.data.model.Department
+import com.equiptrack.android.utils.getDepartmentPath
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,7 +27,7 @@ fun DepartmentFilter(
         FilterChip(
             selected = selectedDepartmentId != null,
             onClick = { expanded = true },
-            label = { Text(selectedDepartment?.name ?: "所有部门") },
+            label = { Text(if (selectedDepartment != null) getDepartmentPath(selectedDepartment.id, departments) else "所有部门") },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.FilterList,
@@ -55,7 +56,7 @@ fun DepartmentFilter(
             )
             departments.forEach { department ->
                 DropdownMenuItem(
-                    text = { Text(department.name) },
+                    text = { Text(getDepartmentPath(department.id, departments)) },
                     onClick = {
                         onDepartmentSelected(department.id)
                         expanded = false

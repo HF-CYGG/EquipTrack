@@ -45,9 +45,15 @@ class DepartmentViewModel @Inject constructor(
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     // Combine search query with departments flow
+    val allDepartments = departmentRepository.getAllDepartments().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
     val filteredDepartments: StateFlow<List<Department>> = combine(
         _searchQuery.debounce(250),
-        departmentRepository.getAllDepartments()
+        allDepartments
     ) { query, departments ->
         if (query.isBlank()) {
             departments
@@ -161,18 +167,20 @@ class DepartmentViewModel @Inject constructor(
         _selectedDepartmentId.value = deptId
     }
     
-    fun createDepartment(name: String, requiresApproval: Boolean) {
+    fun createDepartment(name: String, requiresApproval: Boolean, parentId: String?) {
         viewModelScope.launch {
-            // Check if name already exists
-            val nameExists = departmentRepository.isDepartmentNameExists(name)
+            // Check if name already exists (in same level)
+            val nameExists = departmentRepository.getAllDepartments().first().any { 
+                it.name == name && it.parentId == parentId 
+            }
             if (nameExists) {
                 _uiState.value = _uiState.value.copy(
-                    errorMessage = "部门名称已存在"
+                    errorMessage = "同级部门名称已存在"
                 )
                 return@launch
             }
             
-            departmentRepository.createDepartment(name, requiresApproval).collect { result ->
+            departmentRepository.createDepartment(name, requiresApproval, parentId).collect { result ->
                 when (result) {
                     is NetworkResult.Success -> {
                         _uiState.value = _uiState.value.copy(
@@ -193,13 +201,15 @@ class DepartmentViewModel @Inject constructor(
         }
     }
     
-    fun updateDepartment(id: String, name: String, requiresApproval: Boolean) {
+    fun updateDepartment(id: String, name: String, requiresApproval: Boolean, parentId: String?) {
         viewModelScope.launch {
             // Check if name already exists (excluding current department)
-            val nameExists = departmentRepository.isDepartmentNameExists(name, id)
+            val nameExists = departmentRepository.getAllDepartments().first().any { 
+                it.name == name && it.parentId == parentId && it.id != id
+            }
             if (nameExists) {
                 _uiState.value = _uiState.value.copy(
-                    errorMessage = "部门名称已存在"
+                    errorMessage = "同级部门名称已存在"
                 )
                 return@launch
             }
@@ -213,7 +223,7 @@ class DepartmentViewModel @Inject constructor(
                 return@launch
             }
 
-            val updatedDepartment = currentDepartment.copy(name = name, requiresApproval = requiresApproval)
+            val updatedDepartment = currentDepartment.copy(name = name, requiresApproval = requiresApproval, parentId = parentId)
             
             departmentRepository.updateDepartment(updatedDepartment).collect { result ->
                 when (result) {

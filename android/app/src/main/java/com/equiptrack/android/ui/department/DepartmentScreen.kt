@@ -52,6 +52,7 @@ fun DepartmentScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val filteredDepartments by viewModel.filteredDepartments.collectAsStateWithLifecycle()
+    val allDepartments by viewModel.allDepartments.collectAsStateWithLifecycle()
     val selectedDeptId by viewModel.selectedDepartmentId.collectAsStateWithLifecycle()
     val departmentUsers by viewModel.departmentUsers.collectAsStateWithLifecycle()
     val departmentItems by viewModel.departmentItems.collectAsStateWithLifecycle()
@@ -302,9 +303,10 @@ fun DepartmentScreen(
     if (uiState.showAddDialog) {
         AddEditDepartmentDialog(
             department = null,
+            availableDepartments = allDepartments,
             onDismiss = { viewModel.hideAddDialog() },
-            onConfirm = { name, requiresApproval ->
-                viewModel.createDepartment(name, requiresApproval)
+            onConfirm = { name, requiresApproval, parentId ->
+                viewModel.createDepartment(name, requiresApproval, parentId)
             }
         )
     }
@@ -312,9 +314,10 @@ fun DepartmentScreen(
     if (uiState.showEditDialog && uiState.selectedDepartment != null) {
         AddEditDepartmentDialog(
             department = uiState.selectedDepartment,
+            availableDepartments = allDepartments,
             onDismiss = { viewModel.hideEditDialog() },
-            onConfirm = { name, requiresApproval ->
-                viewModel.updateDepartment(uiState.selectedDepartment!!.id, name, requiresApproval)
+            onConfirm = { name, requiresApproval, parentId ->
+                viewModel.updateDepartment(uiState.selectedDepartment!!.id, name, requiresApproval, parentId)
             }
         )
     }

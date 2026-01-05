@@ -51,13 +51,14 @@ class DepartmentRepository @Inject constructor(
         }
     }
     
-    suspend fun createDepartment(name: String, requiresApproval: Boolean = true): Flow<NetworkResult<Department>> = flow {
+    suspend fun createDepartment(name: String, requiresApproval: Boolean = true, parentId: String? = null): Flow<NetworkResult<Department>> = flow {
         emit(NetworkResult.Loading())
         
         val department = Department(
             id = UUID.randomUUID().toString(),
             name = name.trim(),
-            requiresApproval = requiresApproval
+            requiresApproval = requiresApproval,
+            parentId = parentId
         )
         
         try {
