@@ -456,11 +456,9 @@ fun EditProfileDialog(
                     
                     // 头像更新按钮
                     AnimatedOutlinedButton(
-                        onClick = {
-                            onUpdateAvatar()
-                            onDismiss()
-                        },
-                        modifier = Modifier.fillMaxWidth()
+                        onClick = { },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = false
                     ) {
                         Icon(Icons.Default.Person, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))

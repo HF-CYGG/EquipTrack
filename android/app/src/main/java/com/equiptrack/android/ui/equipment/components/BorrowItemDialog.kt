@@ -1,6 +1,8 @@
 package com.equiptrack.android.ui.equipment.components
 
 import android.net.Uri
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,6 +27,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -58,10 +61,6 @@ import com.equiptrack.android.ui.components.CameraCapture
 import com.equiptrack.android.utils.CameraUtils
 import com.equiptrack.android.utils.UrlUtils
 import com.equiptrack.android.ui.theme.LocalHapticFeedbackEnabled
-import com.vanpra.composematerialdialogs.MaterialDialog
-import com.vanpra.composematerialdialogs.datetime.date.datepicker
-import com.vanpra.composematerialdialogs.datetime.time.timepicker
-import com.vanpra.composematerialdialogs.rememberMaterialDialogState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -109,8 +108,8 @@ fun BorrowItemDialog(
     
     val isPhotoRequired = currentUser?.role != UserRole.SUPER_ADMIN
     
-    val dateDialogState = rememberMaterialDialogState()
-    val timeDialogState = rememberMaterialDialogState()
+    var showTimePicker by remember { mutableStateOf(false) }
+    val timePickerState = rememberTimePickerState(is24Hour = true)
     var tempSelectedDate by remember { mutableStateOf<java.time.LocalDate?>(null) }
     
     // Auto-fill logic
@@ -138,71 +137,160 @@ fun BorrowItemDialog(
     }
     
     val today = java.time.LocalDate.now()
-    val m3Colors = MaterialTheme.colorScheme
-    val dialogColors = remember(m3Colors) {
-        lightColors(
-            primary = m3Colors.primary,
-            secondary = m3Colors.secondary,
-            background = m3Colors.surface,
-            surface = m3Colors.surface,
-            onPrimary = m3Colors.onPrimary,
-            onSecondary = m3Colors.onSecondary,
-            onBackground = m3Colors.onSurface,
-            onSurface = m3Colors.onSurface
-        )
-    }
-    
-    MaterialDialog(
-        dialogState = dateDialogState,
-        buttons = {
-            positiveButton("下一步") {
-                if (tempSelectedDate != null) {
-                    timeDialogState.show()
-                }
-            }
-            negativeButton("取消") {
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = expectedReturnDate?.let {
+            val zone = java.time.ZoneId.systemDefault()
+            val instant = it.toInstant()
+            java.time.LocalDateTime.ofInstant(instant, zone)
+                .toLocalDate()
+                .atStartOfDay(zone)
+                .toInstant()
+                .toEpochMilli()
+        } ?: today.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
+        yearRange = DatePickerDefaults.YearRange
+    )
+
+    if (showDatePicker) {
+        val dialogShape = remember { RoundedCornerShape(28.dp) }
+        Dialog(
+            onDismissRequest = { 
+                showDatePicker = false 
+                showTimePicker = false
                 tempSelectedDate = null
-            }
-        }
-    ) {
-        LegacyMaterialTheme(colors = dialogColors) {
-            val initialDate = remember(expectedReturnDate) {
-                expectedReturnDate?.let { date ->
-                    val instant = date.toInstant()
-                    val zone = java.time.ZoneId.systemDefault()
-                    java.time.LocalDateTime.ofInstant(instant, zone).toLocalDate()
-                } ?: today.plusDays(1)
-            }
-            
-            datepicker(
-                initialDate = initialDate,
-                title = "选择预期归还日期",
-                allowedDateValidator = { it.isAfter(today.minusDays(1)) }
-            ) { date ->
-                tempSelectedDate = date
-            }
-        }
-    }
-    
-    MaterialDialog(
-        dialogState = timeDialogState,
-        buttons = {
-            positiveButton("确定")
-            negativeButton("取消") {
-                tempSelectedDate = null
-            }
-        }
-    ) {
-        LegacyMaterialTheme(colors = dialogColors) {
-            timepicker(
-                title = "选择预期归还时间",
-                is24HourClock = true
-            ) { time ->
-                tempSelectedDate?.let { date ->
-                    val calendar = Calendar.getInstance()
-                    calendar.set(date.year, date.monthValue - 1, date.dayOfMonth, time.hour, time.minute)
-                    expectedReturnDate = calendar.time
-                    dateError = null
+            },
+        ) {
+            Surface(
+                modifier = Modifier
+                    .wrapContentSize()
+                    .shadow(elevation = 12.dp, shape = dialogShape)
+                    .border(width = 1.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), shape = dialogShape),
+                shape = dialogShape,
+                tonalElevation = 6.dp,
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                AnimatedContent(
+                    targetState = showTimePicker,
+                    transitionSpec = {
+                        if (targetState) {
+                            (slideInHorizontally { width -> width } + fadeIn()).togetherWith(
+                                slideOutHorizontally { width -> -width } + fadeOut())
+                        } else {
+                            (slideInHorizontally { width -> -width } + fadeIn()).togetherWith(
+                                slideOutHorizontally { width -> width } + fadeOut())
+                        }
+                    },
+                    label = "DateTimePickerTransition"
+                ) { isTimeStep ->
+                    if (!isTimeStep) {
+                        // Date Picker Step
+                        Column(
+                            modifier = Modifier.padding(bottom = 12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            DatePicker(
+                                state = datePickerState,
+                                title = { 
+                                    Text(
+                                        text = "选择归还日期", 
+                                        modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 16.dp),
+                                        style = MaterialTheme.typography.labelLarge
+                                    )
+                                },
+                                headline = {
+                                    val selectedDateText = datePickerState.selectedDateMillis?.let {
+                                        val date = Date(it)
+                                        SimpleDateFormat("yyyy年MM月dd日", Locale.CHINA).format(date)
+                                    } ?: "请选择日期"
+                                    
+                                    Text(
+                                        text = selectedDateText,
+                                        modifier = Modifier.padding(start = 24.dp, end = 12.dp, bottom = 12.dp),
+                                        style = MaterialTheme.typography.headlineLarge
+                                    )
+                                },
+                                showModeToggle = true,
+                                dateValidator = { millis ->
+                                    val date = java.time.Instant
+                                        .ofEpochMilli(millis)
+                                        .atZone(java.time.ZoneId.systemDefault())
+                                        .toLocalDate()
+                                    !date.isBefore(today)
+                                }
+                            )
+                            
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                TextButton(onClick = { 
+                                    showDatePicker = false 
+                                    tempSelectedDate = null
+                                }) {
+                                    Text("取消")
+                                }
+                                TextButton(
+                                    onClick = {
+                                        val millis = datePickerState.selectedDateMillis
+                                        if (millis != null) {
+                                            val selectedLocalDate = java.time.Instant
+                                                .ofEpochMilli(millis)
+                                                .atZone(java.time.ZoneId.systemDefault())
+                                                .toLocalDate()
+                                            tempSelectedDate = selectedLocalDate
+                                            showTimePicker = true
+                                        }
+                                    }
+                                ) {
+                                    Text("下一步")
+                                }
+                            }
+                        }
+                    } else {
+                        // Time Picker Step
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "选择预期归还时间",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 20.dp),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            TimePicker(state = timePickerState)
+                            
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 24.dp),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                TextButton(onClick = { showTimePicker = false }) {
+                                    Text("上一步")
+                                }
+                                TextButton(
+                                    onClick = {
+                                        tempSelectedDate?.let { date ->
+                                            val calendar = Calendar.getInstance()
+                                            calendar.set(date.year, date.monthValue - 1, date.dayOfMonth, timePickerState.hour, timePickerState.minute)
+                                            expectedReturnDate = calendar.time
+                                            dateError = null
+                                        }
+                                        showDatePicker = false
+                                        showTimePicker = false
+                                    }
+                                ) {
+                                    Text("确定")
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -555,7 +643,7 @@ fun BorrowItemDialog(
                                         .clickable {
                                             keyboardController?.hide()
                                             focusManager.clearFocus(force = true)
-                                            dateDialogState.show()
+                                            showDatePicker = true
                                         },
                                     color = MaterialTheme.colorScheme.surface
                                 ) {
