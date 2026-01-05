@@ -611,7 +611,8 @@ fun AddEditUserDialog(
                             )
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.horizontalScroll(rememberScrollState())
                             ) {
                                 UserRole.values().forEach { r ->
                                     FilterChip(
