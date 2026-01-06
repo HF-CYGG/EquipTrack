@@ -27,6 +27,7 @@ data class ThemeOverrides(
     val equipmentImageRatio: String? = null,
     val listAnimationType: String? = null,
     val hapticEnabled: Boolean? = null,
+    val hapticIntensity: Float? = null,
     val confettiEnabled: Boolean? = null,
     val tagStyle: String? = null,
     val lowPerformanceMode: Boolean? = null,
@@ -57,6 +58,7 @@ class SettingsRepository @Inject constructor(
             equipmentImageRatio = null,
             listAnimationType = null,
             hapticEnabled = null,
+            hapticIntensity = null,
             confettiEnabled = null,
             tagStyle = null,
             lowPerformanceMode = null,
@@ -89,6 +91,7 @@ class SettingsRepository @Inject constructor(
             KEY_EQUIPMENT_IMAGE_RATIO,
             KEY_LIST_ANIMATION_TYPE,
             KEY_HAPTIC_ENABLED,
+            KEY_HAPTIC_INTENSITY,
             KEY_CONFETTI_ENABLED,
             KEY_TAG_STYLE,
             KEY_LOW_PERFORMANCE_MODE,
@@ -109,6 +112,7 @@ class SettingsRepository @Inject constructor(
                     equipmentImageRatio = shared.getString(KEY_EQUIPMENT_IMAGE_RATIO, null),
                     listAnimationType = shared.getString(KEY_LIST_ANIMATION_TYPE, null),
                     hapticEnabled = runCatching { shared.getBoolean(KEY_HAPTIC_ENABLED, true) }.getOrNull(),
+                    hapticIntensity = runCatching { shared.getFloat(KEY_HAPTIC_INTENSITY, -1f) }.getOrNull()?.takeIf { it >= 0f },
                     confettiEnabled = runCatching { shared.getBoolean(KEY_CONFETTI_ENABLED, false) }.getOrNull(),
                     tagStyle = shared.getString(KEY_TAG_STYLE, null),
                     lowPerformanceMode = runCatching { shared.getBoolean(KEY_LOW_PERFORMANCE_MODE, false) }.getOrNull(),
@@ -141,6 +145,7 @@ class SettingsRepository @Inject constructor(
             equipmentImageRatio = prefs.getString(KEY_EQUIPMENT_IMAGE_RATIO, null),
             listAnimationType = prefs.getString(KEY_LIST_ANIMATION_TYPE, null),
             hapticEnabled = runCatching { prefs.getBoolean(KEY_HAPTIC_ENABLED, true) }.getOrNull(),
+            hapticIntensity = runCatching { prefs.getFloat(KEY_HAPTIC_INTENSITY, -1f) }.getOrNull()?.takeIf { it >= 0f },
             confettiEnabled = runCatching { prefs.getBoolean(KEY_CONFETTI_ENABLED, false) }.getOrNull(),
             tagStyle = prefs.getString(KEY_TAG_STYLE, null),
             lowPerformanceMode = runCatching { prefs.getBoolean(KEY_LOW_PERFORMANCE_MODE, false) }.getOrNull(),
@@ -171,6 +176,7 @@ class SettingsRepository @Inject constructor(
         private const val KEY_EQUIPMENT_IMAGE_RATIO = "equipment_image_ratio"
         private const val KEY_LIST_ANIMATION_TYPE = "list_animation_type"
         private const val KEY_HAPTIC_ENABLED = "haptic_enabled"
+        private const val KEY_HAPTIC_INTENSITY = "haptic_intensity"
         private const val KEY_CONFETTI_ENABLED = "confetti_enabled"
         private const val KEY_TAG_STYLE = "tag_style"
         private const val KEY_LOW_PERFORMANCE_MODE = "low_performance_mode"
@@ -378,6 +384,11 @@ class SettingsRepository @Inject constructor(
     fun isHapticEnabled(): Boolean = prefs.getBoolean(KEY_HAPTIC_ENABLED, true)
     fun setHapticEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_HAPTIC_ENABLED, enabled).apply()
+    }
+
+    fun getHapticIntensity(): Float = prefs.getFloat(KEY_HAPTIC_INTENSITY, 1.0f)
+    fun setHapticIntensity(intensity: Float) {
+        prefs.edit().putFloat(KEY_HAPTIC_INTENSITY, intensity.coerceIn(0f, 1f)).apply()
     }
 
     fun isConfettiEnabled(): Boolean = prefs.getBoolean(KEY_CONFETTI_ENABLED, false)

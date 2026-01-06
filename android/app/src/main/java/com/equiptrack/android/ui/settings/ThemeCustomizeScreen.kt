@@ -1,11 +1,10 @@
 package com.equiptrack.android.ui.settings
 
+import android.content.Intent
 import android.util.Patterns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -16,6 +15,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -24,13 +24,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -38,16 +42,12 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.equiptrack.android.data.settings.ThemeOverrides
-import com.equiptrack.android.ui.navigation.NavigationViewModel
-import com.equiptrack.android.ui.components.AnimatedButton
 import com.equiptrack.android.ui.components.AnimatedIconButton
 import com.equiptrack.android.ui.components.AnimatedTextButton
-import com.equiptrack.android.ui.components.ToastMessage
 import com.equiptrack.android.ui.components.rememberToastState
-import kotlinx.coroutines.launch
-import android.content.Intent
+import com.equiptrack.android.ui.navigation.NavigationViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 data class ThemePreset(
     val name: String,
@@ -95,6 +95,7 @@ fun ThemeCustomizeScreen(
     var equipmentImageRatio by remember(overrides.equipmentImageRatio) { mutableStateOf(overrides.equipmentImageRatio ?: repo.getEquipmentImageRatio()) }
     var listAnimationType by remember(overrides.listAnimationType) { mutableStateOf(overrides.listAnimationType ?: repo.getListAnimationType()) }
     var hapticEnabled by remember(overrides.hapticEnabled) { mutableStateOf(overrides.hapticEnabled ?: repo.isHapticEnabled()) }
+    var hapticIntensity by remember(overrides.hapticIntensity) { mutableStateOf(overrides.hapticIntensity ?: repo.getHapticIntensity()) }
     var confettiEnabled by remember(overrides.confettiEnabled) { mutableStateOf(overrides.confettiEnabled ?: repo.isConfettiEnabled()) }
     var tagStyle by remember(overrides.tagStyle) { mutableStateOf(overrides.tagStyle ?: repo.getTagStyle()) }
     var lowPerformanceMode by remember(overrides.lowPerformanceMode) { mutableStateOf(overrides.lowPerformanceMode ?: repo.isLowPerformanceMode()) }
@@ -116,49 +117,140 @@ fun ThemeCustomizeScreen(
 
     val toastState = rememberToastState()
     val scope = rememberCoroutineScope()
-    val scrollState = rememberScrollState()
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("主题与背景", fontWeight = FontWeight.SemiBold) },
-                    navigationIcon = {
-                        AnimatedIconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, contentDescription = "返回") }
-                    },
-                    actions = {
-                        AnimatedTextButton(onClick = {
-                            // Saving is now implicit/real-time, but we can keep this for confirmation
-                            scope.launch {
-                                toastState.showSuccess("主题已应用")
-                                delay(500) 
-                                onSaveSuccess()
-                            }
-                        }) {
-                            Text("完成", fontWeight = FontWeight.Bold)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("主题与背景", fontWeight = FontWeight.SemiBold) },
+                navigationIcon = {
+                    AnimatedIconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, contentDescription = "返回") }
+                },
+                actions = {
+                    AnimatedTextButton(onClick = {
+                        scope.launch {
+                            toastState.showSuccess("主题已应用")
+                            delay(500) 
+                            onSaveSuccess()
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
-                    )
+                    }) {
+                        Text("完成", fontWeight = FontWeight.Bold)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
                 )
-            },
-            // Remove snackbarHost
-        ) { inner ->
-            Column(
-                modifier = Modifier
-                    .padding(inner)
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                // 1. 预览区域 (Removed as requested)
-                
-                // 2. 快速预设
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(" 灵感预设", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            )
+        }
+    ) { inner ->
+        LazyColumn(
+            modifier = Modifier
+                .padding(inner)
+                .fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            // 1. Wallpaper Preview & Settings
+            item {
+                SettingsSection(title = "背景壁纸", icon = Icons.Outlined.Wallpaper) {
+                    // Preview Card
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 9f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+                            .clickable { pickImage.launch(arrayOf("image/*")) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (bgUri != null) {
+                            AsyncImage(
+                                model = bgUri,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .let { if (blurRadius > 0) it.blur(blurRadius.dp) else it },
+                                contentScale = when (contentScale) {
+                                    "Fit" -> ContentScale.Fit
+                                    "FillBounds" -> ContentScale.FillBounds
+                                    else -> ContentScale.Crop
+                                }
+                            )
+                            // Dim Overlay
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = dimAlpha))
+                            )
+                        } else {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Outlined.Image, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(Modifier.height(8.dp))
+                                Text("点击选择图片", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        
+                        // Edit Controls Overlay
+                        if (bgUri != null) {
+                            Row(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                SmallFloatingActionButton(
+                                    onClick = { bgUri = null; repo.setBackgroundUri(null) },
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Remove")
+                                }
+                                SmallFloatingActionButton(
+                                    onClick = { pickImage.launch(arrayOf("image/*")) },
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Change")
+                                }
+                            }
+                        }
+                    }
+
+                    if (bgUri != null) {
+                        SettingsSlider(
+                            label = "遮罩浓度",
+                            value = dimAlpha,
+                            valueRange = 0f..0.9f,
+                            displayValue = "${(dimAlpha * 100).toInt()}%",
+                            onValueChange = { dimAlpha = it },
+                            onValueChangeFinished = { repo.setBackgroundDimAlpha(dimAlpha) }
+                        )
+                        SettingsSlider(
+                            label = "磨砂程度",
+                            value = blurRadius,
+                            valueRange = 0f..25f,
+                            displayValue = "${blurRadius.toInt()}dp",
+                            onValueChange = { blurRadius = it },
+                            onValueChangeFinished = { repo.setBackgroundBlurRadius(blurRadius.toInt()) }
+                        )
+                        SettingsChoice(
+                            label = "填充模式",
+                            options = listOf("Crop" to "裁剪填充", "Fit" to "适应屏幕", "FillBounds" to "拉伸填充"),
+                            selectedKey = contentScale,
+                            onSelectionChanged = { 
+                                contentScale = it
+                                repo.setBackgroundContentScale(it)
+                            }
+                        )
+                    }
+                }
+            }
+
+            // 2. Color & Theme
+            item {
+                SettingsSection(title = "色彩与主题", icon = Icons.Outlined.Palette) {
+                    Text("灵感预设", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = PaddingValues(horizontal = 4.dp)
@@ -174,603 +266,410 @@ fun ThemeCustomizeScreen(
                             }
                         }
                     }
-                }
 
-            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-            // 3. 颜色自定义
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(" 色彩定制", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                
-                // 主色
-                ColorPickerSection(
-                    title = "主色调",
-                    colorText = colorText,
-                    onColorChange = { 
-                        colorText = it
-                        parseHexColorOrNull(it.text)?.let { c -> previewColor = c }
-                    },
-                    presets = listOf("#006493", "#006C4C", "#A33E00", "#6750A4", "#9C27B0", "#B71C1C")
-                )
+                    SettingsColorPicker(
+                        title = "主色调",
+                        colorText = colorText,
+                        onColorChange = { 
+                            colorText = it
+                            parseHexColorOrNull(it.text)?.let { c -> previewColor = c }
+                        },
+                        previewColor = previewColor,
+                        presets = listOf("#006493", "#006C4C", "#A33E00", "#6750A4", "#9C27B0", "#B71C1C")
+                    )
 
-                // 强调色
-                ColorPickerSection(
-                    title = "强调色",
-                    colorText = accentText,
-                    onColorChange = { 
-                        accentText = it
-                        parseHexColorOrNull(it.text)?.let { c -> previewAccent = c }
-                    },
-                    presets = listOf("#006493", "#4CAF50", "#FF9800", "#EADDFF", "#FF4081", "#00BCD4")
-                )
-            }
+                    SettingsColorPicker(
+                        title = "强调色",
+                        colorText = accentText,
+                        onColorChange = { 
+                            accentText = it
+                            parseHexColorOrNull(it.text)?.let { c -> previewAccent = c }
+                        },
+                        previewColor = previewAccent,
+                        presets = listOf("#006493", "#4CAF50", "#FF9800", "#EADDFF", "#FF4081", "#00BCD4")
+                    )
 
-            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-
-            // 4. 背景设置
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(" 背景壁纸", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    if (bgUri != null) {
-                        AnimatedTextButton(onClick = { 
-                            bgUri = null 
-                            repo.setBackgroundUri(null)
-                        }) {
-                            Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("清除背景")
+                    SettingsChoice(
+                        label = "外观模式",
+                        options = listOf("System" to "跟随系统", "Light" to "浅色", "Dark" to "深色"),
+                        selectedKey = themeMode,
+                        onSelectionChanged = { 
+                            themeMode = it
+                            repo.setThemeMode(it)
                         }
-                    }
-                }
-
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        AnimatedButton(
-                            onClick = { pickImage.launch(arrayOf("image/*")) },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        ) {
-                            Icon(Icons.Default.Image, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(if (bgUri == null) "选择图片" else "更换图片")
-                        }
-
-                        AnimatedVisibility(
-                            visible = bgUri != null,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
-                        ) {
-                            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                // 遮罩浓度
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text("遮罩浓度", style = MaterialTheme.typography.bodyMedium)
-                                        Text("${(dimAlpha * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-                                    }
-                                    Slider(
-                                        value = dimAlpha,
-                                        onValueChange = { dimAlpha = it },
-                                        onValueChangeFinished = { repo.setBackgroundDimAlpha(dimAlpha) },
-                                        valueRange = 0f..0.9f,
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = MaterialTheme.colorScheme.primary,
-                                            activeTrackColor = MaterialTheme.colorScheme.primary
-                                        )
-                                    )
-                                }
-
-                                // 磨砂效果
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text("磨砂程度", style = MaterialTheme.typography.bodyMedium)
-                                        Text("${blurRadius.toInt()}dp", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-                                    }
-                                    Slider(
-                                        value = blurRadius,
-                                        onValueChange = { blurRadius = it },
-                                        onValueChangeFinished = { repo.setBackgroundBlurRadius(blurRadius.toInt()) },
-                                        valueRange = 0f..25f,
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = MaterialTheme.colorScheme.primary,
-                                            activeTrackColor = MaterialTheme.colorScheme.primary
-                                        )
-                                    )
-                                }
-
-                                // 填充模式
-                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Text("填充模式", style = MaterialTheme.typography.bodyMedium)
-                                    Row(
-                                        modifier = Modifier.horizontalScroll(rememberScrollState()),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        listOf("Crop" to "裁剪填充", "Fit" to "适应屏幕", "FillBounds" to "拉伸填充").forEach { (mode, label) ->
-                                            FilterChip(
-                                                selected = contentScale == mode,
-                                                onClick = { 
-                                                    contentScale = mode
-                                                    repo.setBackgroundContentScale(mode)
-                                                },
-                                                label = { Text(label) },
-                                                leadingIcon = if (contentScale == mode) {
-                                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                                } else null
-                                            )
-                                        }
-                                    }
-                                }
+                    )
+                    
+                    if (themeMode == "Dark" || (themeMode == "System")) {
+                        SettingsChoice(
+                            label = "深色风格",
+                            options = listOf("DarkGrey" to "深灰", "TrueBlack" to "纯黑"),
+                            selectedKey = darkModeStrategy,
+                            onSelectionChanged = { 
+                                darkModeStrategy = it
+                                repo.setDarkModeStrategy(it)
                             }
-                        }
+                        )
                     }
-                }
-            }
 
-            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(" 卡片与列表", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("界面卡片透明度", style = MaterialTheme.typography.bodyMedium)
-                        Text("${(cardOpacity * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                        Column {
+                            Text("动态取色", style = MaterialTheme.typography.bodyLarge)
+                            Text("跟随壁纸生成主题色", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(
+                            checked = dynamicColorEnabled,
+                            onCheckedChange = { 
+                                dynamicColorEnabled = it
+                                repo.setDynamicColorEnabled(it)
+                            }
+                        )
                     }
-                    Slider(
+                }
+            }
+
+            // 3. UI Customization
+            item {
+                SettingsSection(title = "界面外观", icon = Icons.Outlined.DashboardCustomize) {
+                    SettingsSlider(
+                        label = "卡片透明度",
                         value = cardOpacity,
-                        onValueChange = { cardOpacity = it },
-                        onValueChangeFinished = { repo.setCardOpacity(cardOpacity) },
                         valueRange = 0.3f..1f,
-                        colors = SliderDefaults.colors(
-                            thumbColor = MaterialTheme.colorScheme.primary,
-                            activeTrackColor = MaterialTheme.colorScheme.primary
-                        )
+                        displayValue = "${(cardOpacity * 100).toInt()}%",
+                        onValueChange = { cardOpacity = it },
+                        onValueChangeFinished = { repo.setCardOpacity(cardOpacity) }
                     )
-                }
 
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("卡片材质", style = MaterialTheme.typography.bodyMedium)
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf(
-                            "Solid" to "实色卡片",
-                            "Glass" to "磨砂玻璃",
-                            "Outline" to "描边卡片"
-                        ).forEach { (value, label) ->
-                            FilterChip(
-                                selected = cardMaterial == value,
-                                onClick = { 
-                                    cardMaterial = value
-                                    repo.setCardMaterial(value)
-                                },
-                                label = { Text(label) },
-                                leadingIcon = if (cardMaterial == value) {
-                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                } else null
-                            )
+                    SettingsChoice(
+                        label = "卡片材质",
+                        options = listOf("Solid" to "实色", "Glass" to "磨砂", "Outline" to "描边"),
+                        selectedKey = cardMaterial,
+                        onSelectionChanged = { 
+                            cardMaterial = it
+                            repo.setCardMaterial(it)
                         }
-                    }
-                }
+                    )
 
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("界面圆角", style = MaterialTheme.typography.bodyMedium)
-                        Text("${cornerRadius.toInt()}dp", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-                    }
-                    Slider(
+                    SettingsSlider(
+                        label = "圆角大小",
                         value = cornerRadius,
+                        valueRange = 0f..32f,
+                        displayValue = "${cornerRadius.toInt()}dp",
                         onValueChange = { cornerRadius = it },
-                        onValueChangeFinished = { repo.setCornerRadius(cornerRadius) },
-                        valueRange = 0f..30f,
-                        colors = SliderDefaults.colors(
-                            thumbColor = MaterialTheme.colorScheme.primary,
-                            activeTrackColor = MaterialTheme.colorScheme.primary
-                        )
+                        onValueChangeFinished = { repo.setCornerRadius(cornerRadius) }
                     )
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("设备图片比例", style = MaterialTheme.typography.bodyMedium)
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf(
-                            "Square" to "方形封面",
-                            "Wide" to "横版 16:9",
-                            "Tall" to "竖版 3:4"
-                        ).forEach { (value, label) ->
-                            FilterChip(
-                                selected = equipmentImageRatio == value,
-                                onClick = { 
-                                    equipmentImageRatio = value
-                                    repo.setEquipmentImageRatio(value)
-                                },
-                                label = { Text(label) },
-                                leadingIcon = if (equipmentImageRatio == value) {
-                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                } else null
-                            )
+                    
+                    SettingsChoice(
+                        label = "噪点纹理",
+                        options = listOf("true" to "开启", "false" to "关闭"),
+                        selectedKey = noiseEnabled.toString(),
+                        onSelectionChanged = { 
+                            noiseEnabled = it.toBoolean()
+                            repo.setNoiseEnabled(it.toBoolean())
                         }
-                    }
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("状态标签样式", style = MaterialTheme.typography.bodyMedium)
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf(
-                            "Solid" to "实心标签",
-                            "Outline" to "描边标签",
-                            "Soft" to "浅色块"
-                        ).forEach { (value, label) ->
-                            FilterChip(
-                                selected = tagStyle == value,
-                                onClick = { 
-                                    tagStyle = value
-                                    repo.setTagStyle(value)
-                                },
-                                label = { Text(label) },
-                                leadingIcon = if (tagStyle == value) {
-                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                } else null
-                            )
-                        }
-                    }
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("物资列表密度", style = MaterialTheme.typography.bodyMedium)
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        FilterChip(
-                            selected = !isCompactList,
-                            onClick = { 
-                                isCompactList = false
-                                repo.setEquipmentListCompact(false)
-                            },
-                            label = { Text("舒适模式") },
-                            leadingIcon = if (!isCompactList) {
-                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                            } else null
-                        )
-                        FilterChip(
-                            selected = isCompactList,
-                            onClick = { 
-                                isCompactList = true
-                                repo.setEquipmentListCompact(true)
-                            },
-                            label = { Text("紧凑模式") },
-                            leadingIcon = if (isCompactList) {
-                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                            } else null
-                        )
-                    }
+                    )
                 }
             }
 
-            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(" 系统主题", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("外观模式", style = MaterialTheme.typography.bodyMedium)
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf(
-                            "System" to "跟随系统",
-                            "Light" to "浅色模式",
-                            "Dark" to "深色模式"
-                        ).forEach { (value, label) ->
-                            FilterChip(
-                                selected = themeMode == value,
-                                onClick = { 
-                                    themeMode = value
-                                    repo.setThemeMode(value)
-                                },
-                                label = { Text(label) },
-                                leadingIcon = if (themeMode == value) {
-                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                } else null
-                            )
+            // 4. Content Layout
+            item {
+                SettingsSection(title = "布局与展示", icon = Icons.Outlined.ViewQuilt) {
+                    SettingsChoice(
+                        label = "设备图片比例",
+                        options = listOf("Square" to "方形", "Landscape" to "横版", "Portrait" to "竖版"),
+                        selectedKey = equipmentImageRatio,
+                        onSelectionChanged = { 
+                            equipmentImageRatio = it
+                            repo.setEquipmentImageRatio(it)
                         }
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("跟随壁纸动态取色", style = MaterialTheme.typography.bodyMedium)
-                    Switch(
-                        checked = dynamicColorEnabled,
-                        onCheckedChange = { 
-                            dynamicColorEnabled = it
-                            repo.setDynamicColorEnabled(it)
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.primary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                        )
                     )
-                }
 
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("深色模式风格", style = MaterialTheme.typography.bodyMedium)
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf(
-                            "DarkGrey" to "深灰暗色",
-                            "TrueBlack" to "纯黑模式"
-                        ).forEach { (value, label) ->
-                            FilterChip(
-                                selected = darkModeStrategy == value,
-                                onClick = { 
-                                    darkModeStrategy = value
-                                    repo.setDarkModeStrategy(value)
-                                },
-                                label = { Text(label) },
-                                leadingIcon = if (darkModeStrategy == value) {
-                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                } else null
-                            )
+                    SettingsChoice(
+                        label = "列表密度",
+                        options = listOf("false" to "舒适", "true" to "紧凑"),
+                        selectedKey = isCompactList.toString(),
+                        onSelectionChanged = { 
+                            isCompactList = it.toBoolean()
+                            repo.setEquipmentListCompact(it.toBoolean())
                         }
-                    }
+                    )
+
+                    SettingsChoice(
+                        label = "标签样式",
+                        options = listOf("Filled" to "实心", "Outlined" to "描边", "Light" to "浅色"),
+                        selectedKey = tagStyle,
+                        onSelectionChanged = { 
+                            tagStyle = it
+                            repo.setTagStyle(it)
+                        }
+                    )
+                    
+                     SettingsChoice(
+                        label = "列表动画",
+                        options = listOf("Scale" to "缩放", "Slide" to "滑动", "Fade" to "淡入"),
+                        selectedKey = listAnimationType,
+                        onSelectionChanged = { 
+                            listAnimationType = it
+                            repo.setListAnimationType(it)
+                        }
+                    )
                 }
             }
 
-            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(" 高级效果与动效", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("界面噪点纹理", style = MaterialTheme.typography.bodyMedium)
-                    Switch(
-                        checked = noiseEnabled,
-                        onCheckedChange = { 
-                            noiseEnabled = it
-                            repo.setNoiseEnabled(it)
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.primary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                        )
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("低性能模式", style = MaterialTheme.typography.bodyMedium)
-                    Switch(
-                        checked = lowPerformanceMode,
-                        onCheckedChange = { 
-                            lowPerformanceMode = it
-                            repo.setLowPerformanceMode(it)
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.primary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                        )
-                    )
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("列表滚动动画", style = MaterialTheme.typography.bodyMedium)
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf(
-                            "None" to "无动画",
-                            "Fade" to "淡入淡出",
-                            "Slide" to "滑入滑出"
-                        ).forEach { (value, label) ->
-                            FilterChip(
-                                selected = listAnimationType == value,
-                                onClick = {
-                                    listAnimationType = value
-                                    repo.setListAnimationType(value)
-                                },
-                                label = { Text(label) },
-                                leadingIcon = if (listAnimationType == value) {
-                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                } else null
-                            )
-                        }
-                    }
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("借还操作反馈", style = MaterialTheme.typography.bodyMedium)
+            // 5. Interaction & Performance
+            item {
+                SettingsSection(title = "交互与性能", icon = Icons.Outlined.Speed) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("震动反馈", style = MaterialTheme.typography.bodyMedium)
+                        Column {
+                            Text("震动反馈", style = MaterialTheme.typography.bodyLarge)
+                            Text("借还操作时的触感反馈", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         Switch(
                             checked = hapticEnabled,
                             onCheckedChange = { 
                                 hapticEnabled = it
                                 repo.setHapticEnabled(it)
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.primary,
-                                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                            )
+                            }
                         )
                     }
+
+                    if (hapticEnabled) {
+                        SettingsSlider(
+                            label = "震动强度",
+                            value = hapticIntensity,
+                            valueRange = 0f..1f,
+                            displayValue = "${(hapticIntensity * 100).toInt()}%",
+                            onValueChange = { hapticIntensity = it },
+                            onValueChangeFinished = { repo.setHapticIntensity(hapticIntensity) }
+                        )
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("礼花动画", style = MaterialTheme.typography.bodyMedium)
+                        Column {
+                            Text("低性能模式", style = MaterialTheme.typography.bodyLarge)
+                            Text("关闭模糊和复杂动画以提高流畅度", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         Switch(
-                            checked = confettiEnabled,
-                            onCheckedChange = {
-                                confettiEnabled = it
-                                repo.setConfettiEnabled(it)
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.primary,
-                                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                            )
+                            checked = lowPerformanceMode,
+                            onCheckedChange = { 
+                                lowPerformanceMode = it
+                                repo.setLowPerformanceMode(it)
+                            }
                         )
                     }
                 }
             }
-
-            Spacer(Modifier.height(32.dp))
+            
+            item {
+                Spacer(Modifier.height(32.dp))
+            }
         }
-    }
-
-    ToastMessage(
-        toastData = toastState.currentToast,
-        onDismiss = { toastState.dismiss() },
-        modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .padding(bottom = 32.dp)
-    )
     }
 }
 
+// --- Helper Composables ---
+
 @Composable
-fun ThemePresetChip(preset: ThemePreset, onClick: () -> Unit) {
-    val primary = parseHexColorOrNull(preset.primary) ?: Color.Gray
-    val accent = parseHexColorOrNull(preset.accent) ?: Color.Gray
-    
-    Card(
-        modifier = Modifier
-            .width(100.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+fun SettingsSection(title: String, icon: ImageVector, content: @Composable ColumnScope.() -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically, 
+            modifier = Modifier.padding(horizontal = 8.dp)
         ) {
-            Box(modifier = Modifier.size(48.dp)) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(primary)
-                        .align(Alignment.TopStart)
-                )
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(accent)
-                        .border(2.dp, MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                        .align(Alignment.BottomEnd)
-                )
-            }
+            Icon(
+                icon, 
+                contentDescription = null, 
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(8.dp))
             Text(
-                preset.name,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium
+                title, 
+                style = MaterialTheme.typography.titleMedium, 
+                fontWeight = FontWeight.Bold, 
+                color = MaterialTheme.colorScheme.primary
             )
         }
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)), 
+                    RoundedCornerShape(20.dp)
+                ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp), 
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                content()
+            }
+        }
     }
 }
 
 @Composable
-fun ColorPickerSection(
+fun SettingsSlider(
+    label: String,
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    displayValue: String,
+    onValueChange: (Float) -> Unit,
+    onValueChangeFinished: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(label, style = MaterialTheme.typography.bodyMedium)
+            Text(displayValue, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        }
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            onValueChangeFinished = onValueChangeFinished,
+            valueRange = valueRange,
+            colors = SliderDefaults.colors(
+                thumbColor = MaterialTheme.colorScheme.primary,
+                activeTrackColor = MaterialTheme.colorScheme.primary
+            )
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsChoice(
+    label: String,
+    options: List<Pair<String, String>>,
+    selectedKey: String,
+    onSelectionChanged: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            options.forEach { (key, labelText) ->
+                FilterChip(
+                    selected = selectedKey == key,
+                    onClick = { onSelectionChanged(key) },
+                    label = { Text(labelText) },
+                    leadingIcon = if (selectedKey == key) {
+                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    } else null,
+                    border = FilterChipDefaults.filterChipBorder(
+                        borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                        selectedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.0f) // No border when selected, just fill
+                    ),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SettingsColorPicker(
     title: String,
     colorText: TextFieldValue,
     onColorChange: (TextFieldValue) -> Unit,
+    previewColor: Color,
     presets: List<String>
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(previewColor)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+            )
+        }
         
-        // 颜色预设
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(presets) { hex ->
                 val color = parseHexColorOrNull(hex) ?: Color.Transparent
-                val isSelected = colorText.text.equals(hex, ignoreCase = true)
-                
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(32.dp)
                         .clip(CircleShape)
                         .background(color)
+                        .clickable { onColorChange(TextFieldValue(hex)) }
                         .border(
-                            width = if (isSelected) 2.dp else 0.dp,
-                            color = if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
-                            shape = CircleShape
+                            if (colorText.text.equals(hex, ignoreCase = true)) 2.dp else 0.dp,
+                            if (colorText.text.equals(hex, ignoreCase = true)) MaterialTheme.colorScheme.primary else Color.Transparent,
+                            CircleShape
                         )
-                        .clickable { onColorChange(TextFieldValue(hex)) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isSelected) {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
+                )
             }
         }
-
-        // 自定义输入
+        
         OutlinedTextField(
             value = colorText,
             onValueChange = onColorChange,
-            label = { Text("自定义 HEX 代码") },
-            leadingIcon = { Icon(Icons.Default.Colorize, contentDescription = null) },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-            ),
+            textStyle = MaterialTheme.typography.bodySmall,
             singleLine = true,
+            label = { Text("HEX Color", style = MaterialTheme.typography.bodySmall) },
             isError = validHexOrNull(colorText.text) == null
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ThemePresetChip(preset: ThemePreset, onClick: () -> Unit) {
+    val primaryColor = parseHexColorOrNull(preset.primary) ?: Color.Gray
+    val accentColor = parseHexColorOrNull(preset.accent) ?: Color.Gray
+    
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .width(120.dp)
+            .height(80.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+    ) {
+        Column {
+            Box(modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .background(Brush.horizontalGradient(listOf(primaryColor, accentColor))))
+            
+            Column(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .fillMaxWidth()
+            ) {
+                Text(preset.name, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Text(preset.description, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            }
+        }
     }
 }
 

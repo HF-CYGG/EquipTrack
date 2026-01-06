@@ -46,6 +46,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 val LocalHapticFeedbackEnabled = compositionLocalOf { true }
+val LocalHapticStrength = compositionLocalOf { 1.0f }
 
 @Composable
 fun EquipTrackTheme(
@@ -121,9 +122,11 @@ fun EquipTrackTheme(
     }
 
     val hapticEnabled = (overrides?.hapticEnabled ?: true) && (overrides?.lowPerformanceMode != true)
+    val hapticStrength = overrides?.hapticIntensity ?: 1.0f
 
     CompositionLocalProvider(
-        LocalHapticFeedbackEnabled provides hapticEnabled
+        LocalHapticFeedbackEnabled provides hapticEnabled,
+        LocalHapticStrength provides hapticStrength
     ) {
         MaterialTheme(
             colorScheme = schemeWithCardOpacity,

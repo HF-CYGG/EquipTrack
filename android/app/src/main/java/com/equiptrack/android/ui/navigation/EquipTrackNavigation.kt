@@ -130,7 +130,21 @@ fun EquipTrackNavigation(
                 transitionType = PageTransitionType.SLIDE_DOWN
             ) {
                 ServerConfigScreen(
-                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateBack = {
+                        val popped = navController.popBackStack()
+                        if (!popped) {
+                            val needsSetup = !settingsRepository.isSetupCompleted()
+                            if (needsSetup || !navVm.authRepository.isLoggedIn()) {
+                                navController.navigate(Screen.Login.route) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                navController.navigate(Screen.Main.route) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            }
+                        }
+                    },
                     onConfigSaved = {
                         // After saving config, if user is logged in go to Main, else back to Login
                         if (navVm.authRepository.isLoggedIn()) {
