@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -224,6 +224,35 @@ fun BorrowRequestCard(
 ) {
     val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
     val imageUrl = UrlUtils.resolveImageUrl(serverUrl, request.itemImage)
+    var showPhotoDialog by remember { mutableStateOf(false) }
+    
+    if (showPhotoDialog && !request.photo.isNullOrEmpty()) {
+        val photoUrl = UrlUtils.resolveImageUrl(serverUrl, request.photo)
+        AlertDialog(
+            onDismissRequest = { showPhotoDialog = false },
+            confirmButton = {
+                TextButton(onClick = { showPhotoDialog = false }) {
+                    Text("关闭")
+                }
+            },
+            title = { Text("现场照片") },
+            text = {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = photoUrl,
+                        contentDescription = "现场照片",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 400.dp),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                    )
+                }
+            }
+        )
+    }
     
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -403,6 +432,22 @@ fun BorrowRequestCard(
                                 color = MaterialTheme.colorScheme.onTertiaryContainer
                             )
                         }
+                    }
+                }
+
+                if (!request.photo.isNullOrEmpty()) {
+                    OutlinedButton(
+                        onClick = { showPhotoDialog = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Image, 
+                            contentDescription = null, 
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("查看现场照片")
                     }
                 }
                 

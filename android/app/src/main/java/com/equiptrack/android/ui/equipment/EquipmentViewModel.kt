@@ -659,25 +659,46 @@ class EquipmentViewModel @Inject constructor(
         )
     }
     
-    fun borrowItem(itemId: String, borrowRequest: BorrowRequest) {
+    fun borrowItem(context: Context, itemId: String, borrowRequest: BorrowRequest) {
         viewModelScope.launch {
-            borrowRepository.borrowItem(itemId, borrowRequest).collect { result ->
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            var finalRequest = borrowRequest
+            
+            // Handle photo upload if it's a local URI
+            val photoUri = borrowRequest.photo
+            if (!photoUri.isNullOrEmpty() && (photoUri.startsWith("content://") || photoUri.startsWith("file://"))) {
+                val uploadedUrl = uploadImage(context, Uri.parse(photoUri), "borrow")
+                if (uploadedUrl != null) {
+                    finalRequest = borrowRequest.copy(photo = uploadedUrl)
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = "照片上传失败"
+                    )
+                    return@launch
+                }
+            }
+
+            borrowRepository.borrowItem(itemId, finalRequest).collect { result ->
                 when (result) {
                     is NetworkResult.Success -> {
                         _uiState.value = _uiState.value.copy(
                             showBorrowDialog = false,
                             selectedItem = null,
-                            successMessage = "借用申请已提交，等待审核"
+                            successMessage = "借用申请已提交，等待审核",
+                            isLoading = false
                         )
                         // 提交申请后自动刷新页面并同步数据
                         syncData()
                     }
                     is NetworkResult.Error -> {
                         _uiState.value = _uiState.value.copy(
-                            errorMessage = "借用失败: ${result.message}"
+                            errorMessage = "借用失败: ${result.message}",
+                            isLoading = false
                         )
                     }
                     is NetworkResult.Loading -> {
+                         _uiState.value = _uiState.value.copy(isLoading = true)
                     }
                 }
             }

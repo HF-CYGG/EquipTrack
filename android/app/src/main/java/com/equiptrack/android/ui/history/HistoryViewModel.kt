@@ -244,7 +244,7 @@ class HistoryViewModel @Inject constructor(
             val photoUri = returnRequest.photo
             
             if (photoUri.isNotEmpty() && (photoUri.startsWith("content://") || photoUri.startsWith("file://"))) {
-                 val uploadedUrl = uploadImage(context, Uri.parse(photoUri), "history")
+                 val uploadedUrl = uploadImage(context, Uri.parse(photoUri), "return")
                  if (uploadedUrl != null) {
                      requestToSend = returnRequest.copy(photo = uploadedUrl)
                  } else {

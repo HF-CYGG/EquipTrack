@@ -646,7 +646,7 @@ fun EquipmentScreen(
             serverUrl = serverUrl,
             onDismiss = { viewModel.hideBorrowDialog() },
             onConfirm = { borrowRequest ->
-                viewModel.borrowItem(uiState.selectedItem!!.id, borrowRequest)
+                viewModel.borrowItem(context, uiState.selectedItem!!.id, borrowRequest)
             },
             currentUser = viewModel.getCurrentUser(),
             userSearchResults = userSearchResults,

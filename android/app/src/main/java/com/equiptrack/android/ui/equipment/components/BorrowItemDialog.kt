@@ -844,7 +844,7 @@ fun BorrowItemDialog(
                                             id = borrowerId
                                         ),
                                         expectedReturnDate = expectedReturnDate!!,
-                                        photo = photoBase64,
+                                        photo = capturedImageUri?.toString() ?: photoBase64,
                                         quantity = borrowQuantity
                                     )
                                     onConfirm(request)
