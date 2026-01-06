@@ -135,11 +135,16 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 // 验证当前密码
+                // 注意：服务器不返回密码，因此本地currentUser.password通常为空。
+                // 暂时移除本地旧密码校验，以允许修改密码。
+                // 理想情况下应在服务器端验证旧密码。
+                /*
                 val currentUser = authRepository.getCurrentUser()
                 if (currentUser?.password != oldPassword) {
                     _passwordUpdateMessage.value = "当前密码错误"
                     return@launch
                 }
+                */
                 
                 userRepository.updateUserPassword(userId, newPassword).collect { result ->
                     _passwordUpdateMessage.value = when (result) {
