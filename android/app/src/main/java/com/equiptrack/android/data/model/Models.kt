@@ -175,7 +175,8 @@ data class BorrowHistoryEntry(
     val status: BorrowStatus,
     val forcedReturnBy: String? = null, // Name of the admin/advanced user who forced the return
     val photo: String? = null, // Add photo field to match server response if needed, or just to be safe
-    val returnPhoto: String? = null // Return proof photo
+    val returnPhoto: String? = null, // Return proof photo
+    val note: String? = null
 ) : Parcelable
 
 // Data classes for API requests and responses
@@ -205,7 +206,8 @@ data class BorrowRequest(
     val borrower: Borrower,
     val expectedReturnDate: Date,
     val photo: String? = null, // Data URI format, optional
-    val quantity: Int = 1 // Number of items to borrow
+    val quantity: Int = 1, // Number of items to borrow
+    val note: String? = null
 ) : Parcelable
 
 @Parcelize
@@ -251,6 +253,7 @@ data class BorrowRequestEntry(
     val expectedReturnDate: Date,
     val photo: String? = null,
     val quantity: Int,
+    val note: String? = null,
     val status: String,
     val remark: String? = null,
     @SerializedName("createdAt")
@@ -266,7 +269,8 @@ data class BorrowRequestCreateRequest(
     val borrower: Borrower,
     val expectedReturnDate: Date,
     val photo: String? = null,
-    val quantity: Int = 1
+    val quantity: Int = 1,
+    val note: String? = null
 ) : Parcelable
 
 @Parcelize

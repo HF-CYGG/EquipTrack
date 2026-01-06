@@ -76,7 +76,8 @@ class BorrowRepository @Inject constructor(
                 borrowDate = Date(),
                 expectedReturnDate = borrowRequest.expectedReturnDate,
                 status = BorrowStatus.BORROWING,
-                photo = borrowRequest.photo
+                photo = borrowRequest.photo,
+                note = borrowRequest.note
             )
             borrowHistoryDao.insertHistory(historyEntry)
             emit(NetworkResult.Success(Unit))
@@ -90,7 +91,8 @@ class BorrowRepository @Inject constructor(
                         borrower = borrowRequest.borrower,
                         expectedReturnDate = borrowRequest.expectedReturnDate,
                         photo = borrowRequest.photo,
-                        quantity = borrowRequest.quantity
+                        quantity = borrowRequest.quantity,
+                        note = borrowRequest.note
                     )
                 )
             }
@@ -442,7 +444,8 @@ class BorrowRepository @Inject constructor(
                         operatorName = (entry.operatorName as? String) ?: "未知操作员",
                         operatorContact = (entry.operatorContact as? String) ?: "",
                         // Ensure status is not null (handle potential Gson unsafe deserialization nulls)
-                        status = try { entry.status } catch (e: NullPointerException) { BorrowStatus.BORROWING }
+                        status = try { entry.status } catch (e: NullPointerException) { BorrowStatus.BORROWING },
+                        note = (entry.note as? String)
                     )
                 }
                 

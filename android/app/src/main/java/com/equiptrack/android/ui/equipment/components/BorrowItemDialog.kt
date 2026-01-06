@@ -95,6 +95,7 @@ fun BorrowItemDialog(
     var capturedImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var photoBase64 by rememberSaveable { mutableStateOf<String?>(null) }
     var borrowQuantity by rememberSaveable { mutableStateOf(1) }
+    var note by rememberSaveable { mutableStateOf("") }
     
     var nameError by rememberSaveable { mutableStateOf<String?>(null) }
     var phoneError by rememberSaveable { mutableStateOf<String?>(null) }
@@ -793,6 +794,28 @@ fun BorrowItemDialog(
                                 )
                             }
                         }
+
+                        Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                        // 5. Note Input
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "备注 (可选)",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            OutlinedTextField(
+                                value = note,
+                                onValueChange = { note = it },
+                                label = { Text("请输入借用备注", style = MaterialTheme.typography.bodySmall) },
+                                leadingIcon = { Icon(Icons.Default.Description, null, modifier = Modifier.size(18.dp)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                textStyle = MaterialTheme.typography.bodyMedium,
+                                minLines = 2,
+                                maxLines = 4
+                            )
+                        }
                     }
                     
                     // Actions
@@ -845,7 +868,8 @@ fun BorrowItemDialog(
                                         ),
                                         expectedReturnDate = expectedReturnDate!!,
                                         photo = capturedImageUri?.toString() ?: photoBase64,
-                                        quantity = borrowQuantity
+                                        quantity = borrowQuantity,
+                                        note = note
                                     )
                                     onConfirm(request)
                                 }
