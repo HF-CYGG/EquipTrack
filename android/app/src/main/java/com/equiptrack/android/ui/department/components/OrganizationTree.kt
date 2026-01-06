@@ -10,9 +10,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -35,6 +32,11 @@ import androidx.compose.ui.zIndex
 import com.equiptrack.android.data.model.Department
 import com.equiptrack.android.data.model.DepartmentStructureUpdate
 import kotlin.math.roundToInt
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
 
 data class FlatDepartmentNode(
     val department: Department,
@@ -55,6 +57,7 @@ fun OrganizationTree(
 ) {
     // State for expanded nodes
     var expandedIds by remember { mutableStateOf(setOf<String>()) }
+    val haptic = LocalHapticFeedback.current
     
     // Flatten the tree
     val flattenedNodes = remember(departments, expandedIds) {
@@ -65,22 +68,15 @@ fun OrganizationTree(
             val children = childMap[parentId]?.sortedWith(compareBy({ it.order }, { it.name })) ?: emptyList()
             children.forEach { dept ->
                 val hasChildren = childMap.containsKey(dept.id)
-                val isExpanded = expandedIds.contains(dept.id) || true // Default expanded for now or tracked
-                // Actually let's track expansion. If not in set, it's expanded by default? Or collapsed?
-                // Let's say expanded by default for better UX, or user can toggle.
-                // Let's use the set to track COLLAPSED state instead? Or use a separate logic.
-                // For simplicity, let's say expandedIds tracks EXPANDED nodes.
+                // Default expanded for better UX in this version
+                val isExpanded = expandedIds.contains(dept.id) || true 
                 
-                // But wait, user wants to drag.
                 result.add(FlatDepartmentNode(dept, level, expandedIds.contains(dept.id), hasChildren))
                 if (expandedIds.contains(dept.id)) {
                     traverse(dept.id, level + 1)
                 }
             }
         }
-        
-        // Initialize expandedIds with all IDs on first load? 
-        // Or just let traverse handle it.
         traverse(null, 0)
         result
     }
@@ -105,6 +101,13 @@ fun OrganizationTree(
 
     var boxPositionInWindow by remember { mutableStateOf(Offset.Zero) }
 
+    // Haptic feedback when hover target changes
+    LaunchedEffect(hoverTargetId, hoverType) {
+        if (draggingItem != null && hoverTargetId != null) {
+             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -121,22 +124,29 @@ fun OrganizationTree(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(if (draggingItem != null) 40.dp else 0.dp)
+                    .height(if (draggingItem != null) 50.dp else 0.dp)
                     .background(
                         if (hoverTargetId == "ROOT") MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) 
-                        else Color.Transparent
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                    )
+                    .border(
+                        width = if (hoverTargetId == "ROOT") 2.dp else 0.dp,
+                        color = if (hoverTargetId == "ROOT") MaterialTheme.colorScheme.primary else Color.Transparent,
+                        shape = RoundedCornerShape(4.dp)
                     )
                     .onGloballyPositioned { coordinates ->
                          if (draggingItem != null) {
-                             val y = coordinates.positionInWindow().y
-                             val height = coordinates.size.height
-                             // Simple logic handled in drag gesture
+                             // No-op, just layout
                          }
                     },
                 contentAlignment = Alignment.Center
             ) {
                 if (draggingItem != null) {
-                    Text("拖动到此处设为顶级部门", style = MaterialTheme.typography.labelSmall)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Home, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(8.dp))
+                        Text("拖动到此处设为顶级部门", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    }
                 }
             }
 
@@ -167,6 +177,7 @@ fun OrganizationTree(
                         if (canManage) {
                             draggingItem = dept
                             dragStartOffset = offset
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         }
                     },
                     onDrag = { change, dragAmount ->
@@ -179,6 +190,7 @@ fun OrganizationTree(
                     },
                     onDragEnd = {
                         if (canManage && draggingItem != null) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             handleDrop(
                                 draggedItem = draggingItem!!,
                                 targetId = hoverTargetId,
@@ -194,14 +206,6 @@ fun OrganizationTree(
                         hoverType = DropType.None
                     },
                     onPositioned = { y, height ->
-                        if (draggingItem != null) {
-                            // Check intersection with drag position
-                            // This is a simplified check, ideally should be done in a central gesture detector
-                            // But since we are using per-item gesture, we need a way to hit test other items.
-                            
-                            // Actually, per-item gesture is problematic for hit testing OTHERS.
-                            // We should put the gesture detector on the LazyColumn or a parent Box.
-                        }
                         itemBounds[dept.id] = y
                         itemHeights[dept.id] = height.toFloat()
                     }
@@ -226,6 +230,7 @@ fun OrganizationTree(
                                         draggingItem = item
                                         dragStartOffset = offset
                                         draggingItemOffset = offset // Start following pointer
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     }
                                 }
                             },
@@ -236,8 +241,8 @@ fun OrganizationTree(
                                 // Hit testing
                                 val windowY = boxPositionInWindow.y + draggingItemOffset.y
                                 
-                                // Check Root Zone (Top ~40dp relative to Box)
-                                if (draggingItemOffset.y < 40f) { // Approximate
+                                // Check Root Zone (Top ~50dp relative to Box)
+                                if (draggingItemOffset.y < 50f) { // Approximate
                                     hoverTargetId = "ROOT"
                                     hoverType = DropType.Reparent
                                 } else {
@@ -268,6 +273,7 @@ fun OrganizationTree(
                             },
                             onDragEnd = {
                                 if (draggingItem != null) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     handleDrop(
                                         draggedItem = draggingItem!!,
                                         targetId = hoverTargetId,
@@ -299,12 +305,21 @@ fun OrganizationTree(
                 modifier = Modifier
                     .offset { IntOffset(draggingItemOffset.x.roundToInt() - 50, draggingItemOffset.y.roundToInt() - 50) } // Offset to center?
                     .zIndex(100f)
-                    .shadow(8.dp, RoundedCornerShape(8.dp))
+                    .graphicsLayer {
+                        scaleX = 1.05f
+                        scaleY = 1.05f
+                        alpha = 0.9f
+                    }
+                    .shadow(12.dp, RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                    .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
                     .padding(16.dp)
             ) {
-                Text(draggingItem!!.name, style = MaterialTheme.typography.bodyMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.DragHandle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(8.dp))
+                    Text(draggingItem!!.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
@@ -336,19 +351,13 @@ fun DepartmentRow(
     
     // Calculate background based on hover state
     val backgroundColor = when {
-        isDragging -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        isHoverTarget && hoverType == DropType.Reparent -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-        isSelected -> MaterialTheme.colorScheme.primaryContainer
+        isDragging -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f) // Lighter when dragging source
+        isHoverTarget && hoverType == DropType.Reparent -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        isSelected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
         else -> Color.Transparent
     }
     
-    val borderColor = if (isHoverTarget) {
-         when (hoverType) {
-             DropType.ReorderAbove -> MaterialTheme.colorScheme.primary
-             DropType.ReorderBelow -> MaterialTheme.colorScheme.primary
-             else -> Color.Transparent
-         }
-    } else Color.Transparent
+    val indicatorColor = MaterialTheme.colorScheme.primary
 
     Column(
         modifier = Modifier
@@ -358,8 +367,44 @@ fun DepartmentRow(
                 onPositioned(coordinates.positionInWindow().y, coordinates.size.height)
             }
             .background(backgroundColor)
-            // Visual indicator for Reorder
-            .drawReorderIndicator(isHoverTarget, hoverType)
+            // Visual indicator for Reorder using drawBehind
+            .drawBehind {
+                if (isHoverTarget) {
+                    val strokeWidth = 4.dp.toPx()
+                    val y = when (hoverType) {
+                        DropType.ReorderAbove -> 0f
+                        DropType.ReorderBelow -> size.height
+                        else -> -1f
+                    }
+                    
+                    if (y >= 0) {
+                        drawLine(
+                            color = indicatorColor,
+                            start = Offset(0f, y),
+                            end = Offset(size.width, y),
+                            strokeWidth = strokeWidth,
+                            cap = StrokeCap.Round
+                        )
+                        // Draw circle at start
+                        drawCircle(
+                            color = indicatorColor,
+                            radius = strokeWidth * 1.5f,
+                            center = Offset(strokeWidth * 2, y)
+                        )
+                    }
+                    
+                    if (hoverType == DropType.Reparent) {
+                        // Draw border
+                        drawRect(
+                            color = indicatorColor,
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                width = 2.dp.toPx(),
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                            )
+                        )
+                    }
+                }
+            }
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -422,21 +467,6 @@ fun DepartmentRow(
         Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     }
 }
-
-fun Modifier.drawReorderIndicator(isHoverTarget: Boolean, hoverType: DropType): Modifier = this.then(
-    Modifier.graphicsLayer {
-        // Custom drawing could go here, but simple border/background is safer for now.
-    }
-    .let { 
-        if (isHoverTarget && hoverType == DropType.ReorderAbove) {
-            it.border(width = 2.dp, color = Color.Blue, shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)) // Only top border ideally
-        } else if (isHoverTarget && hoverType == DropType.ReorderBelow) {
-            it.border(width = 2.dp, color = Color.Blue, shape = RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
-        } else {
-            it
-        }
-    }
-)
 
 fun findItemAt(y: Float, itemBounds: Map<String, Float>, itemHeights: Map<String, Float>): String? {
     // This is naive and assumes order in map matches list or we iterate all
