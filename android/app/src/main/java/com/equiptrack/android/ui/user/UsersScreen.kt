@@ -273,10 +273,14 @@ fun UsersScreen(
                                 listAnimationType = listAnimationType,
                                 index = index
                             ) {
+                                val currentUser = viewModel.getCurrentUser()
+                                // Strict permission check: Can only manage users with strictly lower rank (higher ordinal)
+                                val canManageUser = canManage && ((currentUser?.role?.ordinal ?: Int.MAX_VALUE) < user.role.ordinal)
+                                
                                 UserCard(
                                     user = user,
                                     departments = departments,
-                                    canManage = canManage,
+                                    canManage = canManageUser,
                                     onEdit = { viewModel.showEditDialog(user) },
                                     onResetPassword = { viewModel.showPasswordDialog(user) },
                                     onToggleStatus = {
@@ -303,8 +307,8 @@ fun UsersScreen(
     if (uiState.showAddDialog) {
         AddEditUserDialog(
             user = null,
+            currentUser = viewModel.getCurrentUser(),
             departments = viewModel.departments.collectAsStateWithLifecycle().value,
-            isSuperAdmin = viewModel.canManageAllUsers(),
             onDismiss = { viewModel.hideAddDialog() },
             onConfirm = { newUser -> viewModel.createUser(newUser) }
         )
@@ -313,8 +317,8 @@ fun UsersScreen(
     if (uiState.showEditDialog && uiState.selectedUser != null) {
         AddEditUserDialog(
             user = uiState.selectedUser,
+            currentUser = viewModel.getCurrentUser(),
             departments = viewModel.departments.collectAsStateWithLifecycle().value,
-            isSuperAdmin = viewModel.canManageAllUsers(),
             onDismiss = { viewModel.hideEditDialog() },
             onConfirm = { updatedUser -> viewModel.updateUser(updatedUser) }
         )
@@ -505,8 +509,8 @@ fun DeleteUserDialog(
 @Composable
 fun AddEditUserDialog(
     user: User?,
+    currentUser: User?,
     departments: List<com.equiptrack.android.data.model.Department>,
-    isSuperAdmin: Boolean = false,
     onDismiss: () -> Unit,
     onConfirm: (User) -> Unit
 ) {
@@ -517,6 +521,16 @@ fun AddEditUserDialog(
     var status by remember { mutableStateOf(user?.status ?: UserStatus.NORMAL) }
     var password by remember { mutableStateOf(user?.password ?: "") }
     var invitationCode by remember { mutableStateOf(user?.invitationCode ?: "") }
+
+    // Calculate permissions
+    val isSuperAdmin = currentUser?.role == UserRole.SUPER_ADMIN
+    val canManageStatus = currentUser?.role != null && currentUser.role.ordinal <= UserRole.ADMIN.ordinal
+    val availableRoles = remember(currentUser) {
+        UserRole.values().filter { targetRole ->
+            // User can only assign roles strictly lower or equal to their own (higher ordinal = lower permission)
+            (currentUser?.role?.ordinal ?: Int.MAX_VALUE) <= targetRole.ordinal
+        }
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -614,7 +628,7 @@ fun AddEditUserDialog(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.horizontalScroll(rememberScrollState())
                             ) {
-                                UserRole.values().forEach { r ->
+                                availableRoles.forEach { r ->
                                     FilterChip(
                                         selected = role == r,
                                         onClick = { role = r },
@@ -635,8 +649,9 @@ fun AddEditUserDialog(
                                 UserStatus.values().forEach { s ->
                                     FilterChip(
                                         selected = status == s,
-                                        onClick = { status = s },
-                                        label = { Text(s.displayName) }
+                                        onClick = { if (canManageStatus) status = s },
+                                        label = { Text(s.displayName) },
+                                        enabled = canManageStatus
                                     )
                                 }
                             }

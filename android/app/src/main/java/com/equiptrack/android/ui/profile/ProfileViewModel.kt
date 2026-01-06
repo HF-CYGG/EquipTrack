@@ -1,20 +1,20 @@
 package com.equiptrack.android.ui.profile
 
-import android.content.ContentResolver
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.equiptrack.android.data.model.User
 import com.equiptrack.android.data.repository.AuthRepository
 import com.equiptrack.android.data.repository.UserRepository
+import com.equiptrack.android.utils.NetworkResult
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.io.ByteArrayOutputStream
-import android.graphics.*
+import java.io.File
+import java.io.FileOutputStream
 import javax.inject.Inject
 
 @HiltViewModel
@@ -31,6 +31,78 @@ class ProfileViewModel @Inject constructor(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
+    fun updateAvatar(context: Context, uri: Uri) {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            try {
+                // 1. Save to local storage
+                val file = saveAvatarLocally(context, uri)
+                if (file == null) {
+                    _avatarUpdateMessage.value = "无法保存头像到本地"
+                    _isRefreshing.value = false
+                    return@launch
+                }
+
+                // 2. Upload to server
+                userRepository.uploadAvatar(file).collect { result ->
+                    when (result) {
+                        is NetworkResult.Success -> {
+                            val avatarUrl = result.data
+                            if (avatarUrl != null) {
+                                // 3. Update user profile with new URL
+                                val currentUser = getCurrentUser()
+                                if (currentUser != null) {
+                                    val updatedUser = currentUser.copy(avatarUrl = avatarUrl)
+                                    userRepository.updateUser(updatedUser).collect { updateResult ->
+                                        if (updateResult is NetworkResult.Success) {
+                                            _avatarUpdateMessage.value = "头像更新成功"
+                                            refreshProfile()
+                                        } else if (updateResult is NetworkResult.Error) {
+                                            _avatarUpdateMessage.value = "头像更新失败: ${updateResult.message}"
+                                        }
+                                        // Handle Loading if needed, or ignore
+                                    }
+                                }
+                            }
+                        }
+                        is NetworkResult.Error -> {
+                            _avatarUpdateMessage.value = "头像上传失败: ${result.message}"
+                        }
+                        is NetworkResult.Loading -> {
+                            // Loading state
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _avatarUpdateMessage.value = "头像更新异常: ${e.message}"
+            } finally {
+                _isRefreshing.value = false
+            }
+        }
+    }
+
+    private fun saveAvatarLocally(context: Context, uri: Uri): File? {
+        return try {
+            val inputStream = context.contentResolver.openInputStream(uri)
+            val avatarsDir = File(context.filesDir, "avatars")
+            if (!avatarsDir.exists()) avatarsDir.mkdirs()
+            
+            val fileName = "avatar_${System.currentTimeMillis()}.jpg"
+            val file = File(avatarsDir, fileName)
+            
+            val outputStream = FileOutputStream(file)
+            inputStream?.use { input ->
+                outputStream.use { output ->
+                    input.copyTo(output)
+                }
+            }
+            file
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
     fun getCurrentUser(): User? = authRepository.getCurrentUser()
     
     fun refreshProfile() {
@@ -39,13 +111,12 @@ class ProfileViewModel @Inject constructor(
             try {
                 _isRefreshing.value = true
                 authRepository.refreshUserProfile(user.id).collect { result ->
-                    // Logic handled inside collect, but we need to ensure refreshing is turned off
-                    if (result !is com.equiptrack.android.utils.NetworkResult.Loading) {
-                        // Although it sets false here, we'll rely on finally block for safety
+                    if (result !is NetworkResult.Loading) {
+                        // refreshing state handled in finally
                     }
                 }
             } catch (e: Exception) {
-                // Log error or show message if needed, but for profile refresh we might just silent fail or rely on toast
+                // Log error
             } finally {
                 _isRefreshing.value = false
             }
@@ -72,67 +143,13 @@ class ProfileViewModel @Inject constructor(
                 
                 userRepository.updateUserPassword(userId, newPassword).collect { result ->
                     _passwordUpdateMessage.value = when (result) {
-                        is com.equiptrack.android.utils.NetworkResult.Success -> "密码更新成功"
-                        is com.equiptrack.android.utils.NetworkResult.Error -> "密码更新失败: ${result.message}"
-                        is com.equiptrack.android.utils.NetworkResult.Loading -> null
+                        is NetworkResult.Success -> "密码更新成功"
+                        is NetworkResult.Error -> "密码更新失败: ${result.message}"
+                        is NetworkResult.Loading -> null
                     }
                 }
             } catch (e: Exception) {
                 _passwordUpdateMessage.value = "密码更新失败: ${e.message}"
-            }
-        }
-    }
-
-    fun updateAvatar(contentResolver: ContentResolver, imageUri: Uri) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                // 读取原图
-                val inputStream = contentResolver.openInputStream(imageUri) ?: throw IllegalArgumentException("无法读取图片")
-                val original = BitmapFactory.decodeStream(inputStream)
-                inputStream.close()
-
-                // 裁剪为正方形
-                val size = minOf(original.width, original.height)
-                val x = (original.width - size) / 2
-                val y = (original.height - size) / 2
-                val square = Bitmap.createBitmap(original, x, y, size, size)
-
-                // 生成圆形头像
-                val output = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-                val canvas = Canvas(output)
-                val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-                val shader = BitmapShader(square, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
-                paint.shader = shader
-                val radius = size / 2f
-                canvas.drawCircle(radius, radius, radius, paint)
-
-                // 压缩到 <= 3MB（逐步调整质量）
-                var quality = 95
-                var data: ByteArray
-                do {
-                    val bos = ByteArrayOutputStream()
-                    output.compress(Bitmap.CompressFormat.JPEG, quality, bos)
-                    data = bos.toByteArray()
-                    bos.close()
-                    quality -= 5
-                } while (data.size > 3 * 1024 * 1024 && quality > 40)
-
-                val base64 = android.util.Base64.encodeToString(data, android.util.Base64.NO_WRAP)
-                val dataUri = "data:image/jpeg;base64,$base64"
-
-                val current = authRepository.getCurrentUser() ?: throw IllegalStateException("未登录用户")
-                val updated = current.copy(avatarUrl = dataUri)
-
-                userRepository.updateUser(updated).collect { result ->
-                    // 简化处理：仅提示成功或失败
-                    _avatarUpdateMessage.value = when (result) {
-                        is com.equiptrack.android.utils.NetworkResult.Success -> "头像已更新"
-                        is com.equiptrack.android.utils.NetworkResult.Error -> "头像更新失败: ${result.message}"
-                        is com.equiptrack.android.utils.NetworkResult.Loading -> null
-                    }
-                }
-            } catch (e: Exception) {
-                _avatarUpdateMessage.value = "处理图片失败: ${e.message}"
             }
         }
     }

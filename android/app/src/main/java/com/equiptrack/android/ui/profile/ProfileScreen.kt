@@ -140,7 +140,7 @@ fun ProfileScreen(
     }
     
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let { profileViewModel.updateAvatar(context.contentResolver, it) }
+        uri?.let { profileViewModel.updateAvatar(context, it) }
     }
     
     Box(
@@ -172,7 +172,10 @@ fun ProfileScreen(
                             AsyncImage(
                                 model = currentUser.avatarUrl,
                                 contentDescription = null,
-                                modifier = Modifier.size(48.dp).clip(CircleShape),
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .clip(CircleShape)
+                                    .clickable { imagePicker.launch("image/*") },
                                 contentScale = ContentScale.Crop,
                                 error = rememberVectorPainter(Icons.Default.Person),
                                 placeholder = rememberVectorPainter(Icons.Default.Person)
@@ -181,7 +184,10 @@ fun ProfileScreen(
                             Icon(
                                 Icons.Default.Person,
                                 contentDescription = null,
-                                modifier = Modifier.size(48.dp),
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .clip(CircleShape)
+                                    .clickable { imagePicker.launch("image/*") },
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }

@@ -7,8 +7,12 @@ import com.equiptrack.android.data.model.UserStatus
 import com.equiptrack.android.data.remote.api.EquipTrackApiService
 import com.equiptrack.android.utils.NetworkResult
 import com.equiptrack.android.utils.safeApiCall
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import java.io.File
 import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -199,6 +203,35 @@ class UserRepository @Inject constructor(
             code = UUID.randomUUID().toString().take(8).uppercase()
         } while (userDao.getUserByInvitationCode(code) != null)
         return code
+    }
+
+    suspend fun uploadAvatar(file: File): Flow<NetworkResult<String>> = flow {
+        emit(NetworkResult.Loading())
+        try {
+            val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+            val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
+            
+            val result = safeApiCall {
+                apiService.uploadImage(body, type = "avatar")
+            }
+            
+            when (result) {
+                is NetworkResult.Success -> {
+                    val url = result.data?.get("url")
+                    if (url != null) {
+                        emit(NetworkResult.Success(url))
+                    } else {
+                        emit(NetworkResult.Error("上传成功但未返回URL"))
+                    }
+                }
+                is NetworkResult.Error -> {
+                    emit(NetworkResult.Error(result.message ?: "上传失败"))
+                }
+                is NetworkResult.Loading -> {}
+            }
+        } catch (e: Exception) {
+            emit(NetworkResult.Error("上传异常: ${e.message}"))
+        }
     }
 
     suspend fun deleteUser(userId: String): Flow<NetworkResult<String>> = flow {

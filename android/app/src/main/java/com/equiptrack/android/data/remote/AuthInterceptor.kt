@@ -44,8 +44,8 @@ class AuthInterceptor @Inject constructor(
         Log.d(TAG, "Request headers: ${newRequest.headers}")
 
         val response = chain.proceed(newRequest)
-        if (response.code == 401) {
-            Log.w(TAG, "Received 401 Unauthorized. Triggering session expiry.")
+        if (response.code == 401 || response.code == 431) {
+            Log.w(TAG, "Received ${response.code}. Triggering session expiry.")
             sessionManager.onSessionExpired()
         }
         return response

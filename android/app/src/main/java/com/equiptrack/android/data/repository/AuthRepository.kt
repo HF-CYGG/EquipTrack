@@ -34,6 +34,7 @@ class AuthRepository @Inject constructor(
         private const val KEY_USER_DEPARTMENT_ID = "user_department_id"
         private const val KEY_USER_DEPARTMENT_NAME = "user_department_name"
         private const val KEY_USER_INVITATION_CODE = "user_invitation_code"
+        private const val KEY_USER_AVATAR_URL = "user_avatar_url"
         private const val KEY_IS_LOGGED_IN = "is_logged_in"
         private const val KEY_AUTH_TOKEN = "auth_token"
         private const val KEY_FCM_TOKEN = "fcm_token"
@@ -207,6 +208,7 @@ class AuthRepository @Inject constructor(
         val userDepartmentId = sharedPreferences.getString(KEY_USER_DEPARTMENT_ID, null) ?: return null
         val userDepartmentName = sharedPreferences.getString(KEY_USER_DEPARTMENT_NAME, "") ?: ""
         val userInvitationCode = sharedPreferences.getString(KEY_USER_INVITATION_CODE, null)
+        val userAvatarUrl = sharedPreferences.getString(KEY_USER_AVATAR_URL, null)
         
         val userRole = UserRole.values().find { it.displayName == userRoleString } ?: UserRole.NORMAL_USER
         
@@ -218,7 +220,8 @@ class AuthRepository @Inject constructor(
             departmentName = userDepartmentName,
             role = userRole,
             status = UserStatus.NORMAL,
-            invitationCode = userInvitationCode
+            invitationCode = userInvitationCode,
+            avatarUrl = userAvatarUrl
         )
     }
 
@@ -254,6 +257,7 @@ class AuthRepository @Inject constructor(
             putString(KEY_USER_DEPARTMENT_ID, user.departmentId)
             putString(KEY_USER_DEPARTMENT_NAME, user.departmentName)
             putString(KEY_USER_INVITATION_CODE, user.invitationCode)
+            putString(KEY_USER_AVATAR_URL, user.avatarUrl)
             putBoolean(KEY_IS_LOGGED_IN, true)
             if (token != null) {
                 putString(KEY_AUTH_TOKEN, token)
