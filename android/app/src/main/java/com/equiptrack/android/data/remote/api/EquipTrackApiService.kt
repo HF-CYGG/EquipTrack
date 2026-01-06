@@ -36,6 +36,9 @@ interface EquipTrackApiService {
     
     @POST("api/departments")
     suspend fun createDepartment(@Body department: Department): Response<Department>
+
+    @PUT("api/departments/structure")
+    suspend fun updateDepartmentStructure(@Body updates: List<DepartmentStructureUpdate>): Response<List<Department>>
     
     @PUT("api/departments/{id}")
     suspend fun updateDepartment(

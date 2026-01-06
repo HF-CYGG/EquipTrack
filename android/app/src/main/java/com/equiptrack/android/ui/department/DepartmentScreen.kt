@@ -226,7 +226,9 @@ fun DepartmentScreen(
                                                         currentTab = 1
                                                     },
                                                     onEdit = { dept -> viewModel.showEditDialog(dept) },
-                                                    onDelete = { dept -> viewModel.showDeleteDialog(dept) }
+                                                    onDelete = { dept -> viewModel.showDeleteDialog(dept) },
+                                                    onUpdateStructure = { updates -> viewModel.updateDepartmentStructure(updates) },
+                                                    canManage = viewModel.canManageDepartments()
                                                 )
                                             }
                                         }

@@ -3,6 +3,7 @@ package com.equiptrack.android.ui.department
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.equiptrack.android.data.model.Department
+import com.equiptrack.android.data.model.DepartmentStructureUpdate
 import com.equiptrack.android.data.model.User
 import com.equiptrack.android.data.model.UserRole
 import com.equiptrack.android.data.model.EquipmentItem
@@ -247,6 +248,30 @@ class DepartmentViewModel @Inject constructor(
         }
     }
     
+    fun updateDepartmentStructure(updates: List<DepartmentStructureUpdate>) {
+        viewModelScope.launch {
+            departmentRepository.updateDepartmentStructure(updates).collect { result ->
+                when (result) {
+                    is NetworkResult.Success -> {
+                        _uiState.value = _uiState.value.copy(
+                            successMessage = "部门结构更新成功"
+                        )
+                        // Refresh to ensure everything is synced, though repo already updated DAO
+                        // syncDepartments() 
+                    }
+                    is NetworkResult.Error -> {
+                         _uiState.value = _uiState.value.copy(
+                            errorMessage = "部门结构更新失败: ${result.message}"
+                        )
+                    }
+                    is NetworkResult.Loading -> {
+                        // Optional: show loading
+                    }
+                }
+            }
+        }
+    }
+
     fun deleteDepartment(departmentId: String) {
         viewModelScope.launch {
             departmentRepository.deleteDepartment(departmentId).collect { result ->

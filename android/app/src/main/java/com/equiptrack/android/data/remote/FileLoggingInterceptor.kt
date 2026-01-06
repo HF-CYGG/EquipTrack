@@ -25,6 +25,13 @@ class FileLoggingInterceptor @Inject constructor(
             
             return response
         } catch (e: Exception) {
+            // Check for cancellation
+            if (e is IOException && e.message == "Canceled") {
+                // Log as debug or info, not error
+                logManager.d("Network", "Request canceled: $method $url")
+                throw e
+            }
+
             logManager.e("Network", "Request error: $method $url", e)
             
             // Fix for OkHttp crash "IllegalStateException: state: 0"

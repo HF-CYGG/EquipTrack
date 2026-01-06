@@ -20,7 +20,15 @@ data class Department(
     val id: String,
     val name: String,
     val parentId: String? = null,
-    val requiresApproval: Boolean = true // Default: true
+    val requiresApproval: Boolean = true, // Default: true
+    val order: Int = 0
+) : Parcelable
+
+@Parcelize
+data class DepartmentStructureUpdate(
+    val id: String,
+    val parentId: String?,
+    val order: Int
 ) : Parcelable
 
 @Immutable

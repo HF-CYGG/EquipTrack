@@ -5,6 +5,8 @@ import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 
+import kotlinx.coroutines.CancellationException
+
 sealed class NetworkResult<T>(
     val data: T? = null,
     val message: String? = null
@@ -46,6 +48,8 @@ suspend fun <T> safeApiCall(apiCall: suspend () -> Response<T>): NetworkResult<T
             NetworkResult.Error(errorMessage)
         }
     } catch (e: Exception) {
+        if (e is CancellationException) throw e
+        
         val msg = when (e) {
             is ConnectException -> "无法连接到服务器，请检查网络或服务器配置"
             is SocketTimeoutException -> "连接超时，请检查网络或服务器配置"

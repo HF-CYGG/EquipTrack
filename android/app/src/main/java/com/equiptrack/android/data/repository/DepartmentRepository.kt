@@ -2,6 +2,7 @@ package com.equiptrack.android.data.repository
 
 import com.equiptrack.android.data.local.dao.DepartmentDao
 import com.equiptrack.android.data.model.Department
+import com.equiptrack.android.data.model.DepartmentStructureUpdate
 import com.equiptrack.android.data.remote.api.EquipTrackApiService
 import com.equiptrack.android.data.settings.SettingsRepository
 import com.equiptrack.android.utils.NetworkResult
@@ -54,11 +55,18 @@ class DepartmentRepository @Inject constructor(
     suspend fun createDepartment(name: String, requiresApproval: Boolean = true, parentId: String? = null): Flow<NetworkResult<Department>> = flow {
         emit(NetworkResult.Loading())
         
+        // Find max order in the same parent level to append to end
+        val currentDepts = departmentDao.getAllDepartments().first()
+        val siblings = currentDepts.filter { it.parentId == parentId }
+        val maxOrder = siblings.maxOfOrNull { it.order } ?: 0
+        val newOrder = maxOrder + 1
+
         val department = Department(
             id = UUID.randomUUID().toString(),
             name = name.trim(),
             requiresApproval = requiresApproval,
-            parentId = parentId
+            parentId = parentId,
+            order = newOrder
         )
         
         try {
@@ -120,6 +128,47 @@ class DepartmentRepository @Inject constructor(
         }
     }
     
+    suspend fun updateDepartmentStructure(updates: List<DepartmentStructureUpdate>): Flow<NetworkResult<List<Department>>> = flow {
+        emit(NetworkResult.Loading())
+        try {
+            val result = safeApiCall {
+                apiService.updateDepartmentStructure(updates)
+            }
+            when (result) {
+                is NetworkResult.Success -> {
+                    val updatedDepartments = result.data ?: emptyList()
+                    if (updatedDepartments.isNotEmpty()) {
+                        departmentDao.replaceDepartments(updatedDepartments)
+                    }
+                    emit(NetworkResult.Success(updatedDepartments))
+                }
+                is NetworkResult.Error -> {
+                    // Fallback to local update if network fails or in local mode?
+                    // For now, just emit error, or we could update local DAO directly if we trust the logic.
+                    // Let's update local DAO optimistically or if offline mode.
+                    if (settingsRepository.isLocalDebug()) {
+                         // Local mode logic: update DB manually
+                         val allDepts = departmentDao.getAllDepartments().first().toMutableList()
+                         updates.forEach { update ->
+                             val idx = allDepts.indexOfFirst { it.id == update.id }
+                             if (idx != -1) {
+                                 val existing = allDepts[idx]
+                                 allDepts[idx] = existing.copy(parentId = update.parentId, order = update.order)
+                             }
+                         }
+                         departmentDao.replaceDepartments(allDepts)
+                         emit(NetworkResult.Success(allDepts))
+                    } else {
+                        emit(NetworkResult.Error(result.message ?: "Update structure failed"))
+                    }
+                }
+                is NetworkResult.Loading -> emit(NetworkResult.Loading())
+            }
+        } catch (e: Exception) {
+             emit(NetworkResult.Error(e.message ?: "Unknown error"))
+        }
+    }
+
     suspend fun deleteDepartment(departmentId: String): Flow<NetworkResult<String>> = flow {
         emit(NetworkResult.Loading())
         
