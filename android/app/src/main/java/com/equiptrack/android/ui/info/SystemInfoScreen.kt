@@ -381,7 +381,7 @@ private fun RoleSummary() {
     val summaries = listOf(
         UserRole.SUPER_ADMIN to "系统主宰：全局配置、跨部门管理、全生命周期管控。",
         UserRole.ADMIN to "部门主管：部门内人员/物资管理、审批权。",
-        UserRole.ADVANCED_USER to "核心骨干：协助审批、物资信息维护、强制归还操作。",
+        UserRole.ADVANCED_USER to "核心骨干：审批本部门借用、邀请并审批新用户、物资信息维护。",
         UserRole.NORMAL_USER to "基础成员：物资浏览、借用申请、个人记录查看。"
     )
 

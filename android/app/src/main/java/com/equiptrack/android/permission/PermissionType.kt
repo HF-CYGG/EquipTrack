@@ -51,6 +51,8 @@ object RolePermissionsMatrix {
             PermissionType.VIEW_OWN_HISTORY
         ),
         UserRole.ADVANCED_USER to setOf(
+            PermissionType.VIEW_REGISTRATION_APPROVALS,
+            PermissionType.VIEW_BORROW_APPROVALS,
             PermissionType.MANAGE_EQUIPMENT_ITEMS,
             PermissionType.VIEW_DEPARTMENT_HISTORY,
             PermissionType.BORROW_ITEMS,

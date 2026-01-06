@@ -38,6 +38,7 @@ object PermissionChecker {
             // This applies to management and viewing history permissions
             return when (permission) {
                 PermissionType.VIEW_REGISTRATION_APPROVALS,
+                PermissionType.VIEW_BORROW_APPROVALS,
                 PermissionType.VIEW_USER_MANAGEMENT,
                 PermissionType.VIEW_DEPARTMENT_MANAGEMENT,
                 PermissionType.MANAGE_EQUIPMENT_ITEMS,

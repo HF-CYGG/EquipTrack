@@ -41,6 +41,7 @@ class ApprovalViewModel @Inject constructor(
         when (currentUser?.role) {
             UserRole.SUPER_ADMIN -> approvalRepository.getAllRequests()
             UserRole.ADMIN -> if (currentUser.departmentId.isNotEmpty()) approvalRepository.getRequestsByDepartment(currentUser.departmentId) else flowOf(emptyList())
+            UserRole.ADVANCED_USER -> approvalRepository.getRequestsByInviter(currentUser.id)
             else -> flowOf(emptyList())
         }
     ) { query, requests ->
@@ -237,6 +238,7 @@ class ApprovalViewModel @Inject constructor(
         return when (currentUser?.role) {
             UserRole.SUPER_ADMIN -> "可查看和处理所有部门的注册申请"
             UserRole.ADMIN -> "可查看和处理本部门的注册申请"
+            UserRole.ADVANCED_USER -> "可查看和处理由您邀请的用户的注册申请"
             else -> "无权限查看注册申请"
         }
     }
@@ -517,7 +519,7 @@ class BorrowApprovalViewModel @Inject constructor(
     }
     
     fun canApproveRequests(): Boolean {
-        return PermissionChecker.hasPermission(currentUser, PermissionType.MANAGE_EQUIPMENT_ITEMS)
+        return PermissionChecker.hasPermission(currentUser, PermissionType.VIEW_BORROW_APPROVALS)
     }
     
     fun getAccessLevelDescription(): String {

@@ -70,7 +70,7 @@ private fun RoleSummary() {
     val summaries = listOf(
         UserRole.SUPER_ADMIN to "跨部门管理、系统全局配置、管理所有用户和物资",
         UserRole.ADMIN to "管理本部门用户与物资、审批注册申请、维护部门基础数据",
-        UserRole.ADVANCED_USER to "编辑物资、强制归还、管理普通用户账户",
+        UserRole.ADVANCED_USER to "编辑物资、审批本部门借用申请、邀请并审批新用户",
         UserRole.NORMAL_USER to "浏览信息、参与借还操作"
     )
 
