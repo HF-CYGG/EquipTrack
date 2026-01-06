@@ -299,7 +299,7 @@ private fun UsageGuideSection() {
 
 @Composable
 private fun GuideItem(index: String, title: String, desc: String) {
-    Row(crossAxisAlignment = Alignment.Top) {
+    Row(verticalAlignment = Alignment.Top) {
         Text(
             text = index,
             style = MaterialTheme.typography.titleLarge,
@@ -316,7 +316,7 @@ private fun GuideItem(index: String, title: String, desc: String) {
 
 @Composable
 private fun InfoRow(label: String, content: String) {
-    Row(crossAxisAlignment = Alignment.Top) {
+    Row(verticalAlignment = Alignment.Top) {
         Text(
             text = "• $label：",
             style = MaterialTheme.typography.bodyMedium,
