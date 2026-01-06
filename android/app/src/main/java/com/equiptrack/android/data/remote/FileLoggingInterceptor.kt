@@ -26,6 +26,12 @@ class FileLoggingInterceptor @Inject constructor(
             return response
         } catch (e: Exception) {
             logManager.e("Network", "Request error: $method $url", e)
+            
+            // Fix for OkHttp crash "IllegalStateException: state: 0"
+            // Wrap RuntimeExceptions in IOException so Retrofit handles them as network errors
+            if (e is IllegalStateException) {
+                throw IOException("Network internal error: ${e.message}", e)
+            }
             throw e
         }
     }
