@@ -229,6 +229,48 @@ studio-main/
     npm run build && npm start # 生产模式
     ```
 
+### 🌱 后端环境变量示例 (.env 模板)
+
+后端所有敏感信息（数据库地址、账号密码等）均通过环境变量配置，请 **不要** 将真实 `.env` 文件提交到仓库或打包进镜像。
+
+在 `server` 目录下创建 `.env` 文件，推荐参考以下模板稍作修改：
+
+```dotenv
+# 运行环境
+NODE_ENV=production
+PORT=3000
+
+# JWT 密钥（生产环境务必修改为随机强密码）
+JWT_SECRET=please_change_me_to_a_strong_secret
+
+# 允许的跨域来源（开发可为 *，生产建议指定域名）
+CORS_ORIGIN=*
+
+# 访问频率限制（可保持默认）
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX=200
+
+# 数据目录（可选，一般保持默认即可）
+DATA_DIR=./data
+
+# MySQL 数据库配置（根据你自己的 MySQL 实例修改）
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3306
+MYSQL_USER=equiptrack_user
+MYSQL_PASSWORD=strong_password
+MYSQL_DATABASE=EquipTrack
+
+# 可选：FCM 推送配置（如不使用可留空）
+# 将 Firebase Service Account JSON 整体放入此环境变量（需转义换行）
+FIREBASE_CREDENTIALS=
+```
+
+> 部署步骤建议：
+> 1. 将上述内容保存为 `server/.env`；
+> 2. 根据实际 MySQL 环境修改 `MYSQL_*` 字段；
+> 3. 在 Docker 或 Dpanel 中挂载/编辑该 `.env` 文件；
+> 4. 启动或重启容器后，后端会自动读取这些配置并连接到你的数据库。
+
 ---
 
 ## 📱 Android 客户端开发指南
