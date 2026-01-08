@@ -93,4 +93,13 @@
     
     <!-- Notifications -->
     <string name="default_notification_channel_id">fcm_default_channel</string>
+
+    <!-- Update -->
+    <string name="update_title">版本更新</string>
+    <string name="update_downloading_desc">正在下载新版本...</string>
+    <string name="update_file_not_found">安装包文件未找到</string>
+    <string name="update_install_failed">安装失败</string>
+    <string name="update_download_failed">下载失败</string>
+    <string name="update_download_info_not_found">未找到下载任务信息</string>
+    <string name="update_failed_link">无法打开链接</string>
 </resources>

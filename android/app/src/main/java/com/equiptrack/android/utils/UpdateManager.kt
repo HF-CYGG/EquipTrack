@@ -57,17 +57,27 @@ class UpdateManager @Inject constructor(
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
         } catch (e: Exception) {
-            _updateStatus.value = UpdateStatus.Error("Failed to open link: ${e.message}")
+            _updateStatus.value = UpdateStatus.Error("${context.getString(R.string.update_failed_link)}: ${e.message}")
         }
     }
 
     fun startDownload(url: String, fileName: String = "app-release.apk") {
         try {
+            // Unregister previous receiver if exists to avoid leaks
+            if (downloadReceiver != null) {
+                try {
+                    context.unregisterReceiver(downloadReceiver)
+                } catch (e: Exception) {
+                    // Ignore if not registered
+                }
+                downloadReceiver = null
+            }
+
             _updateStatus.value = UpdateStatus.Downloading(0)
 
             val request = DownloadManager.Request(Uri.parse(url))
-                .setTitle("EquipTrack Update")
-                .setDescription("Downloading new version...")
+                .setTitle(context.getString(R.string.update_title))
+                .setDescription(context.getString(R.string.update_downloading_desc))
                 .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                 .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, fileName)
                 .setAllowedOverMetered(true)
@@ -77,28 +87,59 @@ class UpdateManager @Inject constructor(
             downloadId = downloadManager.enqueue(request)
 
             // Register receiver for download complete
-            val onComplete = object : BroadcastReceiver() {
+            downloadReceiver = object : BroadcastReceiver() {
                 override fun onReceive(ctxt: Context, intent: Intent) {
                     val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
                     if (downloadId == id) {
-                        _updateStatus.value = UpdateStatus.Downloaded
-                        installApk(fileName)
-                        context.unregisterReceiver(this)
+                        checkDownloadStatus(downloadManager, id, fileName)
+                        try {
+                            context.unregisterReceiver(this)
+                        } catch (e: Exception) {
+                            // Ignore
+                        }
+                        downloadReceiver = null
                     }
                 }
             }
-            context.registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+            context.registerReceiver(downloadReceiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
 
         } catch (e: Exception) {
-            _updateStatus.value = UpdateStatus.Error(e.message ?: "Download failed")
+            _updateStatus.value = UpdateStatus.Error(e.message ?: context.getString(R.string.update_download_failed))
         }
+    }
+
+    private fun checkDownloadStatus(downloadManager: DownloadManager, id: Long, fileName: String) {
+        val query = DownloadManager.Query().setFilterById(id)
+        val cursor = downloadManager.query(query)
+        if (cursor.moveToFirst()) {
+            val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+            if (statusIndex != -1) {
+                when (cursor.getInt(statusIndex)) {
+                    DownloadManager.STATUS_SUCCESSFUL -> {
+                        _updateStatus.value = UpdateStatus.Downloaded
+                        installApk(fileName)
+                    }
+                    DownloadManager.STATUS_FAILED -> {
+                        val reasonIndex = cursor.getColumnIndex(DownloadManager.COLUMN_REASON)
+                        val reason = if (reasonIndex != -1) cursor.getInt(reasonIndex) else -1
+                        _updateStatus.value = UpdateStatus.Error("${context.getString(R.string.update_download_failed)}: $reason")
+                    }
+                    else -> {
+                        // Other statuses (shouldn't happen on COMPLETE broadcast usually)
+                    }
+                }
+            }
+        } else {
+             _updateStatus.value = UpdateStatus.Error(context.getString(R.string.update_download_info_not_found))
+        }
+        cursor.close()
     }
 
     private fun installApk(fileName: String) {
         try {
             val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
             if (!file.exists()) {
-                _updateStatus.value = UpdateStatus.Error("File not found")
+                _updateStatus.value = UpdateStatus.Error(context.getString(R.string.update_file_not_found))
                 return
             }
 
@@ -115,7 +156,7 @@ class UpdateManager @Inject constructor(
             }
             context.startActivity(intent)
         } catch (e: Exception) {
-            _updateStatus.value = UpdateStatus.Error("Install failed: ${e.message}")
+            _updateStatus.value = UpdateStatus.Error("${context.getString(R.string.update_install_failed)}: ${e.message}")
         }
     }
     
