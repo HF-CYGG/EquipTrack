@@ -441,7 +441,15 @@ fun BorrowRequestCard(
                     }
                 }
 
-                if (request.borrower != request.applicant) {
+                // Check if borrower and applicant are the same person (relaxed check)
+                val isSelf = if (request.borrower?.id != null && request.applicant?.id != null) {
+                    request.borrower.id == request.applicant.id
+                } else {
+                    request.borrower?.name == request.applicant?.name && 
+                    request.borrower?.phone == request.applicant?.phone
+                }
+
+                if (!isSelf) {
                     Surface(
                         color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),
                         shape = MaterialTheme.shapes.extraSmall,
