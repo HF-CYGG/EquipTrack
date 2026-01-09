@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.net.Uri
 import android.os.Environment
 import androidx.core.content.FileProvider
+import com.equiptrack.android.R
 import com.equiptrack.android.data.model.AppVersion
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +35,7 @@ class UpdateManager @Inject constructor(
     val updateStatus = _updateStatus.asStateFlow()
 
     private var downloadId: Long = -1
+    private var downloadReceiver: BroadcastReceiver? = null
 
     fun setChecking() {
         _updateStatus.value = UpdateStatus.Checking

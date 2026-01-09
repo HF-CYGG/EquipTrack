@@ -83,7 +83,7 @@ class EquipmentViewModel @Inject constructor(
         if (query.isNotBlank()) {
             filteredItems = filteredItems.filter { item ->
                 item.name.contains(query, ignoreCase = true) ||
-                item.description.contains(query, ignoreCase = true)
+                (item.description?.contains(query, ignoreCase = true) == true)
             }
         }
         

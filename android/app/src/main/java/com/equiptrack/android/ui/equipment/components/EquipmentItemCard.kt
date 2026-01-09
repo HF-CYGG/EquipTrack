@@ -190,9 +190,9 @@ fun EquipmentItemCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     
-                    if (item.description.isNotEmpty()) {
+                    if (!item.description.isNullOrEmpty()) {
                         Text(
-                            text = item.description,
+                            text = item.description.orEmpty(),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 2,

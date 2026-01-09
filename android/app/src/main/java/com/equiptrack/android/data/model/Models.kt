@@ -63,7 +63,7 @@ data class EquipmentItem(
     val name: String,
     val categoryId: String,
     val departmentId: String,
-    val description: String,
+    val description: String? = null,
     val image: String? = null,
     val imageFull: String? = null,
     val quantity: Int,
