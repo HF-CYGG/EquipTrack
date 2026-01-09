@@ -147,8 +147,8 @@ fun HistoryScreen(
                         )
                     }
 
-                    // Loading indicator
-                    if (uiState.isLoading && !isRefreshing) {
+                    // Loading indicator - only show skeleton if list is empty
+                    if (uiState.isLoading && historyEntries.isEmpty()) {
                         HistoryListSkeleton()
                     } else {
                         val listAnimationType = themeOverrides.listAnimationType ?: navVm.settingsRepository.getListAnimationType()
