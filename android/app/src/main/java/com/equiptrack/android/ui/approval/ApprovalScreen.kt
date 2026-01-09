@@ -3,7 +3,6 @@ package com.equiptrack.android.ui.approval
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -18,11 +17,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.equiptrack.android.data.model.RegistrationRequest
 import com.equiptrack.android.data.model.BorrowRequestEntry
 import com.equiptrack.android.ui.approval.components.RegistrationRequestCard
@@ -52,10 +54,19 @@ fun ApprovalScreen(
         refreshing = uiState.isRefreshing,
         onRefresh = { viewModel.syncRequests(isRefresh = true) }
     )
-
-    // Auto refresh on entry
-    LaunchedEffect(Unit) {
-        viewModel.syncRequests()
+    
+    // 页面进入和返回时自动同步数据
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.syncRequests()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     // Show toast for messages
@@ -171,8 +182,8 @@ fun ApprovalScreen(
                     )
                 }
 
-                // 申请列表
-                if (uiState.isLoading) {
+                // 申请列表：仅在没有数据且正在加载时显示骨架屏，其余情况优先显示缓存数据
+                if (uiState.isLoading && filteredRequests.isEmpty()) {
                     ApprovalListSkeleton()
                 } else {
                     val enableAnimations = !lowPerformanceMode && listAnimationType != "None"
