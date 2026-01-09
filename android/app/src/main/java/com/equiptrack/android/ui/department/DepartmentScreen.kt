@@ -244,7 +244,11 @@ fun DepartmentScreen(
                                                 department = department,
                                                 canManage = viewModel.canManageDepartments(),
                                                 onEdit = { viewModel.showEditDialog(department) },
-                                                onDelete = { viewModel.showDeleteDialog(department) }
+                                                onDelete = { viewModel.showDeleteDialog(department) },
+                                                onClick = {
+                                                    viewModel.selectDepartment(department.id)
+                                                    currentTab = 1
+                                                }
                                             )
                                         }
                                     }
@@ -348,4 +352,3 @@ fun DepartmentScreen(
         )
     }
 }
-

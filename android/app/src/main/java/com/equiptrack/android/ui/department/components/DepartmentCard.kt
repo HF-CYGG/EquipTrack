@@ -1,5 +1,6 @@
 package com.equiptrack.android.ui.department.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -19,10 +20,13 @@ fun DepartmentCard(
     department: Department,
     canManage: Boolean,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onClick: (() -> Unit)? = null
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .let { base -> if (onClick != null) base.clickable { onClick() } else base },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
@@ -33,7 +37,6 @@ fun DepartmentCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Department info
                 Row(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
@@ -63,7 +66,6 @@ fun DepartmentCard(
                     }
                 }
                 
-                // Management buttons
                 if (canManage) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)

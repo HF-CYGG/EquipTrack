@@ -106,7 +106,10 @@ class EquipmentViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
-    
+
+    private var lastAutoRefreshTime: Long = 0L
+    private val autoRefreshIntervalMillis: Long = 15_000L
+
     init {
         viewModelScope.launch {
             kotlinx.coroutines.yield()
@@ -151,9 +154,16 @@ class EquipmentViewModel @Inject constructor(
         _selectedCategoryId.value = categoryId
     }
     
-    fun refreshData() {
+    fun refreshData(fromUserGesture: Boolean = true) {
+        val now = System.currentTimeMillis()
+        if (!fromUserGesture) {
+            if (now - lastAutoRefreshTime < autoRefreshIntervalMillis) {
+                return
+            }
+            lastAutoRefreshTime = now
+        }
         _isRefreshing.value = true
-        syncData(isUserRefresh = true)
+        syncData(isUserRefresh = fromUserGesture)
     }
 
     private var syncJob: kotlinx.coroutines.Job? = null

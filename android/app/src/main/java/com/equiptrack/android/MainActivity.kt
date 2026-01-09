@@ -108,94 +108,79 @@ fun RootApp(
     localDebugSeeder: LocalDebugSeeder,
     mainViewModel: MainViewModel
 ) {
-    var stage by remember { mutableStateOf(Stage.Shell) }
     val updateStatus by mainViewModel.updateStatus.collectAsState()
 
     LaunchedEffect(Unit) {
-        PreloadManager.preloadCore()
-        stage = Stage.Full
         mainViewModel.checkForUpdates()
+        localDebugSeeder.seedIfLocalDebug()
     }
 
-    when (stage) {
-        Stage.Shell -> {
-            EquipTrackTheme {
-                AppShell()
+    val overrides: ThemeOverrides by settingsRepository.themeOverridesFlow
+        .collectAsState(
+            initial = ThemeOverrides(
+                primaryColorHex = settingsRepository.getPrimaryColorHex(),
+                accentColorHex = settingsRepository.getAccentColorHex(),
+                backgroundUri = settingsRepository.getBackgroundUri(),
+                backgroundDimAlpha = settingsRepository.getBackgroundDimAlpha(),
+                backgroundContentScale = settingsRepository.getBackgroundContentScale(),
+                backgroundBlurRadius = settingsRepository.getBackgroundBlurRadius()
+            )
+        )
+
+    EquipTrackTheme(overrides = overrides) {
+        var showBackground by remember(overrides.backgroundUri) { mutableStateOf(false) }
+        LaunchedEffect(overrides.backgroundUri) {
+            showBackground = false
+            if (overrides.backgroundUri != null) {
+                withFrameNanos { }
+                showBackground = true
             }
         }
-        Stage.Full -> {
-            val overrides: ThemeOverrides by settingsRepository.themeOverridesFlow
-                .collectAsState(
-                    initial = ThemeOverrides(
-                        primaryColorHex = settingsRepository.getPrimaryColorHex(),
-                        accentColorHex = settingsRepository.getAccentColorHex(),
-                        backgroundUri = settingsRepository.getBackgroundUri(),
-                        backgroundDimAlpha = settingsRepository.getBackgroundDimAlpha(),
-                        backgroundContentScale = settingsRepository.getBackgroundContentScale(),
-                        backgroundBlurRadius = settingsRepository.getBackgroundBlurRadius()
-                    )
+
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (updateStatus is UpdateStatus.Available) {
+                val version = (updateStatus as UpdateStatus.Available).version
+                UpdateDialog(
+                    version = version,
+                    onUpdate = { mainViewModel.startDownload(version.downloadUrl) },
+                    onDismiss = { mainViewModel.dismissUpdate() }
                 )
+            }
+            if (showBackground) {
+                val uri = overrides.backgroundUri
+                uri?.let {
+                    var modifier = Modifier.fillMaxSize()
+                    if ((overrides.backgroundBlurRadius ?: 0) > 0) {
+                        modifier = modifier.blur((overrides.backgroundBlurRadius ?: 0).dp)
+                    }
 
-            EquipTrackTheme(overrides = overrides) {
-                LaunchedEffect(Unit) {
-                    localDebugSeeder.seedIfLocalDebug()
+                    AsyncImage(
+                        model = it,
+                        contentDescription = null,
+                        modifier = modifier,
+                        contentScale = when (overrides.backgroundContentScale) {
+                            "Fit" -> ContentScale.Fit
+                            "FillBounds" -> ContentScale.FillBounds
+                            "Inside" -> ContentScale.Inside
+                            else -> ContentScale.Crop
+                        },
+                    )
                 }
 
-                var showBackground by remember(overrides.backgroundUri) { mutableStateOf(false) }
-                LaunchedEffect(overrides.backgroundUri) {
-                    showBackground = false
-                    if (overrides.backgroundUri != null) {
-                        withFrameNanos { }
-                        showBackground = true
-                    }
+                if (uri != null) {
+                    val dim = (overrides.backgroundDimAlpha ?: 0.25f).coerceIn(0f, 1f)
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = dim))
+                    )
                 }
-
-                Box(modifier = Modifier.fillMaxSize()) {
-                    if (updateStatus is UpdateStatus.Available) {
-                        val version = (updateStatus as UpdateStatus.Available).version
-                        UpdateDialog(
-                            version = version,
-                            onUpdate = { mainViewModel.startDownload(version.downloadUrl) },
-                            onDismiss = { mainViewModel.dismissUpdate() }
-                        )
-                    }
-                    if (showBackground) {
-                        val uri = overrides.backgroundUri
-                        uri?.let {
-                            var modifier = Modifier.fillMaxSize()
-                            if ((overrides.backgroundBlurRadius ?: 0) > 0) {
-                                modifier = modifier.blur((overrides.backgroundBlurRadius ?: 0).dp)
-                            }
-
-                            AsyncImage(
-                                model = it,
-                                contentDescription = null,
-                                modifier = modifier,
-                                contentScale = when (overrides.backgroundContentScale) {
-                                    "Fit" -> ContentScale.Fit
-                                    "FillBounds" -> ContentScale.FillBounds
-                                    "Inside" -> ContentScale.Inside
-                                    else -> ContentScale.Crop
-                                },
-                            )
-                        }
-
-                        if (uri != null) {
-                            val dim = (overrides.backgroundDimAlpha ?: 0.25f).coerceIn(0f, 1f)
-                            androidx.compose.foundation.layout.Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = dim))
-                            )
-                        }
-                    }
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = if (showBackground && overrides.backgroundUri != null) Color.Transparent else MaterialTheme.colorScheme.background
-                    ) {
-                        EquipTrackNavigation()
-                    }
-                }
+            }
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = if (showBackground && overrides.backgroundUri != null) Color.Transparent else MaterialTheme.colorScheme.background
+            ) {
+                EquipTrackNavigation()
             }
         }
     }

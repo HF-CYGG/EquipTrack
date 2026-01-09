@@ -212,11 +212,10 @@ fun EquipmentScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // Automatically refresh data when screen resumes (e.g., navigating back from another screen)
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.refreshData()
+                viewModel.refreshData(fromUserGesture = false)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

@@ -25,6 +25,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.equiptrack.android.data.model.User
 import com.equiptrack.android.data.model.UserRole
 import com.equiptrack.android.data.model.UserStatus
@@ -75,9 +78,18 @@ fun UsersScreen(
         onRefresh = { viewModel.refreshUsers() }
     )
 
-    // Auto-refresh when entering the screen
-    LaunchedEffect(Unit) {
-        viewModel.refreshUsers()
+    // 页面进入和返回时自动同步用户数据
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.syncUsers()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     // Handle error and success messages
@@ -232,63 +244,72 @@ fun UsersScreen(
                 }
 
                 val enableAnimations = !lowPerformanceMode && listAnimationType != "None"
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    state = listState
-                ) {
-                    if (filteredUsers.isEmpty()) {
-                        item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(24.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
+                if (uiState.isLoading && filteredUsers.isEmpty()) {
+                    UserListSkeleton(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        state = listState
+                    ) {
+                        if (filteredUsers.isEmpty()) {
+                            item {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                                 ) {
-                                    Text(
-                                        text = if (searchQuery.isNotEmpty()) "未找到匹配的用户" else "暂无用户",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    if (searchQuery.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        TextButton(onClick = { viewModel.updateSearchQuery("") }) {
-                                            Text("查看全部用户")
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(24.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text(
+                                            text = if (searchQuery.isNotEmpty()) "未找到匹配的用户" else "暂无用户",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        if (searchQuery.isNotEmpty()) {
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            TextButton(onClick = { viewModel.updateSearchQuery("") }) {
+                                                Text("查看全部用户")
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
-                    } else {
-                        itemsIndexed(
-                            items = filteredUsers,
-                            key = { _, user -> user.id },
-                            contentType = { _, _ -> "user" }
-                        ) { index, user ->
-                            AnimatedListItem(
-                                enabled = enableAnimations,
-                                listAnimationType = listAnimationType,
-                                index = index
-                            ) {
-                                val currentUser = viewModel.getCurrentUser()
-                                // Strict permission check: Can only manage users with strictly lower rank (higher ordinal)
-                                val canManageUser = canManage && ((currentUser?.role?.ordinal ?: Int.MAX_VALUE) < user.role.ordinal)
-                                
-                                UserCard(
-                                    user = user,
-                                    departments = departments,
-                                    canManage = canManageUser,
-                                    onEdit = { viewModel.showEditDialog(user) },
-                                    onResetPassword = { viewModel.showPasswordDialog(user) },
-                                    onToggleStatus = {
-                                        val newStatus = if (user.status == UserStatus.NORMAL) UserStatus.BANNED else UserStatus.NORMAL
-                                        viewModel.updateUserStatus(user.id, newStatus)
-                                    },
-                                    onDelete = { viewModel.showDeleteDialog(user) }
-                                )
+                        } else {
+                            itemsIndexed(
+                                items = filteredUsers,
+                                key = { _, user -> user.id },
+                                contentType = { _, _ -> "user" }
+                            ) { index, user ->
+                                AnimatedListItem(
+                                    enabled = enableAnimations,
+                                    listAnimationType = listAnimationType,
+                                    index = index
+                                ) {
+                                    val currentUser = viewModel.getCurrentUser()
+                                    // 严格权限检查：只能管理权限等级低于当前用户的账号
+                                    val canManageUser = canManage && ((currentUser?.role?.ordinal ?: Int.MAX_VALUE) < user.role.ordinal)
+                                    
+                                    UserCard(
+                                        user = user,
+                                        departments = departments,
+                                        canManage = canManageUser,
+                                        onEdit = { viewModel.showEditDialog(user) },
+                                        onResetPassword = { viewModel.showPasswordDialog(user) },
+                                        onToggleStatus = {
+                                            val newStatus = if (user.status == UserStatus.NORMAL) UserStatus.BANNED else UserStatus.NORMAL
+                                            viewModel.updateUserStatus(user.id, newStatus)
+                                        },
+                                        onDelete = { viewModel.showDeleteDialog(user) }
+                                    )
+                                }
                             }
                         }
                     }
