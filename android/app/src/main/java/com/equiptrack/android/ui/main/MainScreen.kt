@@ -3,6 +3,7 @@ package com.equiptrack.android.ui.main
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -53,73 +54,89 @@ fun MainScreen(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet(
-                drawerContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 1f)
-            ) {
-                Text(
-                    text = "导航",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(16.dp)
-                )
-                
-                val drawerItems = remember(currentUser) {
-                    val items = mutableListOf(
-                        MainNavItem.Equipment,
-                        MainNavItem.History,
-                        MainNavItem.Profile
+                ModalDrawerSheet(
+                    drawerContainerColor = MaterialTheme.colorScheme.surface,
+                    drawerContentColor = MaterialTheme.colorScheme.onSurface,
+                ) {
+                    // Drawer Header
+                    Text(
+                        text = "导航",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                    if (PermissionChecker.hasPermission(currentUser, PermissionType.MANAGE_EQUIPMENT_ITEMS)) {
-                        items.add(MainNavItem.BorrowApprovals)
-                    }
-                    if (PermissionChecker.hasPermission(currentUser, PermissionType.VIEW_REGISTRATION_APPROVALS)) {
-                        items.add(MainNavItem.Approvals)
-                    }
-                    if (PermissionChecker.hasPermission(currentUser, PermissionType.VIEW_USER_MANAGEMENT)) {
-                        items.add(MainNavItem.Users)
-                    }
-                    if (PermissionChecker.hasPermission(currentUser, PermissionType.VIEW_DEPARTMENT_MANAGEMENT)) {
-                        items.add(MainNavItem.Departments)
-                    }
-                    items
-                }
 
-                drawerItems.forEach { item ->
-                    NavigationDrawerItem(
-                        icon = { Icon(item.icon, contentDescription = item.title) },
-                        label = { Text(item.title) },
-                        selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
-                        onClick = {
-                            navController.navigate(item.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                            scope.launch { drawerState.close() }
+                    Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
+                
+                    val drawerItems = remember(currentUser) {
+                        val items = mutableListOf(
+                            MainNavItem.Equipment,
+                            MainNavItem.History,
+                            MainNavItem.Profile
+                        )
+                        if (PermissionChecker.hasPermission(currentUser, PermissionType.MANAGE_EQUIPMENT_ITEMS)) {
+                            items.add(MainNavItem.BorrowApprovals)
                         }
+                        if (PermissionChecker.hasPermission(currentUser, PermissionType.VIEW_REGISTRATION_APPROVALS)) {
+                            items.add(MainNavItem.Approvals)
+                        }
+                        if (PermissionChecker.hasPermission(currentUser, PermissionType.VIEW_USER_MANAGEMENT)) {
+                            items.add(MainNavItem.Users)
+                        }
+                        if (PermissionChecker.hasPermission(currentUser, PermissionType.VIEW_DEPARTMENT_MANAGEMENT)) {
+                            items.add(MainNavItem.Departments)
+                        }
+                        items
+                    }
+
+                    drawerItems.forEach { item ->
+                        NavigationDrawerItem(
+                            icon = { Icon(item.icon, contentDescription = item.title) },
+                            label = { Text(item.title) },
+                            selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
+                            onClick = {
+                                navController.navigate(item.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                                scope.launch { drawerState.close() }
+                            },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.weight(1f)) // Push bottom items down
+                    Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                        label = { Text("服务器配置") },
+                        selected = false,
+                        onClick = {
+                            onNavigateToServerConfig()
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.Palette, contentDescription = null) },
+                        label = { Text("主题与背景") },
+                        selected = false,
+                        onClick = {
+                            onNavigateToThemeCustomize()
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
-                Divider()
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                    label = { Text("服务器配置") },
-                    selected = false,
-                    onClick = {
-                        onNavigateToServerConfig()
-                        scope.launch { drawerState.close() }
-                    }
-                )
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Palette, contentDescription = null) },
-                    label = { Text("主题与背景") },
-                    selected = false,
-                    onClick = {
-                        onNavigateToThemeCustomize()
-                        scope.launch { drawerState.close() }
-                    }
-                )
-            }
         }
     ) {
         Scaffold(
