@@ -99,7 +99,20 @@ class EquipmentRepository @Inject constructor(
         }
         when (result) {
             is NetworkResult.Success -> {
-                val items = result.data ?: emptyList()
+                val rawItems = result.data ?: emptyList()
+                val items = rawItems.map { item ->
+                    item.copy(
+                        id = (item.id as? String) ?: UUID.randomUUID().toString(),
+                        name = (item.name as? String) ?: "未命名物资",
+                        categoryId = (item.categoryId as? String) ?: "",
+                        departmentId = (item.departmentId as? String) ?: "",
+                        description = (item.description as? String),
+                        image = (item.image as? String),
+                        imageFull = (item.imageFull as? String),
+                        borrowPhoto = (item.borrowPhoto as? String),
+                        lastReturnPhoto = (item.lastReturnPhoto as? String)
+                    )
+                }
                 equipmentItemDao.replaceItems(items, departmentId)
                 
                 // Sync borrow history
@@ -237,7 +250,14 @@ class EquipmentRepository @Inject constructor(
         val result = safeApiCall { apiService.getCategories() }
         when (result) {
             is NetworkResult.Success -> {
-                val categories = result.data ?: emptyList()
+                val rawCategories = result.data ?: emptyList()
+                val categories = rawCategories.map { category ->
+                    category.copy(
+                        id = (category.id as? String) ?: UUID.randomUUID().toString(),
+                        name = (category.name as? String) ?: "未命名类别",
+                        color = (category.color as? String) ?: "#FF6200EE"
+                    )
+                }
                 categoryDao.insertCategories(categories)
                 emit(NetworkResult.Success(categories))
             }
