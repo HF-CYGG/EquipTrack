@@ -25,8 +25,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.ExperimentalComposeUiApi
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun ServerConfigScreen(
     onNavigateBack: () -> Unit,

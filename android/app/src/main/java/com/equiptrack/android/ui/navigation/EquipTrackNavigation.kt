@@ -44,7 +44,15 @@ fun EquipTrackNavigation(
     ) {
         composable(
             route = Screen.Splash.route,
-            exitTransition = { fadeOut(animationSpec = tween(500)) }
+            exitTransition = {
+                if (targetState.destination.route == Screen.Main.route) {
+                    // 丝滑过渡：放大并淡出，制造"穿越"效果
+                    fadeOut(animationSpec = tween(800, easing = FastOutSlowInEasing)) + 
+                    scaleOut(targetScale = 1.2f, animationSpec = tween(800, easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)))
+                } else {
+                    fadeOut(animationSpec = tween(500))
+                }
+            }
         ) {
             SplashScreen(
                 onNavigateToLogin = {
@@ -173,7 +181,9 @@ fun EquipTrackNavigation(
                         animationSpec = tween(400) // 快速淡入，避免黑边
                     )
                 } else if (fromRoute == Screen.Splash.route) {
-                    fadeIn(animationSpec = tween(800))
+                    // 丝滑过渡：配合 Splash 的放大退出，主页从小放大进入
+                    fadeIn(animationSpec = tween(800, easing = FastOutSlowInEasing)) + 
+                    scaleIn(initialScale = 0.92f, animationSpec = tween(800, easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)))
                 } else {
                     fadeIn(animationSpec = tween(500)) + scaleIn(initialScale = 0.95f, animationSpec = tween(500))
                 }

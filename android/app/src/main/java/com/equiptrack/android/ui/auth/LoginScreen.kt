@@ -26,6 +26,8 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.autofill.AutofillType
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.equiptrack.android.ui.components.*
@@ -34,7 +36,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.cos
 import kotlin.math.sin
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
@@ -268,7 +270,8 @@ fun LoginScreen(
                                 icon = Icons.Default.Person,
                                 isError = uiState.contactError != null,
                                 errorMessage = uiState.contactError,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                                autofillTypes = listOf(AutofillType.Username, AutofillType.EmailAddress)
                             )
                             
                             // Password
@@ -283,7 +286,8 @@ fun LoginScreen(
                                 isError = uiState.passwordError != null,
                                 errorMessage = uiState.passwordError,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus(); viewModel.login() })
+                                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus(); viewModel.login() }),
+                                autofillTypes = listOf(AutofillType.Password)
                             )
                             
 

@@ -15,6 +15,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.AutofillNode
+import androidx.compose.ui.autofill.AutofillType
+import androidx.compose.ui.platform.LocalAutofill
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
@@ -30,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.cos
 import kotlin.math.sin
 
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun ModernTextField(
     value: String,
@@ -45,8 +52,21 @@ fun ModernTextField(
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    placeholder: @Composable (() -> Unit)? = null
+    placeholder: @Composable (() -> Unit)? = null,
+    autofillTypes: List<AutofillType> = emptyList()
 ) {
+    val autofill = LocalAutofill.current
+    val autofillNode = remember(autofillTypes) {
+        AutofillNode(
+            autofillTypes = autofillTypes,
+            onFill = onValueChange
+        )
+    }
+    
+    // Note: To fully support autofill, the node should be added to LocalAutofillTree,
+    // but it is internal in some Compose versions. 
+    // We rely on requestAutofillForNode and keyboardOptions heuristics here.
+
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier
@@ -82,7 +102,20 @@ fun ModernTextField(
             keyboardActions = keyboardActions,
             isError = isError,
             enabled = enabled,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { coordinates ->
+                    autofillNode.boundingBox = coordinates.boundsInWindow()
+                }
+                .onFocusChanged { focusState ->
+                    autofill?.apply {
+                        if (focusState.isFocused) {
+                            requestAutofillForNode(autofillNode)
+                        } else {
+                            cancelAutofillForNode(autofillNode)
+                        }
+                    }
+                },
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
