@@ -59,10 +59,11 @@ fun EquipmentItemCard(
         UrlUtils.resolveImageUrl(serverUrl, item.imageFull ?: item.image)
     }
 
-    val cardPadding = if (compact) 8.dp else 12.dp
-    val baseImageHeight = if (compact) 64.dp else 80.dp
-    val innerSpacing = if (compact) 8.dp else 12.dp
-    val sectionSpacing = if (compact) 8.dp else 12.dp
+    // Optimized dimensions for more compact view
+    val cardPadding = if (compact) 8.dp else 10.dp
+    val baseImageHeight = if (compact) 60.dp else 72.dp
+    val innerSpacing = if (compact) 8.dp else 10.dp
+    val sectionSpacing = if (compact) 6.dp else 8.dp
 
     val imageWidth = when (equipmentImageRatio) {
         "Wide" -> baseImageHeight * (16f / 9f)
@@ -241,7 +242,7 @@ fun EquipmentItemCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                    .padding(if (compact) 8.dp else 12.dp),
+                    .padding(horizontal = if (compact) 8.dp else 12.dp, vertical = if (compact) 6.dp else 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -342,7 +343,7 @@ fun EquipmentItemCard(
                         onClick = onBorrow,
                         modifier = Modifier
                             .weight(1f)
-                            .height(if (compact) 36.dp else 40.dp),
+                            .height(if (compact) 32.dp else 36.dp),
                         shape = RoundedCornerShape(12.dp),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)
                     ) {
@@ -360,11 +361,11 @@ fun EquipmentItemCard(
                     }
                 } else {
                     OutlinedButton(
-                        onClick = { },
+                        onClick = {},
                         enabled = false,
                         modifier = Modifier
                             .weight(1f)
-                            .height(if (compact) 36.dp else 40.dp),
+                            .height(if (compact) 32.dp else 36.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
@@ -376,9 +377,10 @@ fun EquipmentItemCard(
 
                 // Management buttons
                 if (canManage) {
-                     OutlinedButton(
+                    // Edit button
+                    AnimatedOutlinedButton(
                         onClick = onEdit,
-                        modifier = Modifier.height(if (compact) 36.dp else 40.dp),
+                        modifier = Modifier.height(if (compact) 32.dp else 36.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = MaterialTheme.colorScheme.primary
                         ),
@@ -393,7 +395,7 @@ fun EquipmentItemCard(
                     
                     AnimatedOutlinedButton(
                         onClick = onDelete,
-                        modifier = Modifier.height(if (compact) 36.dp else 40.dp),
+                        modifier = Modifier.height(if (compact) 32.dp else 36.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = MaterialTheme.colorScheme.error
                         ),
