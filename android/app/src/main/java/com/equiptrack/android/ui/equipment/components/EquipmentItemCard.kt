@@ -2,6 +2,7 @@ package com.equiptrack.android.ui.equipment.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -94,37 +95,42 @@ fun EquipmentItemCard(
     val cardShape = RoundedCornerShape(cornerRadius.dp)
     val cardColors = when (cardMaterial) {
         "Glass" -> CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f) // Increased opacity for better readability
         )
         "Outline" -> CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)
+            containerColor = MaterialTheme.colorScheme.surface
         )
-        else -> CardDefaults.cardColors(
+        else -> CardDefaults.elevatedCardColors( // Use elevated colors for default
             containerColor = MaterialTheme.colorScheme.surface
         )
     }
     val cardElevation = when (cardMaterial) {
-        "Glass" -> CardDefaults.cardElevation(defaultElevation = 4.dp)
+        "Glass" -> CardDefaults.cardElevation(defaultElevation = 6.dp)
         "Outline" -> CardDefaults.cardElevation(defaultElevation = 0.dp)
-        else -> CardDefaults.cardElevation(defaultElevation = 2.dp)
-    }
-    val cardBorder = if (cardMaterial == "Outline") {
-        BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f))
-    } else null
-
-    val statusColor = when {
-        item.availableQuantity == 0 -> Error
-        item.availableQuantity < item.quantity -> Warning
-        else -> Available
+        else -> CardDefaults.elevatedCardElevation(defaultElevation = 3.dp) // Slightly higher elevation
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
+    ElevatedCard( // Changed to ElevatedCard
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (cardMaterial == "Outline") {
+                    Modifier.border(
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)),
+                        shape = cardShape
+                    )
+                } else Modifier
+            ),
         elevation = cardElevation,
         colors = cardColors,
-        shape = cardShape,
-        border = cardBorder
+        shape = cardShape
     ) {
+        val statusColor = when {
+            item.availableQuantity == 0 -> Error
+            item.availableQuantity < item.quantity -> Warning
+            else -> Available
+        }
+
         Column(
             modifier = Modifier.padding(cardPadding)
         ) {
