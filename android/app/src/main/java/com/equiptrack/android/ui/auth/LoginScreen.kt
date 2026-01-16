@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.equiptrack.android.ui.components.*
@@ -47,27 +48,69 @@ fun LoginScreen(
     val focusManager = LocalFocusManager.current
     var passwordVisible by remember { mutableStateOf(false) }
     var isVisible by remember { mutableStateOf(false) }
+    
+    // Toast State
+    val toastState = rememberToastState()
+
+    // Listen for error messages and show toast
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { msg ->
+            if (msg.isNotBlank()) {
+                toastState.showError(msg)
+            }
+        }
+    }
 
     if (uiState.showServerConfigPrompt) {
+        val isMissingConfig = uiState.errorMessage == "请先配置服务器地址"
+        
         AlertDialog(
             onDismissRequest = { viewModel.dismissServerConfigPrompt() },
-            title = { Text("连接失败") },
-            text = { Text("无法连接到服务器，请检查您的网络设置或服务器配置。") },
+            icon = { 
+                Icon(
+                    imageVector = if (isMissingConfig) Icons.Default.Settings else Icons.Default.SignalWifiOff,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            title = { 
+                Text(
+                    text = if (isMissingConfig) "服务器未配置" else "连接失败",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = { 
+                Text(
+                    text = if (isMissingConfig) 
+                        "您尚未配置服务器地址。请点击“去配置”按钮输入服务器地址，以便连接到 EquipTrack 系统。" 
+                    else 
+                        "无法连接到服务器，请检查您的网络设置或服务器配置是否正确。",
+                    style = MaterialTheme.typography.bodyMedium
+                ) 
+            },
             confirmButton = {
-                AnimatedTextButton(
+                Button(
                     onClick = {
                         viewModel.dismissServerConfigPrompt()
                         onNavigateToServerConfig()
-                    }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Text("去配置")
                 }
             },
             dismissButton = {
-                AnimatedTextButton(onClick = { viewModel.dismissServerConfigPrompt() }) {
+                TextButton(onClick = { viewModel.dismissServerConfigPrompt() }) {
                     Text("取消")
                 }
-            }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+            shape = RoundedCornerShape(28.dp)
         )
     }
 
@@ -243,15 +286,7 @@ fun LoginScreen(
                                 keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus(); viewModel.login() })
                             )
                             
-                            // General Error
-                            if (uiState.errorMessage != null) {
-                                Text(
-                                    text = uiState.errorMessage!!,
-                                    color = MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.padding(start = 8.dp)
-                                )
-                            }
+
                             
                             // Login Button
                             GradientButton(
@@ -288,6 +323,16 @@ fun LoginScreen(
                     }
                 }
             }
+            
+            // Toast Message
+            ToastMessage(
+                toastData = toastState.currentToast,
+                onDismiss = { toastState.dismiss() },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = innerPadding.calculateTopPadding() + 16.dp)
+                    .zIndex(100f) // Ensure it's on top
+            )
         }
     }
 }
