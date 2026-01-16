@@ -1,5 +1,8 @@
 package com.equiptrack.android.ui.auth
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -10,10 +13,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
@@ -34,10 +42,14 @@ import com.equiptrack.android.ui.components.AnimatedTextButton
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import kotlin.math.cos
+import kotlin.math.sin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,9 +62,10 @@ fun LoginScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
     var passwordVisible by remember { mutableStateOf(false) }
-    
-    // Observe login result
+    var isVisible by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
+        isVisible = true
         viewModel.loginResult.collect { result ->
             when (result) {
                 is NetworkResult.Success -> {
@@ -94,22 +107,21 @@ fun LoginScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("登录") },
+                title = { },
                 actions = {
                     AnimatedIconButton(onClick = onNavigateToServerConfig) {
-                        Icon(Icons.Default.Settings, contentDescription = "服务器设置")
+                        Icon(Icons.Default.Settings, contentDescription = "服务器设置", tint = MaterialTheme.colorScheme.primary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                    actionIconContentColor = MaterialTheme.colorScheme.primary
                 )
             )
         }
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize()) {
-            DynamicBackground(modifier = Modifier.fillMaxSize())
+            FluidLoginBackground(modifier = Modifier.fillMaxSize())
             
             Column(
                 modifier = Modifier
@@ -120,213 +132,256 @@ fun LoginScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Logo and title
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        Text(
-            text = "EquipTrack",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        
-        Text(
-            text = "物资管理系统",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 8.dp)
-        )
-        
-        Spacer(modifier = Modifier.height(48.dp))
-        
-        // Login form
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = "登录",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                
-                // Contact field
-                OutlinedTextField(
-                    value = uiState.contact,
-                    onValueChange = {
-                        viewModel.updateContact(it)
-                        viewModel.clearErrors()
-                    },
-                    label = { Text("联系方式") },
-                    placeholder = { Text("请输入手机号或邮箱") },
-                    isError = uiState.contactError != null,
-                    supportingText = uiState.contactError?.let { { Text(it) } },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email,
-                        imeAction = ImeAction.Next
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                
-                // Password field
-                OutlinedTextField(
-                    value = uiState.password,
-                    onValueChange = {
-                        viewModel.updatePassword(it)
-                        viewModel.clearErrors()
-                    },
-                    label = { Text("密码") },
-                    placeholder = { Text("请输入密码") },
-                    isError = uiState.passwordError != null,
-                    supportingText = uiState.passwordError?.let { { Text(it) } },
-                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        AnimatedIconButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Icon(
-                                imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                contentDescription = if (passwordVisible) "隐藏密码" else "显示密码"
-                            )
-                        }
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            focusManager.clearFocus()
-                            viewModel.login()
-                        }
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Login button
-                AnimatedButton(
-                    onClick = { viewModel.login() },
-                    enabled = !uiState.isLoading,
-                    modifier = Modifier.fillMaxWidth()
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = fadeIn(tween(1000)) + slideInVertically(spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessLow)) { 50 }
                 ) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Text("登录")
-                }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        // Logo and title
+                        Spacer(modifier = Modifier.height(32.dp))
+                        
+                        Box(
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer)
+                                .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), RoundedCornerShape(20.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                             Icon(
+                                 painter = painterResource(id = R.drawable.ic_launcher_foreground), // Assuming this exists, or use default icon
+                                 contentDescription = "Logo",
+                                 modifier = Modifier.size(60.dp),
+                                 tint = MaterialTheme.colorScheme.primary
+                             )
+                        }
 
-                // Error message feedback
-                if (uiState.errorMessage != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = uiState.errorMessage ?: "",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
-                    )
-                }
-                
-                // Signup link
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "还没有账号？",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    AnimatedTextButton(onClick = onNavigateToSignup) {
-                        Text("申请注册")
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        Text(
+                            text = "EquipTrack",
+                            style = MaterialTheme.typography.displaySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        
+                        Text(
+                            text = "物资管理系统",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
                     }
                 }
+                
+                Spacer(modifier = Modifier.height(48.dp))
+                
+                // Login form
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = fadeIn(tween(1000, delayMillis = 300)) + slideInVertically(tween(1000, delayMillis = 300)) { 100 }
+                ) {
+                    GlassCard {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            verticalArrangement = Arrangement.spacedBy(20.dp)
+                        ) {
+                            Text(
+                                text = "欢迎回来",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            
+                            // Contact field
+                            OutlinedTextField(
+                                value = uiState.contact,
+                                onValueChange = {
+                                    viewModel.updateContact(it)
+                                    viewModel.clearErrors()
+                                },
+                                label = { Text("联系方式") },
+                                placeholder = { Text("手机号或邮箱") },
+                                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                                isError = uiState.contactError != null,
+                                supportingText = uiState.contactError?.let { { Text(it) } },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Email,
+                                    imeAction = ImeAction.Next
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                    focusedContainerColor = Color.White.copy(alpha = 0.5f),
+                                    unfocusedContainerColor = Color.White.copy(alpha = 0.3f)
+                                )
+                            )
+                            
+                            // Password field
+                            OutlinedTextField(
+                                value = uiState.password,
+                                onValueChange = {
+                                    viewModel.updatePassword(it)
+                                    viewModel.clearErrors()
+                                },
+                                label = { Text("密码") },
+                                placeholder = { Text("请输入密码") },
+                                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                                isError = uiState.passwordError != null,
+                                supportingText = uiState.passwordError?.let { { Text(it) } },
+                                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                trailingIcon = {
+                                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                        Icon(
+                                            imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                            contentDescription = if (passwordVisible) "隐藏密码" else "显示密码"
+                                        )
+                                    }
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Password,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        focusManager.clearFocus()
+                                        viewModel.login()
+                                    }
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                    focusedContainerColor = Color.White.copy(alpha = 0.5f),
+                                    unfocusedContainerColor = Color.White.copy(alpha = 0.3f)
+                                )
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // Login button
+                            Button(
+                                onClick = { viewModel.login() },
+                                enabled = !uiState.isLoading,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(50.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                elevation = ButtonDefaults.buttonElevation(
+                                    defaultElevation = 6.dp,
+                                    pressedElevation = 2.dp
+                                )
+                            ) {
+                                if (uiState.isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Text("登 录", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                }
+                            }
+    
+                            // Error message feedback
+                            if (uiState.errorMessage != null) {
+                                Text(
+                                    text = uiState.errorMessage ?: "",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                            
+                            // Signup link
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "还没有账号？",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                TextButton(onClick = onNavigateToSignup) {
+                                    Text("立即注册", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(32.dp))
             }
-        }
-        
-        Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
+
+@Composable
+fun FluidLoginBackground(modifier: Modifier = Modifier) {
+    val primary = MaterialTheme.colorScheme.primary
+    val tertiary = MaterialTheme.colorScheme.tertiary
+
+    val infiniteTransition = rememberInfiniteTransition(label = "background_anim")
+    val t by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(20000, easing = LinearEasing), RepeatMode.Reverse),
+        label = "t"
+    )
+
+    Canvas(modifier = modifier.fillMaxSize().blur(80.dp)) {
+        val w = size.width
+        val h = size.height
+        
+        // Blob 1 (Top-Left, Primary)
+        drawCircle(
+            color = primary.copy(alpha = 0.3f),
+            radius = w * 0.5f,
+            center = Offset(w * 0.2f + (w * 0.1f * cos(t * 2 * Math.PI).toFloat()), h * 0.2f)
+        )
+        
+        // Blob 2 (Bottom-Right, Tertiary)
+        drawCircle(
+            color = tertiary.copy(alpha = 0.3f),
+            radius = w * 0.6f,
+            center = Offset(w * 0.8f - (w * 0.1f * sin(t * 2 * Math.PI).toFloat()), h * 0.8f)
+        )
+        
+        // Blob 3 (Center, Moving)
+        drawCircle(
+            color = primary.copy(alpha = 0.2f),
+            radius = w * 0.4f,
+            center = Offset(w * 0.5f + (w * 0.2f * sin(t * Math.PI).toFloat()), h * 0.5f + (h * 0.2f * cos(t * Math.PI).toFloat()))
+        )
+    }
 }
 
 @Composable
-fun DynamicBackground(modifier: Modifier = Modifier) {
-    val color1 = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-    val color2 = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-    val color3 = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.2f)
-    
-    val infiniteTransition = rememberInfiniteTransition(label = "background_anim")
-    
-    val offset1 by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(10000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "offset1"
-    )
-    
-    val offset2 by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(15000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "offset2"
-    )
-    
-    val surfaceColor = MaterialTheme.colorScheme.surface
-
-    Canvas(modifier = modifier.fillMaxSize()) {
-        val width = size.width
-        val height = size.height
-        
-        // Circle 1
-        drawCircle(
-            color = color1,
-            radius = width * 0.6f,
-            center = Offset(width * 0.2f + (width * 0.6f * offset1), height * 0.2f + (height * 0.1f * offset2))
-        )
-        
-        // Circle 2
-        drawCircle(
-            color = color2,
-            radius = width * 0.5f,
-            center = Offset(width * 0.8f - (width * 0.4f * offset2), height * 0.7f - (height * 0.2f * offset1))
-        )
-        
-        // Circle 3
-        drawCircle(
-            color = color3,
-            radius = width * 0.7f,
-            center = Offset(width * 0.5f, height * 0.5f)
-        )
-        
-        // Overlay gradient to smooth things out
-        drawRect(
-            brush = Brush.verticalGradient(
-                colors = listOf(
-                    surfaceColor.copy(alpha = 0.7f),
-                    surfaceColor.copy(alpha = 0.3f),
-                    surfaceColor.copy(alpha = 0.7f)
-                )
-            )
-        )
+fun GlassCard(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
+            .border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+    ) {
+        content()
     }
 }
