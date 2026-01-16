@@ -101,6 +101,9 @@ fun ThemeCustomizeScreen(
     var lowPerformanceMode by remember(overrides.lowPerformanceMode) { mutableStateOf(overrides.lowPerformanceMode ?: repo.isLowPerformanceMode()) }
     var themeMode by remember(overrides.themeMode) { mutableStateOf(overrides.themeMode ?: repo.getThemeMode()) }
 
+    // 防抖动点击状态
+    var lastClickTime by remember { mutableLongStateOf(0L) }
+
     val context = LocalContext.current
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
@@ -123,7 +126,13 @@ fun ThemeCustomizeScreen(
             TopAppBar(
                 title = { Text("主题与背景", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
-                    AnimatedIconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, contentDescription = "返回") }
+                    AnimatedIconButton(onClick = {
+                        val currentTime = System.currentTimeMillis()
+                        if (currentTime - lastClickTime > 500L) { // 500ms 防抖
+                            lastClickTime = currentTime
+                            onNavigateBack()
+                        }
+                    }) { Icon(Icons.Default.ArrowBack, contentDescription = "返回") }
                 },
                 actions = {
                     AnimatedTextButton(onClick = {

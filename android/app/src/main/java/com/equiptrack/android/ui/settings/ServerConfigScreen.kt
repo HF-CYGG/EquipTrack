@@ -44,6 +44,9 @@ fun ServerConfigScreen(
     var isTesting by remember { mutableStateOf(false) }
     val showAutoStart = remember { viewModel.checkAutoStartPermission(context) }
     var isPollingEnabled by remember { mutableStateOf(viewModel.isNotificationServiceEnabled()) }
+    
+    // 防抖动点击状态
+    var lastClickTime by remember { mutableLongStateOf(0L) }
 
     // Observe Navigation Events
     LaunchedEffect(Unit) {
@@ -90,7 +93,13 @@ fun ServerConfigScreen(
                         ) 
                     },
                     navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
+                        IconButton(onClick = {
+                            val currentTime = System.currentTimeMillis()
+                            if (currentTime - lastClickTime > 500L) { // 500ms 防抖
+                                lastClickTime = currentTime
+                                onNavigateBack()
+                            }
+                        }) {
                             Icon(
                                 imageVector = Icons.Default.ArrowBack,
                                 contentDescription = "返回",
@@ -123,7 +132,10 @@ fun ServerConfigScreen(
                 )
 
                 // 1. 服务设置
-                ConfigSection(title = "服务设置") {
+                ConfigSection(
+                    title = "服务设置",
+                    useDeepColor = !showFluidBackground
+                ) {
                     // Auto Start Permission Guide
                     if (showAutoStart) {
                         Card(
@@ -196,7 +208,10 @@ fun ServerConfigScreen(
                 }
 
                 // 2. 服务器连接
-                ConfigSection(title = "服务器连接") {
+                ConfigSection(
+                    title = "服务器连接",
+                    useDeepColor = !showFluidBackground
+                ) {
                     // Local Debug Switch
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -304,7 +319,10 @@ fun ServerConfigScreen(
                 }
 
                 // 3. 高级选项
-                ConfigSection(title = "高级选项") {
+                ConfigSection(
+                    title = "高级选项",
+                    useDeepColor = !showFluidBackground
+                ) {
                     // Log Level
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -367,6 +385,7 @@ fun ServerConfigScreen(
 @Composable
 fun ConfigSection(
     title: String,
+    useDeepColor: Boolean = false,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -380,7 +399,15 @@ fun ConfigSection(
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
         )
-        GlassCard {
+        
+        val containerColor = if (useDeepColor) {
+            // 使用加深颜色，增强在白色背景下的对比度
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        } else {
+            MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+        }
+        
+        GlassCard(containerColor = containerColor) {
             Column(
                 modifier = Modifier.padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),

@@ -240,12 +240,13 @@ fun FluidLoginBackground(modifier: Modifier = Modifier) {
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
     content: @Composable () -> Unit
 ) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
+            .background(containerColor)
             .border(
                 width = 1.dp,
                 brush = Brush.verticalGradient(
