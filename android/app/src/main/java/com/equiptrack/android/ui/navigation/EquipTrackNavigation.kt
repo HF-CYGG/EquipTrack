@@ -17,15 +17,16 @@ import com.equiptrack.android.ui.settings.ThemeCustomizeScreen
 import com.equiptrack.android.ui.components.AnimatedPage
 import com.equiptrack.android.ui.components.PageTransitionType
 import javax.inject.Inject
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import com.equiptrack.android.ui.splash.SplashScreen
 
 @Composable
 fun EquipTrackNavigation(
     navController: NavHostController = rememberNavController()
 ) {
     val navVm: NavigationViewModel = hiltViewModel()
-    val authRepository = navVm.authRepository
-    val settingsRepository = navVm.settingsRepository
-
+    
     // Listen for session expiry events
     LaunchedEffect(Unit) {
         navVm.sessionExpiredEvent.collect {
@@ -35,20 +36,39 @@ fun EquipTrackNavigation(
         }
     }
     
-    // Determine start destination based on login state
-    val startDestination = if (authRepository.isLoggedIn()) {
-        Screen.Main.route
-    } else if (!settingsRepository.isOnboardingCompleted()) {
-        Screen.Onboarding.route
-    } else {
-        Screen.Login.route
-    }
-    
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = Screen.Splash.route
     ) {
-        composable(Screen.Onboarding.route) {
+        composable(
+            route = Screen.Splash.route,
+            exitTransition = { fadeOut(animationSpec = tween(500)) }
+        ) {
+            SplashScreen(
+                onNavigateToLogin = {
+                    navController.navigate("login?fromSplash=true") {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                },
+                onNavigateToMain = {
+                    navController.navigate(Screen.Main.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                },
+                onNavigateToOnboarding = {
+                    navController.navigate(Screen.Onboarding.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = Screen.Onboarding.route,
+            enterTransition = { fadeIn(animationSpec = tween(500)) },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(500)) + fadeOut(animationSpec = tween(500)) },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(500)) }
+        ) {
             AnimatedPage(
                 transitionType = PageTransitionType.FADE
             ) {
@@ -62,13 +82,34 @@ fun EquipTrackNavigation(
             }
         }
 
-        composable(Screen.Login.route) {
+        composable(
+            route = "login?fromSplash={fromSplash}",
+            arguments = listOf(
+                androidx.navigation.navArgument("fromSplash") {
+                    defaultValue = false
+                    type = androidx.navigation.NavType.BoolType
+                }
+            ),
+            enterTransition = {
+                if (initialState.destination.route == Screen.Splash.route) {
+                    // Custom transition from Splash: Just Fade In (Logo animation handled internally)
+                    fadeIn(animationSpec = tween(800))
+                } else {
+                    fadeIn(animationSpec = tween(800)) + scaleIn(initialScale = 0.95f, animationSpec = tween(800))
+                }
+            },
+            exitTransition = { fadeOut(animationSpec = tween(500)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(500)) }
+        ) { backStackEntry ->
             // Reuse existing ViewModel instance if possible, or let hilt provide one scoped to this nav graph entry
             val navVm: NavigationViewModel = hiltViewModel()
+            val fromSplash = backStackEntry.arguments?.getBoolean("fromSplash") ?: false
+            
             AnimatedPage(
                 transitionType = PageTransitionType.FADE
             ) {
                 LoginScreen(
+                    fromSplash = fromSplash,
                     onLoginSuccess = {
                         navVm.checkAndUploadFcmToken()
                         val needsSetup = !navVm.settingsRepository.isSetupCompleted()
@@ -103,7 +144,16 @@ fun EquipTrackNavigation(
             }
         }
         
-        composable(Screen.Main.route) {
+        composable(
+            route = Screen.Main.route,
+            enterTransition = {
+                if (initialState.destination.route == Screen.Splash.route) {
+                    fadeIn(animationSpec = tween(800))
+                } else {
+                    fadeIn(animationSpec = tween(500)) + scaleIn(initialScale = 0.95f, animationSpec = tween(500))
+                }
+            }
+        ) {
             AnimatedPage(
                 transitionType = PageTransitionType.SCALE
             ) {
@@ -133,7 +183,7 @@ fun EquipTrackNavigation(
                     onNavigateBack = {
                         val popped = navController.popBackStack()
                         if (!popped) {
-                            val needsSetup = !settingsRepository.isSetupCompleted()
+                            val needsSetup = !navVm.settingsRepository.isSetupCompleted()
                             if (needsSetup || !navVm.authRepository.isLoggedIn()) {
                                 navController.navigate(Screen.Login.route) {
                                     popUpTo(0) { inclusive = true }
@@ -177,6 +227,7 @@ fun EquipTrackNavigation(
 }
 
 sealed class Screen(val route: String) {
+    object Splash : Screen("splash")
     object Onboarding : Screen("onboarding")
     object Login : Screen("login")
     object Signup : Screen("signup")
