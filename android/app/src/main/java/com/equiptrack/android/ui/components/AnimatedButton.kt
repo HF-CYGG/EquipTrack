@@ -13,6 +13,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -85,6 +86,8 @@ fun AnimatedButton(
     shape: androidx.compose.ui.graphics.Shape = ButtonDefaults.shape,
     colors: ButtonColors = ButtonDefaults.buttonColors(),
     elevation: ButtonElevation? = ButtonDefaults.buttonElevation(),
+    border: BorderStroke? = null,
+    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     hapticFeedbackType: HapticFeedbackType? = HapticFeedbackType.TextHandleMove,
     content: @Composable RowScope.() -> Unit
@@ -116,6 +119,8 @@ fun AnimatedButton(
         shape = shape,
         colors = colors,
         elevation = elevation,
+        border = border,
+        contentPadding = contentPadding,
         interactionSource = interactionSource,
         content = content
     )
@@ -129,6 +134,7 @@ fun AnimatedOutlinedButton(
     shape: androidx.compose.ui.graphics.Shape = ButtonDefaults.outlinedShape,
     colors: ButtonColors = ButtonDefaults.outlinedButtonColors(),
     border: BorderStroke? = ButtonDefaults.outlinedButtonBorder,
+    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     hapticFeedbackType: HapticFeedbackType? = HapticFeedbackType.TextHandleMove,
     content: @Composable RowScope.() -> Unit
@@ -160,6 +166,7 @@ fun AnimatedOutlinedButton(
         shape = shape,
         colors = colors,
         border = border,
+        contentPadding = contentPadding,
         interactionSource = interactionSource,
         content = content
     )

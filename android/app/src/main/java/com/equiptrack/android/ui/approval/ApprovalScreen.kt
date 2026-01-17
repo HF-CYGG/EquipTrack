@@ -18,6 +18,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.background
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -45,6 +47,48 @@ import com.equiptrack.android.ui.components.AnimatedFloatingActionButton
 import com.equiptrack.android.ui.components.ApprovalListSkeleton
 import com.equiptrack.android.ui.components.AnimatedListItem
 import com.equiptrack.android.ui.navigation.NavigationViewModel
+
+@Composable
+fun AccessLevelContent(description: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+            modifier = Modifier.size(40.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Default.Security,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "您可以查看和处理注册申请",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+            )
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
@@ -100,221 +144,302 @@ fun ApprovalScreen(
         viewModel.updateSearchQuery(searchQuery)
     }
     
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+    // Detect immersive mode (custom background)
+    val isImmersive = !themeOverrides.backgroundUri.isNullOrEmpty()
+    
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
-        // 右下角浮动操作按钮
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pullRefresh(pullRefreshState)
-        ) {
-            // 主内容区域
-            Column(
+        // 1. Background Layer
+        if (isImmersive) {
+            AsyncImage(
+                model = themeOverrides.backgroundUri,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            // Add scrim for readability
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = if (showSearch) 80.dp else 0.dp)
-            ) {
-                // 顶部操作行
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // 移除标题，仅保留顶部路径显示
-                }
+                    .background(Color.Black.copy(alpha = 0.3f))
+            )
+        } else {
+            // Default background
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+            )
+        }
 
-                // 访问级别信息卡片
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+        // 2. Main Content Layer
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding() // Avoid status bar overlap
+                .padding(horizontal = 16.dp)
+        ) {
+            // 顶部操作行 (Spacer for visual balance)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 主内容区域 (with PullRefresh)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .pullRefresh(pullRefreshState)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
+                    // 访问级别信息卡片 (Header)
+                    if (isImmersive) {
+                        // 沉浸模式：无阴影，半透明背景，边框
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                            ),
+                            shape = RoundedCornerShape(24.dp),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp, 
+                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                        ) {
+                            AccessLevelContent(viewModel.getAccessLevelDescription())
+                        }
+                    } else {
+                        // 默认模式：更加扁平化，移除阴影，使用柔和的背景色
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                            ),
+                            shape = RoundedCornerShape(24.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                        ) {
+                            AccessLevelContent(viewModel.getAccessLevelDescription())
+                        }
+                    }
+
+                    // 搜索栏（条件显示）
+                    AnimatedVisibility(
+                        visible = showSearch,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
                     ) {
-                        Text(
-                            text = viewModel.getAccessLevelDescription(),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = "您可以查看和处理注册申请",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("搜索申请人姓名或联系方式") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Search, contentDescription = null)
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(Icons.Default.Clear, contentDescription = "清除")
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                            )
                         )
                     }
-                }
 
-                // 搜索栏（条件显示）
-                AnimatedVisibility(
-                    visible = showSearch,
-                    enter = slideInVertically() + fadeIn(),
-                    exit = slideOutVertically() + fadeOut()
-                ) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        label = { Text("搜索申请人姓名或联系方式") },
-                        leadingIcon = {
-                            Icon(Icons.Default.Search, contentDescription = null)
-                        },
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                AnimatedIconButton(onClick = { searchQuery = "" }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "清除")
-                                }
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        singleLine = true
-                    )
-                }
-
-                // 申请列表：仅在没有数据且正在加载时显示骨架屏，其余情况优先显示缓存数据
-                if (uiState.isLoading && filteredRequests.isEmpty()) {
-                    ApprovalListSkeleton()
-                } else {
-                    val enableAnimations = !lowPerformanceMode && listAnimationType != "None"
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        state = listState
-                    ) {
-                        if (filteredRequests.isEmpty()) {
-                            item {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                                ) {
-                                    Column(
+                    // 申请列表
+                    if (uiState.isLoading && filteredRequests.isEmpty()) {
+                        ApprovalListSkeleton()
+                    } else {
+                        val enableAnimations = !lowPerformanceMode && listAnimationType != "None"
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(bottom = 80.dp), // Space for FAB
+                            state = listState
+                        ) {
+                            if (filteredRequests.isEmpty()) {
+                                item {
+                                    // Empty State
+                                    Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(24.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
+                                            .padding(top = 40.dp),
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        Icon(
-                                            Icons.Default.Assignment,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(48.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        Text(
-                                            text = if (searchQuery.isNotEmpty()) "未找到匹配的申请" else "暂无待审批申请",
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        if (searchQuery.isNotEmpty()) {
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                            AnimatedTextButton(onClick = { searchQuery = "" }) {
-                                                Text("查看全部申请")
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                                        ) {
+                                            Surface(
+                                                shape = CircleShape,
+                                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                                modifier = Modifier.size(80.dp)
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    Icon(
+                                                        Icons.Default.Assignment,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(40.dp),
+                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                    )
+                                                }
+                                            }
+                                            
+                                            Text(
+                                                text = if (searchQuery.isNotEmpty()) "未找到匹配的申请" else "暂无待审批申请",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            
+                                            if (searchQuery.isNotEmpty()) {
+                                                AnimatedTextButton(onClick = { searchQuery = "" }) {
+                                                    Text("查看全部申请")
+                                                }
                                             }
                                         }
                                     }
                                 }
-                            }
-                        } else {
-                            itemsIndexed(
-                                items = filteredRequests,
-                                key = { _, request -> request.id },
-                                contentType = { _, _ -> "registration_request" }
-                            ) { index, request ->
-                                AnimatedListItem(
-                                    enabled = enableAnimations,
-                                    listAnimationType = listAnimationType,
-                                    index = index
-                                ) {
-                                    RegistrationRequestCard(
-                                        request = request,
-                                        canApprove = viewModel.canApproveRequests(),
-                                        onApprove = { viewModel.showApproveDialog(request) },
-                                        onReject = { viewModel.showRejectDialog(request) }
-                                    )
+                            } else {
+                                itemsIndexed(
+                                    items = filteredRequests,
+                                    key = { _, request -> request.id },
+                                    contentType = { _, _ -> "registration_request" }
+                                ) { index, request ->
+                                    AnimatedListItem(
+                                        enabled = enableAnimations,
+                                        listAnimationType = listAnimationType,
+                                        index = index
+                                    ) {
+                                        RegistrationRequestCard(
+                                            request = request,
+                                            canApprove = viewModel.canApproveRequests(),
+                                            onApprove = { viewModel.showApproveDialog(request) },
+                                            onReject = { viewModel.showRejectDialog(request) },
+                                            isImmersive = isImmersive
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                
+                PullRefreshIndicator(
+                    refreshing = uiState.isRefreshing,
+                    state = pullRefreshState,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    backgroundColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
             }
-
-            // 右下角浮动操作按钮
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+        }
+        
+        // 3. Floating Action Buttons Layer
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.End
+        ) {
+            // Search FAB
+            AnimatedFloatingActionButton(
+                onClick = { showSearch = !showSearch },
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
             ) {
-                // 搜索按钮
-                AnimatedFloatingActionButton(
-                    onClick = { showSearch = !showSearch },
-                    containerColor = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(56.dp)
-                ) {
-                    Icon(
-                        imageVector = if (showSearch) Icons.Default.Close else Icons.Default.Search,
-                        contentDescription = if (showSearch) "关闭搜索" else "搜索"
-                    )
-                }
+                Icon(
+                    if (showSearch) Icons.Default.Close else Icons.Default.Search,
+                    contentDescription = "搜索"
+                )
             }
-            
-            MD3PullRefreshIndicator(
-                refreshing = uiState.isRefreshing,
-                state = pullRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
         }
     }
+
     
     // Approve dialog
     if (uiState.showApproveDialog && uiState.selectedRequest != null) {
         Dialog(onDismissRequest = { viewModel.hideApproveDialog() }) {
-            Card(
+            ElevatedCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.size(72.dp)
                     ) {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         Text(
                             text = "批准申请",
                             style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.Bold,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        
+                        Text(
+                            text = "确定要批准 \"${uiState.selectedRequest!!.name}\" 的注册申请吗？",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                        )
+
+                        Text(
+                            text = "批准后将创建新用户账号，默认角色为普通用户。",
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     
-                    Text(
-                        text = "确定要批准 \"${uiState.selectedRequest!!.name}\" 的注册申请吗？\n\n批准后将创建新用户账号，默认角色为普通用户。",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         AnimatedOutlinedButton(
                             onClick = { viewModel.hideApproveDialog() },
                             modifier = Modifier.weight(1f),
-                            enabled = !uiState.isActionLoading
+                            enabled = !uiState.isActionLoading,
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("取消")
                         }
@@ -324,7 +449,8 @@ fun ApprovalScreen(
                                 viewModel.approveRequest(uiState.selectedRequest!!.id)
                             },
                             modifier = Modifier.weight(1f),
-                            enabled = !uiState.isActionLoading
+                            enabled = !uiState.isActionLoading,
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             if (uiState.isActionLoading) {
                                 CircularProgressIndicator(
@@ -345,45 +471,71 @@ fun ApprovalScreen(
     // Reject dialog
     if (uiState.showRejectDialog && uiState.selectedRequest != null) {
         Dialog(onDismissRequest = { viewModel.hideRejectDialog() }) {
-            Card(
+            ElevatedCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        modifier = Modifier.size(72.dp)
                     ) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         Text(
                             text = "拒绝申请",
                             style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.Bold,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        
+                        Text(
+                            text = "确定要拒绝 \"${uiState.selectedRequest!!.name}\" 的注册申请吗？",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                        )
+
+                        Text(
+                            text = "此操作不可撤销，申请记录将被删除。",
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
                     
-                    Text(
-                        text = "确定要拒绝 \"${uiState.selectedRequest!!.name}\" 的注册申请吗？\n\n此操作不可撤销，申请记录将被删除。",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         AnimatedOutlinedButton(
                             onClick = { viewModel.hideRejectDialog() },
                             modifier = Modifier.weight(1f),
-                            enabled = !uiState.isActionLoading
+                            enabled = !uiState.isActionLoading,
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("取消")
                         }
@@ -396,7 +548,8 @@ fun ApprovalScreen(
                                 containerColor = MaterialTheme.colorScheme.error
                             ),
                             modifier = Modifier.weight(1f),
-                            enabled = !uiState.isActionLoading
+                            enabled = !uiState.isActionLoading,
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                              if (uiState.isActionLoading) {
                                 CircularProgressIndicator(
