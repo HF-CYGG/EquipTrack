@@ -34,8 +34,9 @@ class UpdateManager @Inject constructor(
     private val _updateStatus = MutableStateFlow<UpdateStatus>(UpdateStatus.Idle)
     val updateStatus = _updateStatus.asStateFlow()
 
-    private var downloadId: Long = -1
-    private var downloadReceiver: BroadcastReceiver? = null
+    private val prefs by lazy {
+        context.getSharedPreferences("update_prefs", Context.MODE_PRIVATE)
+    }
 
     fun setChecking() {
         _updateStatus.value = UpdateStatus.Checking
@@ -65,16 +66,6 @@ class UpdateManager @Inject constructor(
 
     fun startDownload(url: String, fileName: String = "app-release.apk") {
         try {
-            // Unregister previous receiver if exists to avoid leaks
-            if (downloadReceiver != null) {
-                try {
-                    context.unregisterReceiver(downloadReceiver)
-                } catch (e: Exception) {
-                    // Ignore if not registered
-                }
-                downloadReceiver = null
-            }
-
             _updateStatus.value = UpdateStatus.Downloading(0)
 
             val request = DownloadManager.Request(Uri.parse(url))
@@ -86,27 +77,23 @@ class UpdateManager @Inject constructor(
                 .setAllowedOverRoaming(true)
 
             val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-            downloadId = downloadManager.enqueue(request)
+            val downloadId = downloadManager.enqueue(request)
 
-            // Register receiver for download complete
-            downloadReceiver = object : BroadcastReceiver() {
-                override fun onReceive(ctxt: Context, intent: Intent) {
-                    val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-                    if (downloadId == id) {
-                        checkDownloadStatus(downloadManager, id, fileName)
-                        try {
-                            context.unregisterReceiver(this)
-                        } catch (e: Exception) {
-                            // Ignore
-                        }
-                        downloadReceiver = null
-                    }
-                }
-            }
-            context.registerReceiver(downloadReceiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+            // Save downloadId to SharedPreferences
+            prefs.edit().putLong("download_id", downloadId).apply()
 
         } catch (e: Exception) {
             _updateStatus.value = UpdateStatus.Error(e.message ?: context.getString(R.string.update_download_failed))
+        }
+    }
+
+    fun onDownloadComplete(id: Long, fileName: String = "app-release.apk") {
+        val savedId = prefs.getLong("download_id", -1)
+        if (id == savedId) {
+            val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            checkDownloadStatus(downloadManager, id, fileName)
+            // Clear saved ID
+            prefs.edit().remove("download_id").apply()
         }
     }
 
