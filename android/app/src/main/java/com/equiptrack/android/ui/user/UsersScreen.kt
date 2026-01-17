@@ -277,7 +277,12 @@ fun UsersScreen(
                     ) {
                         if (filteredUsers.isEmpty()) {
                             item {
-                                EmptyStateCard(searchQuery) { viewModel.updateSearchQuery("") }
+                                com.equiptrack.android.ui.components.EmptyStateCard(
+                                    message = if (searchQuery.isNotEmpty()) "未找到匹配用户" else "暂无用户数据",
+                                    icon = Icons.Outlined.PersonSearch,
+                                    onRetry = if (searchQuery.isNotEmpty()) { { viewModel.updateSearchQuery("") } } else null,
+                                    retryText = "清除搜索条件"
+                                )
                             }
                         } else {
                             itemsIndexed(
@@ -384,41 +389,7 @@ fun UsersScreen(
     }
 }
 
-@Composable
-fun EmptyStateCard(searchQuery: String, onClearSearch: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.PersonSearch,
-                contentDescription = null,
-                modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.outline
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = if (searchQuery.isNotEmpty()) "未找到匹配用户" else "暂无用户数据",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            if (searchQuery.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                TextButton(onClick = onClearSearch) {
-                    Text("清除搜索条件")
-                }
-            }
-        }
-    }
-}
+
 
 @Composable
 fun UserCard(

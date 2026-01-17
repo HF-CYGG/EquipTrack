@@ -153,7 +153,21 @@ fun EquipTrackNavigation(
             }
         }
         
-        composable(Screen.Signup.route) {
+        composable(
+            route = Screen.Signup.route,
+            enterTransition = {
+                slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(500)) + fadeIn(animationSpec = tween(500))
+            },
+            exitTransition = {
+                slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(500)) + fadeOut(animationSpec = tween(500))
+            },
+            popEnterTransition = {
+                slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(500)) + fadeIn(animationSpec = tween(500))
+            },
+            popExitTransition = {
+                slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(500)) + fadeOut(animationSpec = tween(500))
+            }
+        ) {
             AnimatedPage(
                 transitionType = PageTransitionType.SLIDE_UP
             ) {
@@ -271,7 +285,21 @@ fun EquipTrackNavigation(
             )
         }
 
-        composable(Screen.ThemeCustomize.route) {
+        composable(
+            route = Screen.ThemeCustomize.route,
+            enterTransition = {
+                slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(500)) + fadeIn(animationSpec = tween(500))
+            },
+            exitTransition = {
+                slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(500)) + fadeOut(animationSpec = tween(500))
+            },
+            popEnterTransition = {
+                slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(500)) + fadeIn(animationSpec = tween(500))
+            },
+            popExitTransition = {
+                slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(500)) + fadeOut(animationSpec = tween(500))
+            }
+        ) {
             AnimatedPage(transitionType = PageTransitionType.SLIDE_HORIZONTAL) {
                 ThemeCustomizeScreen(
                     onNavigateBack = { navController.popBackStack() },

@@ -81,8 +81,13 @@ private fun ToastContent(
     modifier: Modifier = Modifier
 ) {
     val backgroundColor = when (toastData.type) {
-        ToastType.SUCCESS -> Color(0xFF4CAF50)
-        ToastType.ERROR -> Color(0xFFF44336)
+        ToastType.SUCCESS -> MaterialTheme.colorScheme.primary
+        ToastType.ERROR -> MaterialTheme.colorScheme.error
+    }
+    
+    val contentColor = when (toastData.type) {
+        ToastType.SUCCESS -> MaterialTheme.colorScheme.onPrimary
+        ToastType.ERROR -> MaterialTheme.colorScheme.onError
     }
     
     val icon: ImageVector = when (toastData.type) {
@@ -110,13 +115,13 @@ private fun ToastContent(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = Color.White,
+                tint = contentColor,
                 modifier = Modifier.size(24.dp)
             )
             
             Text(
                 text = toastData.message,
-                color = Color.White,
+                color = contentColor,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(1f)

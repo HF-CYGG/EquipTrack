@@ -64,31 +64,36 @@ fun OnboardingScreen(
     onFinish: () -> Unit,
     viewModel: OnboardingViewModel = hiltViewModel()
 ) {
-    val pages = remember {
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
+    val tertiary = MaterialTheme.colorScheme.tertiary
+    val error = MaterialTheme.colorScheme.error
+
+    val pages = remember(primary, secondary, tertiary, error) {
         listOf(
             OnboardingPageData(
                 title = "智能物资管理",
                 description = "一站式解决物资借还、审批与审计难题，让设备流转井井有条。",
                 icon = Icons.Default.Dashboard,
-                color = Color(0xFF6200EE) // Primary Purple
+                color = primary
             ),
             OnboardingPageData(
                 title = "扫码借还，拍照留证",
                 description = "支持二维码快速扫描录入，借还过程强制拍照上传，状态真实可见。",
                 icon = Icons.Default.QrCodeScanner,
-                color = Color(0xFF03DAC5) // Teal
+                color = secondary
             ),
             OnboardingPageData(
                 title = "多级审批，即时通知",
                 description = "灵活配置部门审批流程，申请消息实时推送，移动端随时随地轻松处理。",
                 icon = Icons.Default.AssignmentTurnedIn,
-                color = Color(0xFFFF5722) // Orange
+                color = tertiary
             ),
             OnboardingPageData(
                 title = "全程追溯，安全无忧",
                 description = "详尽的操作日志与历史审计记录，让每一次物资流转都清晰透明，有迹可循。",
                 icon = Icons.Default.History,
-                color = Color(0xFF2196F3) // Blue
+                color = error
             )
         )
     }

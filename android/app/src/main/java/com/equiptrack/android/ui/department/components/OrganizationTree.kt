@@ -90,16 +90,16 @@ fun OrganizationTree(
 
     var draggingItem by remember { mutableStateOf<Department?>(null) }
     var draggingItemOffset by remember { mutableStateOf(Offset.Zero) }
-    var dragStartOffset by remember { mutableStateOf(Offset.Zero) } // Relative to item
     
     // We need to know the bounds of items to determine drop target
-    val itemBounds = remember { mutableMapOf<String, Float>() } // ID -> Y position (center?)
+    val itemBounds = remember { mutableMapOf<String, Float>() } // ID -> Y position (Window coordinates)
     val itemHeights = remember { mutableMapOf<String, Float>() }
     
     var hoverTargetId by remember { mutableStateOf<String?>(null) }
-    var hoverType by remember { mutableStateOf<DropType>(DropType.None) } // 0: None, 1: On Top (Reparent), 2: Above/Below (Reorder)
+    var hoverType by remember { mutableStateOf<DropType>(DropType.None) }
 
     var boxPositionInWindow by remember { mutableStateOf(Offset.Zero) }
+    val density = androidx.compose.ui.platform.LocalDensity.current
 
     // Haptic feedback when hover target changes
     LaunchedEffect(hoverTargetId, hoverType) {
@@ -133,12 +133,7 @@ fun OrganizationTree(
                         width = if (hoverTargetId == "ROOT") 2.dp else 0.dp,
                         color = if (hoverTargetId == "ROOT") MaterialTheme.colorScheme.primary else Color.Transparent,
                         shape = RoundedCornerShape(4.dp)
-                    )
-                    .onGloballyPositioned { coordinates ->
-                         if (draggingItem != null) {
-                             // No-op, just layout
-                         }
-                    },
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 if (draggingItem != null) {
@@ -176,16 +171,53 @@ fun OrganizationTree(
                     onDragStart = { offset ->
                         if (canManage) {
                             draggingItem = dept
-                            dragStartOffset = offset
+                            // offset is relative to the Row.
+                            // We need draggingItemOffset to be relative to the Box (0,0).
+                            // itemBounds has Window Y. boxPositionInWindow has Window Y.
+                            // Row Top relative to Box = itemBounds - boxPositionInWindow.y
+                            val rowTopRelativeToBox = (itemBounds[dept.id] ?: 0f) - boxPositionInWindow.y
+                            // draggingItemOffset should be the touch position relative to Box
+                            draggingItemOffset = Offset(offset.x, rowTopRelativeToBox + offset.y)
+                            
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         }
                     },
                     onDrag = { change, dragAmount ->
                         if (canManage) {
+                            change.consume()
                             draggingItemOffset += dragAmount
                             
-                            // Hit testing logic would go here typically, but we need global coordinates.
-                            // Simplified: We rely on the row reporting its position.
+                            val windowY = boxPositionInWindow.y + draggingItemOffset.y
+                            
+                            // Check Root Zone (Top ~50dp relative to Box)
+                            val headerHeightPx = with(density) { 50.dp.toPx() }
+                            
+                            if (draggingItemOffset.y < headerHeightPx) { 
+                                hoverTargetId = "ROOT"
+                                hoverType = DropType.Reparent
+                            } else {
+                                val targetId = findItemAt(windowY, itemBounds, itemHeights)
+                                if (targetId != null && targetId != draggingItem?.id) {
+                                    hoverTargetId = targetId
+                                    
+                                    val itemTop = itemBounds[targetId] ?: 0f
+                                    val itemH = itemHeights[targetId] ?: 0f
+                                    
+                                    val ratio = (windowY - itemTop) / itemH
+                                    if (ratio in 0.25..0.75) {
+                                        hoverType = DropType.Reparent
+                                    } else if (ratio < 0.25) {
+                                        hoverType = DropType.ReorderAbove
+                                    } else {
+                                        hoverType = DropType.ReorderBelow
+                                    }
+                                } else {
+                                     if (targetId == null && draggingItemOffset.y > 0) {
+                                         hoverTargetId = null
+                                         hoverType = DropType.None
+                                     }
+                                }
+                            }
                         }
                     },
                     onDragEnd = {
@@ -213,97 +245,11 @@ fun OrganizationTree(
             }
         }
         
-        // Global Gesture Detector Overlay
-        if (canManage) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .pointerInput(Unit) {
-                        detectDragGesturesAfterLongPress(
-                            onDragStart = { offset ->
-                                // Find which item is under start offset
-                                val windowY = boxPositionInWindow.y + offset.y
-                                val clickedId = findItemAt(windowY, itemBounds, itemHeights)
-                                if (clickedId != null) {
-                                    val item = departments.find { it.id == clickedId }
-                                    if (item != null) {
-                                        draggingItem = item
-                                        dragStartOffset = offset
-                                        draggingItemOffset = offset // Start following pointer
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    }
-                                }
-                            },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                draggingItemOffset += dragAmount
-                                
-                                // Hit testing
-                                val windowY = boxPositionInWindow.y + draggingItemOffset.y
-                                
-                                // Check Root Zone (Top ~50dp relative to Box)
-                                if (draggingItemOffset.y < 50f) { // Approximate
-                                    hoverTargetId = "ROOT"
-                                    hoverType = DropType.Reparent
-                                } else {
-                                    val targetId = findItemAt(windowY, itemBounds, itemHeights)
-                                    if (targetId != null && targetId != draggingItem?.id) {
-                                        hoverTargetId = targetId
-                                        
-                                        // Determine type: Top/Bottom 25% -> Reorder, Middle 50% -> Reparent
-                                        val itemTop = itemBounds[targetId] ?: 0f
-                                        val itemH = itemHeights[targetId] ?: 0f
-                                        
-                                        val ratio = (windowY - itemTop) / itemH
-                                        if (ratio in 0.25..0.75) {
-                                            hoverType = DropType.Reparent
-                                        } else if (ratio < 0.25) {
-                                            hoverType = DropType.ReorderAbove
-                                        } else {
-                                            hoverType = DropType.ReorderBelow
-                                        }
-                                    } else {
-                                         if (targetId == null && draggingItemOffset.y > 0) {
-                                             // Maybe end of list?
-                                             hoverTargetId = null
-                                             hoverType = DropType.None
-                                         }
-                                    }
-                                }
-                            },
-                            onDragEnd = {
-                                if (draggingItem != null) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    handleDrop(
-                                        draggedItem = draggingItem!!,
-                                        targetId = hoverTargetId,
-                                        type = hoverType,
-                                        allNodes = flattenedNodes,
-                                        departments = departments,
-                                        onUpdate = onUpdateStructure
-                                    )
-                                }
-                                draggingItem = null
-                                draggingItemOffset = Offset.Zero
-                                hoverTargetId = null
-                                hoverType = DropType.None
-                            },
-                            onDragCancel = {
-                                draggingItem = null
-                                draggingItemOffset = Offset.Zero
-                                hoverTargetId = null
-                                hoverType = DropType.None
-                            }
-                        )
-                    }
-            )
-        }
-        
         // Dragging Ghost
         if (draggingItem != null) {
             Box(
                 modifier = Modifier
-                    .offset { IntOffset(draggingItemOffset.x.roundToInt() - 50, draggingItemOffset.y.roundToInt() - 50) } // Offset to center?
+                    .offset { IntOffset(draggingItemOffset.x.roundToInt() - 50, draggingItemOffset.y.roundToInt() - 50) } 
                     .zIndex(100f)
                     .graphicsLayer {
                         scaleX = 1.05f
@@ -410,6 +356,18 @@ fun DepartmentRow(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
+                .then(
+                     if (canManage) {
+                         Modifier.pointerInput(Unit) {
+                             detectDragGesturesAfterLongPress(
+                                 onDragStart = onDragStart,
+                                 onDragEnd = onDragEnd,
+                                 onDragCancel = onDragEnd,
+                                 onDrag = onDrag
+                             )
+                         }
+                     } else Modifier
+                )
                 .clickable { onSelect() }
                 .padding(start = (node.level * 24).dp, top = 12.dp, bottom = 12.dp, end = 8.dp)
         ) {
