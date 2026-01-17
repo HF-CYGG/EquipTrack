@@ -272,10 +272,15 @@ fun AnimatedListItem(
     Box(
         modifier = Modifier.graphicsLayer {
             this.alpha = alpha
-            if (listAnimationType == "Slide") {
-                this.translationX = offsetX
-                this.scaleX = scale
-                this.scaleY = scale
+            when (listAnimationType) {
+                "Slide" -> {
+                    this.translationX = offsetX
+                }
+                "Scale" -> {
+                    this.scaleX = scale
+                    this.scaleY = scale
+                }
+                // "Fade" case implicitly handled by alpha
             }
         }
     ) {

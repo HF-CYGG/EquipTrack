@@ -420,7 +420,7 @@ fun ThemeCustomizeScreen(
                     
                      SettingsChoice(
                         label = "列表动画",
-                        options = listOf("Scale" to "缩放", "Slide" to "滑动", "Fade" to "淡入"),
+                        options = listOf("None" to "无", "Scale" to "缩放", "Slide" to "滑动", "Fade" to "淡入"),
                         selectedKey = listAnimationType,
                         onSelectionChanged = { 
                             listAnimationType = it
