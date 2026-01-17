@@ -49,6 +49,9 @@ fun HistoryScreen(
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val serverUrl by viewModel.serverUrl.collectAsState()
     
+    val currentUser = viewModel.getCurrentUser()
+    val isSuperAdmin = currentUser?.role == com.equiptrack.android.data.model.UserRole.SUPER_ADMIN
+
     val toastState = rememberToastState()
     var showFilterDialog by remember { mutableStateOf(false) }
     var fabExpanded by remember { mutableStateOf(false) }
@@ -125,10 +128,15 @@ fun HistoryScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 4.dp)
+                        .padding(
+                            start = 16.dp, 
+                            end = 16.dp, 
+                            bottom = 16.dp, 
+                            top = if (isSuperAdmin) 4.dp else 0.dp
+                        )
                 ) {
                     // Department Filter for Super Admin
-                    if (viewModel.getCurrentUser()?.role == com.equiptrack.android.data.model.UserRole.SUPER_ADMIN) {
+                    if (isSuperAdmin) {
                         DepartmentFilter(
                             departments = departments,
                             selectedDepartmentId = filterDepartmentId,
@@ -154,7 +162,10 @@ fun HistoryScreen(
                             LazyColumn(
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                                 state = listState,
-                                contentPadding = PaddingValues(vertical = 12.dp)
+                                contentPadding = PaddingValues(
+                                    top = if (isSuperAdmin) 12.dp else 8.dp, 
+                                    bottom = 12.dp
+                                )
                             ) {
                             if (historyEntries.isEmpty()) {
                                 item {
