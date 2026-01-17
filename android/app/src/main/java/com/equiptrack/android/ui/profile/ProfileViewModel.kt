@@ -28,6 +28,9 @@ class ProfileViewModel @Inject constructor(
     private val _passwordUpdateMessage = MutableStateFlow<String?>(null)
     val passwordUpdateMessage: StateFlow<String?> = _passwordUpdateMessage.asStateFlow()
 
+    private val _refreshMessage = MutableStateFlow<String?>(null)
+    val refreshMessage: StateFlow<String?> = _refreshMessage.asStateFlow()
+
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
@@ -105,14 +108,24 @@ class ProfileViewModel @Inject constructor(
 
     fun getCurrentUser(): User? = authRepository.getCurrentUser()
     
-    fun refreshProfile() {
+    fun refreshProfile(isUserRefresh: Boolean = false) {
         val user = getCurrentUser() ?: return
         viewModelScope.launch {
             try {
-                _isRefreshing.value = true
+                if (isUserRefresh) {
+                    _isRefreshing.value = true
+                }
                 authRepository.refreshUserProfile(user.id).collect { result ->
-                    if (result !is NetworkResult.Loading) {
-                        // refreshing state handled in finally
+                    when (result) {
+                        is NetworkResult.Success -> {
+                            if (isUserRefresh) {
+                                _refreshMessage.value = "刷新成功"
+                            }
+                        }
+                        is NetworkResult.Error -> {
+                            // Optionally handle error message
+                        }
+                        else -> {}
                     }
                 }
             } catch (e: Exception) {
@@ -121,6 +134,10 @@ class ProfileViewModel @Inject constructor(
                 _isRefreshing.value = false
             }
         }
+    }
+
+    fun clearRefreshMessage() {
+        _refreshMessage.value = null
     }
 
     fun clearAvatarMessage() {

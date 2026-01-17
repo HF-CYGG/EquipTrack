@@ -21,6 +21,9 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
@@ -58,6 +61,7 @@ fun ProfileScreen(
     val context = LocalContext.current
     val avatarMessage by profileViewModel.avatarUpdateMessage.collectAsState(initial = null)
     val passwordMessage by profileViewModel.passwordUpdateMessage.collectAsState(initial = null)
+    val refreshMessage by profileViewModel.refreshMessage.collectAsState(initial = null)
     val isRefreshing by profileViewModel.isRefreshing.collectAsState()
     val updateStatus by mainViewModel.updateStatus.collectAsState()
     val toastState = rememberToastState()
@@ -106,12 +110,21 @@ fun ProfileScreen(
     
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
-        onRefresh = { profileViewModel.refreshProfile() }
+        onRefresh = { profileViewModel.refreshProfile(true) }
     )
     
-    // Auto refresh on entry
-    LaunchedEffect(Unit) {
-        profileViewModel.refreshProfile()
+    // Auto refresh on entry and resume
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                profileViewModel.refreshProfile(false)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
     
     // Handle password update messages
@@ -130,13 +143,12 @@ fun ProfileScreen(
         }
     }
     
-    // Show toast after pull-to-refresh completes
-    var wasRefreshing by remember { mutableStateOf(false) }
-    LaunchedEffect(isRefreshing) {
-        if (wasRefreshing && !isRefreshing) {
-            toastState.showSuccess("刷新成功")
+    // Handle refresh messages
+    LaunchedEffect(refreshMessage) {
+        refreshMessage?.let { message ->
+            toastState.showSuccess(message)
+            profileViewModel.clearRefreshMessage()
         }
-        wasRefreshing = isRefreshing
     }
     
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
