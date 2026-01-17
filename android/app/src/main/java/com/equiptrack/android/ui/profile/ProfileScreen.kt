@@ -21,6 +21,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
@@ -45,6 +47,13 @@ import com.equiptrack.android.ui.components.*
 import com.equiptrack.android.ui.navigation.NavigationViewModel
 import com.equiptrack.android.utils.UpdateStatus
 import com.equiptrack.android.viewmodel.MainViewModel
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Wallpaper
+
+enum class ProfileStyle {
+    Default,
+    Immersive
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
@@ -57,6 +66,10 @@ fun ProfileScreen(
     val mainViewModel: MainViewModel = hiltViewModel()
     val currentUser by profileViewModel.currentUser.collectAsState()
     val context = LocalContext.current
+    
+    // 样式状态 (实际项目中可从 ViewModel 或 DataStore 读取)
+    var profileStyle by remember { mutableStateOf(ProfileStyle.Default) }
+    
     val avatarMessage by profileViewModel.avatarUpdateMessage.collectAsState(initial = null)
     val passwordMessage by profileViewModel.passwordUpdateMessage.collectAsState(initial = null)
     val refreshMessage by profileViewModel.refreshMessage.collectAsState(initial = null)
@@ -159,8 +172,12 @@ fun ProfileScreen(
             item {
                 ProfileHeader(
                     user = currentUser,
+                    style = profileStyle,
                     onAvatarClick = { imagePicker.launch("image/*") },
-                    onEditClick = { showEditDialog = true }
+                    onEditClick = { showEditDialog = true },
+                    onStyleSwitch = {
+                        profileStyle = if (profileStyle == ProfileStyle.Default) ProfileStyle.Immersive else ProfileStyle.Default
+                    }
                 )
             }
 
@@ -175,13 +192,15 @@ fun ProfileScreen(
                     InfoCard(
                         icon = Icons.Default.Email,
                         label = "联系方式",
-                        value = currentUser?.contact ?: "未设置"
+                        value = currentUser?.contact ?: "未设置",
+                        style = profileStyle
                     )
                     
                     InfoCard(
                         icon = Icons.Default.Business,
                         label = "所属部门",
-                        value = currentUser?.departmentName ?: "未分配"
+                        value = currentUser?.departmentName ?: "未分配",
+                        style = profileStyle
                     )
                     
                     if (currentUser?.role == UserRole.SUPER_ADMIN || currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.ADVANCED_USER) {
@@ -190,7 +209,8 @@ fun ProfileScreen(
                             label = "个人邀请码",
                             value = currentUser?.invitationCode ?: "无",
                             isCopyable = true,
-                            onCopy = { toastState.showSuccess("已复制邀请码") }
+                            onCopy = { toastState.showSuccess("已复制邀请码") },
+                            style = profileStyle
                         )
                     }
                 }
@@ -209,8 +229,13 @@ fun ProfileScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (profileStyle == ProfileStyle.Immersive) 
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.85f) 
+                        else 
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = if (profileStyle == ProfileStyle.Immersive) 1.dp else 0.dp)
                 ) {
                     Column {
                         ProfileMenuItem(
@@ -309,28 +334,31 @@ fun ProfileScreen(
 @Composable
 fun ProfileHeader(
     user: com.equiptrack.android.data.model.User?,
+    style: ProfileStyle,
     onAvatarClick: () -> Unit,
-    onEditClick: () -> Unit
+    onEditClick: () -> Unit,
+    onStyleSwitch: () -> Unit
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(240.dp)
     ) {
-        // 背景
-        Box(
+        // 样式切换按钮 (右上角)
+        IconButton(
+            onClick = onStyleSwitch,
             modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primaryContainer,
-                            MaterialTheme.colorScheme.surface
-                        )
-                    )
-                )
-        )
-        
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+                .statusBarsPadding()
+        ) {
+            Icon(
+                imageVector = if (style == ProfileStyle.Default) Icons.Default.Wallpaper else Icons.Default.Palette,
+                contentDescription = "Switch Style",
+                tint = if (style == ProfileStyle.Immersive) Color.White else MaterialTheme.colorScheme.onSurface
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -343,7 +371,12 @@ fun ProfileHeader(
                 modifier = Modifier
                     .size(100.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface)
+                    .background(
+                        if (style == ProfileStyle.Immersive) 
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.8f) 
+                        else 
+                            MaterialTheme.colorScheme.surfaceVariant
+                    )
                     .clickable(onClick = onAvatarClick)
                     .padding(4.dp) // Border effect
             ) {
@@ -394,21 +427,37 @@ fun ProfileHeader(
             }
             
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                val textColor = if (style == ProfileStyle.Immersive) Color.White else MaterialTheme.colorScheme.onSurface
+                val textShadow = if (style == ProfileStyle.Immersive) Shadow(
+                    color = Color.Black.copy(alpha = 0.5f),
+                    offset = Offset(0f, 2f),
+                    blurRadius = 4f
+                ) else null
+
                 Text(
                     text = user?.name ?: "未登录",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        shadow = textShadow
+                    ),
+                    fontWeight = FontWeight.Bold,
+                    color = textColor
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    shape = RoundedCornerShape(16.dp)
+                    color = if (style == ProfileStyle.Immersive) 
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+                    else 
+                        MaterialTheme.colorScheme.secondaryContainer,
+                    shape = RoundedCornerShape(16.dp),
+                    border = if (style == ProfileStyle.Immersive) 
+                        androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                    else null
                 ) {
                     Text(
                         text = user?.role?.displayName ?: "游客",
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -422,12 +471,18 @@ fun InfoCard(
     label: String,
     value: String,
     isCopyable: Boolean = false,
-    onCopy: () -> Unit = {}
+    onCopy: () -> Unit = {},
+    style: ProfileStyle = ProfileStyle.Default
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = if (style == ProfileStyle.Immersive) 
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.85f) 
+            else 
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (style == ProfileStyle.Immersive) 1.dp else 0.dp)
     ) {
         Row(
             modifier = Modifier
