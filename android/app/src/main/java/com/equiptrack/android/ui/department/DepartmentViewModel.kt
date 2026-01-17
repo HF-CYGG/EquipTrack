@@ -109,15 +109,17 @@ class DepartmentViewModel @Inject constructor(
         _searchQuery.value = query
     }
 
-    fun refreshDepartments() {
-        _isRefreshing.value = true
+    fun refreshDepartments(isUserRefresh: Boolean = true) {
+        if (isUserRefresh) {
+            _isRefreshing.value = true
+        }
         UrlUtils.bumpRefreshEpoch()
-        syncDepartments()
+        syncDepartments(isUserRefresh)
     }
 
     private var syncJob: kotlinx.coroutines.Job? = null
 
-    fun syncDepartments() {
+    fun syncDepartments(isUserRefresh: Boolean = false) {
         syncJob?.cancel()
         syncJob = viewModelScope.launch {
             try {
@@ -130,7 +132,8 @@ class DepartmentViewModel @Inject constructor(
                         is NetworkResult.Success -> {
                             _uiState.value = _uiState.value.copy(
                                 isLoading = false,
-                                errorMessage = null
+                                errorMessage = null,
+                                successMessage = if (isUserRefresh) "刷新成功" else null
                             )
                         }
 

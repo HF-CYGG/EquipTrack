@@ -99,7 +99,8 @@ class ApprovalViewModel @Inject constructor(
                                 _uiState.value = _uiState.value.copy(
                                     isLoading = false,
                                     isRefreshing = false,
-                                    errorMessage = null
+                                    errorMessage = null,
+                                    successMessage = if (isRefresh) "刷新成功" else null
                                 )
                             }
 

@@ -120,15 +120,17 @@ class HistoryViewModel @Inject constructor(
         }
     }
     
-    fun refreshHistory() {
-        _isRefreshing.value = true
-        syncHistory()
+    fun refreshHistory(isUserRefresh: Boolean = true) {
+        if (isUserRefresh) {
+            _isRefreshing.value = true
+        }
+        syncHistory(isUserRefresh)
         syncDepartments()
     }
 
     private var syncJob: kotlinx.coroutines.Job? = null
 
-    fun syncHistory() {
+    fun syncHistory(isUserRefresh: Boolean = false) {
         syncJob?.cancel()
         syncJob = viewModelScope.launch {
             try {
@@ -175,7 +177,8 @@ class HistoryViewModel @Inject constructor(
                             is NetworkResult.Success -> {
                                 _uiState.value = _uiState.value.copy(
                                     isLoading = false,
-                                    errorMessage = null
+                                    errorMessage = null,
+                                    successMessage = if (isUserRefresh) "刷新成功" else null
                                 )
                             }
 
@@ -196,7 +199,8 @@ class HistoryViewModel @Inject constructor(
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        errorMessage = "用户未登录"
+                        errorMessage = "用户未登录",
+                        successMessage = null
                     )
                 }
             } catch (e: Exception) {

@@ -127,14 +127,16 @@ class UserViewModel @Inject constructor(
         syncUsers()
     }
 
-    fun refreshUsers() {
-        _isRefreshing.value = true
-        syncUsers()
+    fun refreshUsers(isUserRefresh: Boolean = true) {
+        if (isUserRefresh) {
+            _isRefreshing.value = true
+        }
+        syncUsers(isUserRefresh)
     }
 
     private var syncJob: kotlinx.coroutines.Job? = null
 
-    fun syncUsers() {
+    fun syncUsers(isUserRefresh: Boolean = false) {
         syncJob?.cancel()
         syncJob = viewModelScope.launch {
             try {
@@ -150,7 +152,8 @@ class UserViewModel @Inject constructor(
                             is NetworkResult.Success -> {
                                 _uiState.value = _uiState.value.copy(
                                     isLoading = false,
-                                    errorMessage = null
+                                    errorMessage = null,
+                                    successMessage = if (isUserRefresh) "刷新成功" else null
                                 )
                             }
 

@@ -80,15 +80,6 @@ fun ApprovalScreen(
             viewModel.clearMessages()
         }
     }
-    
-    // Show toast after pull-to-refresh completes successfully
-    var wasRefreshing by remember { mutableStateOf(false) }
-    LaunchedEffect(uiState.isRefreshing, uiState.errorMessage) {
-        if (wasRefreshing && !uiState.isRefreshing && uiState.errorMessage == null) {
-            toastState.showSuccess("刷新成功")
-        }
-        wasRefreshing = uiState.isRefreshing
-    }
     val filteredRequests by viewModel.filteredRequests.collectAsStateWithLifecycle()
     val settingsRepository = navVm.settingsRepository
     val themeOverrides by settingsRepository.themeOverridesFlow.collectAsStateWithLifecycle()

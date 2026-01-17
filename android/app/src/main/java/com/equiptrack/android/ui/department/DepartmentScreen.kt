@@ -70,7 +70,7 @@ fun DepartmentScreen(
 
     // Auto-refresh when entering the screen
     LaunchedEffect(Unit) {
-        viewModel.refreshDepartments()
+        viewModel.refreshDepartments(isUserRefresh = false)
     }
     
     // Show toast for messages
@@ -83,15 +83,6 @@ fun DepartmentScreen(
             toastState.showSuccess(message)
             viewModel.clearMessages()
         }
-    }
-    
-    // Show toast after pull-to-refresh completes successfully
-    var wasRefreshing by remember { mutableStateOf(false) }
-    LaunchedEffect(isRefreshing, uiState.errorMessage) {
-        if (wasRefreshing && !isRefreshing && uiState.errorMessage == null) {
-            toastState.showSuccess("刷新成功")
-        }
-        wasRefreshing = isRefreshing
     }
     
     Box(
