@@ -17,6 +17,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.background
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -486,7 +490,8 @@ fun BorrowApprovalScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(horizontal = 16.dp)
+            .padding(top = 16.dp)
     ) {
         Box(
             modifier = Modifier
@@ -498,60 +503,123 @@ fun BorrowApprovalScreen(
                     .fillMaxSize()
                     .padding(bottom = if (showSearch) 80.dp else 0.dp)
             ) {
-                Card(
+                // Header Card
+                ElevatedCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+                    colors = CardDefaults.elevatedCardColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer
                     )
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text(
-                            text = viewModel.getAccessLevelDescription(),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = "您可以查看和处理借用申请",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                        )
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.AdminPanelSettings,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                        
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = viewModel.getAccessLevelDescription(),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "您可以查看和处理借用申请",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                            )
+                        }
                     }
                 }
 
-                TabRow(
-                    selectedTabIndex = if (selectedTab == BorrowApprovalTab.PENDING) 0 else 1,
+                // Custom Tab Row
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp)
+                        .padding(vertical = 8.dp)
                 ) {
-                    Tab(
-                        selected = selectedTab == BorrowApprovalTab.PENDING,
-                        onClick = {
-                            if (selectedTab != BorrowApprovalTab.PENDING) {
-                                viewModel.selectTab(BorrowApprovalTab.PENDING)
-                                if (filteredRequests.isEmpty() && !uiState.isLoading && !uiState.isRefreshing) {
-                                    viewModel.fetchRequests()
-                                }
+                    TabRow(
+                        selectedTabIndex = if (selectedTab == BorrowApprovalTab.PENDING) 0 else 1,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(4.dp),
+                        containerColor = Color.Transparent,
+                        indicator = { tabPositions ->
+                            if (selectedTab == BorrowApprovalTab.PENDING) {
+                                TabRowDefaults.Indicator(
+                                    modifier = Modifier.tabIndicatorOffset(tabPositions[0]),
+                                    height = 0.dp,
+                                    color = Color.Transparent
+                                )
+                            } else {
+                                TabRowDefaults.Indicator(
+                                    modifier = Modifier.tabIndicatorOffset(tabPositions[1]),
+                                    height = 0.dp,
+                                    color = Color.Transparent
+                                )
                             }
                         },
-                        text = { Text("待审批") }
-                    )
-                    Tab(
-                        selected = selectedTab == BorrowApprovalTab.HISTORY,
-                        onClick = {
-                            if (selectedTab != BorrowApprovalTab.HISTORY) {
-                                viewModel.selectTab(BorrowApprovalTab.HISTORY)
-                                if (historyRequests.isEmpty() && !uiState.isLoading && !uiState.isRefreshing) {
-                                    viewModel.fetchHistory()
-                                }
+                        divider = {}
+                    ) {
+                        val tabs = listOf("待审批", "审批历史")
+                        tabs.forEachIndexed { index, title ->
+                            val selected = (index == 0 && selectedTab == BorrowApprovalTab.PENDING) ||
+                                         (index == 1 && selectedTab == BorrowApprovalTab.HISTORY)
+                            
+                            val targetColor = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent
+                            val contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            
+                            Tab(
+                                selected = selected,
+                                onClick = {
+                                    val newTab = if (index == 0) BorrowApprovalTab.PENDING else BorrowApprovalTab.HISTORY
+                                    if (selectedTab != newTab) {
+                                        viewModel.selectTab(newTab)
+                                        if (newTab == BorrowApprovalTab.PENDING) {
+                                            if (filteredRequests.isEmpty() && !uiState.isLoading && !uiState.isRefreshing) {
+                                                viewModel.fetchRequests()
+                                            }
+                                        } else {
+                                            if (historyRequests.isEmpty() && !uiState.isLoading && !uiState.isRefreshing) {
+                                                viewModel.fetchHistory()
+                                            }
+                                        }
+                                    }
+                                },
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(targetColor)
+                                    .padding(vertical = 8.dp)
+                            ) {
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                    color = contentColor
+                                )
                             }
-                        },
-                        text = { Text("审批历史") }
-                    )
+                        }
+                    }
                 }
 
                 AnimatedVisibility(
@@ -562,13 +630,13 @@ fun BorrowApprovalScreen(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        label = { Text("搜索借用人姓名或联系方式") },
+                        placeholder = { Text("搜索借用人姓名或联系方式") },
                         leadingIcon = {
                             Icon(Icons.Default.Search, contentDescription = null)
                         },
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
-                                AnimatedIconButton(onClick = { searchQuery = "" }) {
+                                IconButton(onClick = { searchQuery = "" }) {
                                     Icon(Icons.Default.Clear, contentDescription = "清除")
                                 }
                             }
@@ -576,7 +644,11 @@ fun BorrowApprovalScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp),
-                        singleLine = true
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
                     )
                 }
 
@@ -586,48 +658,61 @@ fun BorrowApprovalScreen(
                     val enableAnimations = !lowPerformanceMode && listAnimationType != "None"
                     LazyColumn(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(bottom = 80.dp), // Add padding for FAB
                         state = listState
                     ) {
                         val currentList = if (selectedTab == BorrowApprovalTab.PENDING) filteredRequests else historyRequests
                         if (currentList.isEmpty()) {
                             item {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 40.dp),
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(24.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(16.dp)
                                     ) {
-                                        Icon(
-                                            Icons.Default.Assignment,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(48.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        Text(
-                                            text = if (selectedTab == BorrowApprovalTab.PENDING) {
-                                                if (searchQuery.isNotEmpty()) "未找到匹配的借用申请" else "暂无待审批借用申请"
-                                            } else {
-                                                if (searchQuery.isNotEmpty()) "未找到匹配的审批记录" else "暂无审批历史"
-                                            },
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        if (searchQuery.isNotEmpty()) {
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                            AnimatedTextButton(onClick = { searchQuery = "" }) {
-                                                Text(
-                                                    if (selectedTab == BorrowApprovalTab.PENDING) {
-                                                        "查看全部借用申请"
-                                                    } else {
-                                                        "查看全部审批记录"
-                                                    }
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                            modifier = Modifier.size(80.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    if (selectedTab == BorrowApprovalTab.PENDING) Icons.Default.AssignmentTurnedIn else Icons.Default.History,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(40.dp),
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                                 )
+                                            }
+                                        }
+                                        
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text(
+                                                text = if (selectedTab == BorrowApprovalTab.PENDING) {
+                                                    if (searchQuery.isNotEmpty()) "未找到匹配的申请" else "暂无待审批申请"
+                                                } else {
+                                                    if (searchQuery.isNotEmpty()) "未找到匹配的记录" else "暂无审批历史"
+                                                },
+                                                style = MaterialTheme.typography.titleMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                text = if (selectedTab == BorrowApprovalTab.PENDING) "所有申请都已处理完毕" else "审批记录将显示在这里",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                            )
+                                        }
+
+                                        if (searchQuery.isNotEmpty()) {
+                                            OutlinedButton(
+                                                onClick = { searchQuery = "" },
+                                                shape = RoundedCornerShape(20.dp)
+                                            ) {
+                                                Text("清除搜索")
                                             }
                                         }
                                     }
@@ -661,13 +746,15 @@ fun BorrowApprovalScreen(
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .padding(bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                AnimatedFloatingActionButton(
+                FloatingActionButton(
                     onClick = { showSearch = !showSearch },
-                    containerColor = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(56.dp)
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Icon(
                         imageVector = if (showSearch) Icons.Default.Close else Icons.Default.Search,

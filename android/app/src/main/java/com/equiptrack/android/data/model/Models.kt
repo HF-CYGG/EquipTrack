@@ -176,7 +176,8 @@ data class BorrowHistoryEntry(
     val forcedReturnBy: String? = null, // Name of the admin/advanced user who forced the return
     val photo: String? = null, // Add photo field to match server response if needed, or just to be safe
     val returnPhoto: String? = null, // Return proof photo
-    val note: String? = null
+    val note: String? = null,
+    val remark: String? = null
 ) : Parcelable
 
 // Data classes for API requests and responses

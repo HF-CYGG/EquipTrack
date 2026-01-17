@@ -1,6 +1,8 @@
 package com.equiptrack.android.ui.profile
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -353,78 +355,141 @@ fun ProfileHeader(
     onAvatarClick: () -> Unit,
     onEditClick: () -> Unit
 ) {
+    // Animation state for avatar border
+    val infiniteTransition = rememberInfiniteTransition(label = "profile_header_animation")
+    val avatarScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "avatar_scale"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(240.dp)
+            .height(340.dp) // Increased height for better spacing and visuals
     ) {
+        // Background Decoration
+        if (style == ProfileStyle.Default) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                                MaterialTheme.colorScheme.surface
+                            )
+                        )
+                    )
+            )
+            
+            // Decorative circles/shapes
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val canvasWidth = size.width
+                val canvasHeight = size.height
+                
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.2f),
+                    center = Offset(x = canvasWidth * 0.85f, y = canvasHeight * 0.15f),
+                    radius = 120.dp.toPx()
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.1f),
+                    center = Offset(x = canvasWidth * 0.15f, y = canvasHeight * 0.4f),
+                    radius = 80.dp.toPx()
+                )
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 48.dp),
+                .padding(top = 72.dp), // More top padding
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // 头像
+            // Avatar with Animation
             Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (style == ProfileStyle.Immersive) 
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.8f) 
-                        else 
-                            MaterialTheme.colorScheme.surfaceVariant
-                    )
-                    .clickable(onClick = onAvatarClick)
-                    .padding(4.dp) // Border effect
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(128.dp) // Larger avatar container
             ) {
-                if (user?.avatarUrl != null) {
-                    AsyncImage(
-                        model = user.avatarUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop,
-                        error = rememberVectorPainter(Icons.Default.Person),
-                        placeholder = rememberVectorPainter(Icons.Default.Person)
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Person,
+                // Animated border ring
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .scale(avatarScale)
+                        .clip(CircleShape)
+                        .background(
+                            if (style == ProfileStyle.Immersive) 
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.3f) 
+                            else 
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        )
+                )
+
+                // Actual Avatar
+                Box(
+                    modifier = Modifier
+                        .size(110.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (style == ProfileStyle.Immersive) 
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.8f) 
+                            else 
+                                MaterialTheme.colorScheme.surface
+                        )
+                        .clickable(onClick = onAvatarClick)
+                        .padding(4.dp)
+                ) {
+                    if (user?.avatarUrl != null) {
+                        AsyncImage(
+                            model = user.avatarUrl,
                             contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.primary
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            tint = if (style == ProfileStyle.Immersive) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
                 
-                // 编辑角标
+                // Edit Badge (Small icon on bottom right of avatar)
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .size(28.dp)
+                        .offset(x = (-4).dp, y = (-4).dp)
+                        .size(32.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.primary)
-                        .clickable(onClick = onEditClick),
-                    contentAlignment = Alignment.Center
+                        .clickable(onClick = onEditClick)
+                        .padding(6.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Edit,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.onPrimary
+                     Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit Profile",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
             }
             
+            // Text Info
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 val textColor = if (style == ProfileStyle.Immersive) Color.White else MaterialTheme.colorScheme.onSurface
                 val textShadow = if (style == ProfileStyle.Immersive) Shadow(
@@ -436,27 +501,29 @@ fun ProfileHeader(
                 Text(
                     text = user?.name ?: "未登录",
                     style = MaterialTheme.typography.headlineMedium.copy(
-                        shadow = textShadow
+                        shadow = textShadow,
+                        fontWeight = FontWeight.Bold
                     ),
-                    fontWeight = FontWeight.Bold,
                     color = textColor
                 )
+                
                 Spacer(modifier = Modifier.height(8.dp))
+                
                 Surface(
                     color = if (style == ProfileStyle.Immersive) 
-                        MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)
                     else 
-                        MaterialTheme.colorScheme.secondaryContainer,
-                    shape = RoundedCornerShape(16.dp),
+                        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(50), // Fully rounded pill
                     border = if (style == ProfileStyle.Immersive) 
-                        androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                        androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
                     else null
                 ) {
                     Text(
                         text = user?.role?.displayName ?: "游客",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                        color = if (style == ProfileStyle.Immersive) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
             }

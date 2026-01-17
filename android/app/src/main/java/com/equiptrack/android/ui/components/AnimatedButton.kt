@@ -8,6 +8,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
@@ -127,6 +128,7 @@ fun AnimatedOutlinedButton(
     enabled: Boolean = true,
     shape: androidx.compose.ui.graphics.Shape = ButtonDefaults.outlinedShape,
     colors: ButtonColors = ButtonDefaults.outlinedButtonColors(),
+    border: BorderStroke? = ButtonDefaults.outlinedButtonBorder,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     hapticFeedbackType: HapticFeedbackType? = HapticFeedbackType.TextHandleMove,
     content: @Composable RowScope.() -> Unit
@@ -157,6 +159,7 @@ fun AnimatedOutlinedButton(
         enabled = enabled,
         shape = shape,
         colors = colors,
+        border = border,
         interactionSource = interactionSource,
         content = content
     )

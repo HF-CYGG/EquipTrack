@@ -163,6 +163,7 @@ fun HistoryEntryCard(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
                                         Icons.Default.Person, 
@@ -171,11 +172,29 @@ fun HistoryEntryCard(
                                         tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "经办人: ${entry.operatorName}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                                    )
+                                    Column {
+                                        Text(
+                                            text = "审批人: ${entry.operatorName}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Phone,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(10.dp),
+                                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                                            )
+                                            Text(
+                                                text = entry.operatorContact.takeIf { it.isNotBlank() } ?: "无联系方式",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         } else {
@@ -256,6 +275,26 @@ fun HistoryEntryCard(
             
             Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             
+            // Notes Section
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "申请备注: ${entry.note?.takeIf { it.isNotBlank() } ?: "无备注"}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                // Show remark for relevant statuses
+                if (entry.status != BorrowStatus.PENDING) {
+                    Text(
+                        text = "${if (entry.status == BorrowStatus.REJECTED) "驳回" else "审批"}备注: ${entry.remark?.takeIf { it.isNotBlank() } ?: "无备注"}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (entry.status == BorrowStatus.REJECTED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+
             // Date information Grid
             Row(
                 modifier = Modifier.fillMaxWidth(),

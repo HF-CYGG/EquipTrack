@@ -77,7 +77,8 @@ class BorrowRepository @Inject constructor(
                 expectedReturnDate = borrowRequest.expectedReturnDate,
                 status = BorrowStatus.BORROWING,
                 photo = borrowRequest.photo,
-                note = borrowRequest.note
+                note = borrowRequest.note,
+                remark = null
             )
             borrowHistoryDao.insertHistory(historyEntry)
             emit(NetworkResult.Success(Unit))
@@ -149,7 +150,9 @@ class BorrowRepository @Inject constructor(
                             borrowDate = req.createdAt,
                             expectedReturnDate = req.expectedReturnDate,
                             status = status,
-                            photo = req.photo
+                            photo = req.photo,
+                            note = req.note,
+                            remark = req.remark
                         )
                     } else null
                 }
