@@ -33,6 +33,7 @@ import com.equiptrack.android.ui.components.ToastMessage
 import com.equiptrack.android.ui.components.ToastType
 import com.equiptrack.android.ui.components.rememberToastState
 import com.equiptrack.android.ui.components.AnimatedButton
+import com.equiptrack.android.ui.components.MD3PullRefreshIndicator
 import com.equiptrack.android.ui.components.AnimatedOutlinedButton
 import com.equiptrack.android.ui.components.AnimatedIconButton
 import com.equiptrack.android.ui.components.AnimatedTextButton
@@ -260,7 +261,7 @@ fun ApprovalScreen(
                 }
             }
             
-            PullRefreshIndicator(
+            MD3PullRefreshIndicator(
                 refreshing = uiState.isRefreshing,
                 state = pullRefreshState,
                 modifier = Modifier.align(Alignment.TopCenter)
@@ -675,7 +676,7 @@ fun BorrowApprovalScreen(
                 }
             }
             
-            PullRefreshIndicator(
+            MD3PullRefreshIndicator(
                 refreshing = uiState.isRefreshing,
                 state = pullRefreshState,
                 modifier = Modifier.align(Alignment.TopCenter)

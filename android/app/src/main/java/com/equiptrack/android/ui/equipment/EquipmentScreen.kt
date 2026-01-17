@@ -61,6 +61,7 @@ import com.equiptrack.android.ui.components.ToastType
 import com.equiptrack.android.ui.components.rememberToastState
 import com.equiptrack.android.ui.components.ConfettiOverlay
 import com.equiptrack.android.ui.components.AnimatedFloatingActionButton
+import com.equiptrack.android.ui.components.MD3PullRefreshIndicator
 import com.equiptrack.android.ui.components.AnimatedIconButton
 import com.equiptrack.android.ui.components.AnimatedSmallFloatingActionButton
 import com.equiptrack.android.ui.components.EquipmentListSkeleton
@@ -552,7 +553,7 @@ fun EquipmentScreen(
             }
         }
         
-        PullRefreshIndicator(
+        MD3PullRefreshIndicator(
             refreshing = isRefreshing,
             state = pullRefreshState,
             modifier = Modifier.align(Alignment.TopCenter)

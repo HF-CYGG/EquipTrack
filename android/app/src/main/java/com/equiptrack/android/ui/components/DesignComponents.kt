@@ -33,8 +33,28 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.PullRefreshState
 import kotlin.math.cos
 import kotlin.math.sin
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun MD3PullRefreshIndicator(
+    refreshing: Boolean,
+    state: PullRefreshState,
+    modifier: Modifier = Modifier
+) {
+    PullRefreshIndicator(
+        refreshing = refreshing,
+        state = state,
+        modifier = modifier,
+        backgroundColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.primary,
+        scale = true
+    )
+}
 
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable

@@ -30,6 +30,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.equiptrack.android.data.model.BorrowStatus
 import com.equiptrack.android.ui.components.*
+import com.equiptrack.android.ui.components.MD3PullRefreshIndicator
 import com.equiptrack.android.ui.equipment.components.ReturnItemDialog
 import com.equiptrack.android.ui.history.components.HistoryEntryCard
 import com.equiptrack.android.ui.navigation.NavigationViewModel
@@ -223,7 +224,7 @@ fun HistoryScreen(
                 }
             }
             
-            PullRefreshIndicator(
+            MD3PullRefreshIndicator(
                 refreshing = isRefreshing,
                 state = pullRefreshState,
                 modifier = Modifier.align(Alignment.TopCenter)
