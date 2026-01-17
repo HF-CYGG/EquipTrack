@@ -135,13 +135,13 @@ class UserRepository @Inject constructor(
         }
     }
     
-    suspend fun updateUserStatus(userId: String, status: UserStatus): Flow<NetworkResult<String>> = flow {
+    suspend fun updateUserStatus(userId: String, status: UserStatus, reason: String? = null): Flow<NetworkResult<String>> = flow {
         emit(NetworkResult.Loading())
         
         try {
             val user = userDao.getUserById(userId)
             if (user != null) {
-                val updatedUser = user.copy(status = status)
+                val updatedUser = user.copy(status = status, banReason = reason)
                 updateUser(updatedUser).collect { result ->
                     when (result) {
                         is NetworkResult.Success -> {

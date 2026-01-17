@@ -115,7 +115,8 @@ data class User(
     val status: UserStatus,
     val password: String? = null,
     val invitationCode: String? = null,
-    val avatarUrl: String? = null // 新增头像字段（圆形裁剪后上传）
+    val avatarUrl: String? = null,
+    val banReason: String? = null
 ) : Parcelable
 
 @Immutable

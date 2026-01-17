@@ -276,9 +276,9 @@ class UserViewModel @Inject constructor(
         }
     }
     
-    fun updateUserStatus(userId: String, status: UserStatus) {
+    fun updateUserStatus(userId: String, status: UserStatus, reason: String? = null) {
         viewModelScope.launch {
-            userRepository.updateUserStatus(userId, status).collect { result ->
+            userRepository.updateUserStatus(userId, status, reason).collect { result ->
                 when (result) {
                     is NetworkResult.Success -> {
                         _uiState.value = _uiState.value.copy(
@@ -372,6 +372,20 @@ class UserViewModel @Inject constructor(
         )
     }
 
+    fun showBanDialog(user: User) {
+        _uiState.value = _uiState.value.copy(
+            showBanDialog = true,
+            selectedUser = user
+        )
+    }
+
+    fun hideBanDialog() {
+        _uiState.value = _uiState.value.copy(
+            showBanDialog = false,
+            selectedUser = null
+        )
+    }
+
     fun deleteUser(userId: String) {
         viewModelScope.launch {
             userRepository.deleteUser(userId).collect { result ->
@@ -424,6 +438,7 @@ data class UserUiState(
     val showEditDialog: Boolean = false,
     val showPasswordDialog: Boolean = false,
     val showDeleteDialog: Boolean = false,
+    val showBanDialog: Boolean = false,
     val selectedUser: User? = null,
     val errorMessage: String? = null,
     val successMessage: String? = null
