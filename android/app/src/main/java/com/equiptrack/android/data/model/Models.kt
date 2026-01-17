@@ -129,11 +129,11 @@ data class RegistrationRequest(
     val contact: String,
     val departmentName: String? = null,
     val password: String? = null,
-    val invitationCode: String,
+    val invitationCode: String? = null,
     @SerializedName("createdAt")
     val requestDate: Date,
     @SerializedName("invitedByUserId")
-    val invitedBy: String, // ID of the user who's code was used
+    val invitedBy: String? = null, // ID of the user who's code was used
     val departmentId: String? = null,
     val status: String = "pending"
 ) : Parcelable
@@ -167,9 +167,9 @@ data class BorrowHistoryEntry(
     val departmentId: String,
     val borrowerName: String,
     val borrowerContact: String,
-    val operatorUserId: String, // ID of the user who performed the borrow operation
-    val operatorName: String, // Name of the user who performed the borrow operation
-    val operatorContact: String, // Contact of the user who performed the borrow operation
+    val operatorUserId: String? = null, // ID of the user who performed the borrow operation
+    val operatorName: String? = null, // Name of the user who performed the borrow operation
+    val operatorContact: String? = null, // Contact of the user who performed the borrow operation
     val borrowDate: Date,
     val expectedReturnDate: Date,
     val returnDate: Date? = null,

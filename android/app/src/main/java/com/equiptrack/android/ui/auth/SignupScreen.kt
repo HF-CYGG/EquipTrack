@@ -1,6 +1,7 @@
 package com.equiptrack.android.ui.auth
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -160,25 +161,32 @@ fun SignupScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Form card
-                    Card(
+                    ElevatedCard(
                         modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
                     ) {
                         Column(
                             modifier = Modifier.padding(24.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                            verticalArrangement = Arrangement.spacedBy(20.dp)
                         ) {
-                            Text(
-                                text = "填写注册信息",
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            
-                            Text(
-                                text = "请填写以下信息提交注册申请，管理员审核通过后即可使用系统。",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = "填写注册信息",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                
+                                Text(
+                                    text = "请填写以下信息提交注册申请，管理员审核通过后即可使用系统。",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                             
                             // Name field
                             OutlinedTextField(
@@ -198,178 +206,196 @@ fun SignupScreen(
                                     onNext = { focusManager.moveFocus(FocusDirection.Down) }
                                 ),
                                 modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp)
                             )
                         
-                        // Contact field
-                        OutlinedTextField(
-                            value = uiState.contact,
-                            onValueChange = {
-                                viewModel.updateContact(it)
-                                viewModel.clearErrors()
-                            },
-                            label = { Text("联系方式") },
-                            placeholder = { Text("请输入手机号或邮箱") },
-                            isError = uiState.contactError != null,
-                            supportingText = uiState.contactError?.let { { Text(it) } },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Email,
-                                imeAction = ImeAction.Next
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                            ),
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-                        
-                        // Department name field (Dropdown)
-                        ExposedDropdownMenuBox(
-                            expanded = departmentExpanded,
-                            onExpandedChange = { departmentExpanded = !departmentExpanded },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
+                            // Contact field
                             OutlinedTextField(
-                                value = uiState.departmentName,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("部门名称") },
-                                placeholder = { Text("请选择所属部门") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = departmentExpanded) },
-                                isError = uiState.departmentNameError != null,
-                                supportingText = uiState.departmentNameError?.let { { Text(it) } },
-                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .menuAnchor()
+                                value = uiState.contact,
+                                onValueChange = {
+                                    viewModel.updateContact(it)
+                                    viewModel.clearErrors()
+                                },
+                                label = { Text("联系方式") },
+                                placeholder = { Text("请输入手机号或邮箱") },
+                                isError = uiState.contactError != null,
+                                supportingText = uiState.contactError?.let { { Text(it) } },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Email,
+                                    imeAction = ImeAction.Next
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp)
                             )
                             
-                            ExposedDropdownMenu(
+                            // Department name field (Dropdown)
+                            ExposedDropdownMenuBox(
                                 expanded = departmentExpanded,
-                                onDismissRequest = { departmentExpanded = false }
+                                onExpandedChange = { departmentExpanded = !departmentExpanded },
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                if (departments.isEmpty()) {
-                                    DropdownMenuItem(
-                                        text = { Text("加载中或无可用部门") },
-                                        onClick = { departmentExpanded = false }
-                                    )
-                                } else {
-                                    departments.forEach { department ->
+                                OutlinedTextField(
+                                    value = uiState.departmentName,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("部门名称") },
+                                    placeholder = { Text("请选择所属部门") },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = departmentExpanded) },
+                                    isError = uiState.departmentNameError != null,
+                                    supportingText = uiState.departmentNameError?.let { { Text(it) } },
+                                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .menuAnchor(),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                
+                                ExposedDropdownMenu(
+                                    expanded = departmentExpanded,
+                                    onDismissRequest = { departmentExpanded = false }
+                                ) {
+                                    if (departments.isEmpty()) {
                                         DropdownMenuItem(
-                                            text = { Text(department.name) },
-                                            onClick = {
-                                                viewModel.updateDepartmentName(department.name)
-                                                viewModel.clearErrors()
-                                                departmentExpanded = false
-                                            }
+                                            text = { Text("加载中或无可用部门") },
+                                            onClick = { departmentExpanded = false }
                                         )
+                                    } else {
+                                        departments.forEach { department ->
+                                            DropdownMenuItem(
+                                                text = { Text(department.name) },
+                                                onClick = {
+                                                    viewModel.updateDepartmentName(department.name)
+                                                    viewModel.clearErrors()
+                                                    departmentExpanded = false
+                                                }
+                                            )
+                                        }
                                     }
                                 }
                             }
-                        }
-                        
-                        // Password field
-                        OutlinedTextField(
-                            value = uiState.password,
-                            onValueChange = {
-                                viewModel.updatePassword(it)
-                                viewModel.clearErrors()
-                            },
-                            label = { Text("密码") },
-                            placeholder = { Text("请输入密码（至少6位）") },
-                            isError = uiState.passwordError != null,
-                            supportingText = uiState.passwordError?.let { { Text(it) } },
-                            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                            trailingIcon = {
-                                AnimatedIconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                    Icon(
-                                        imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                        contentDescription = if (passwordVisible) "隐藏密码" else "显示密码"
-                                    )
-                                }
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Password,
-                                imeAction = ImeAction.Next
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                            ),
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-                        
-                        // Confirm password field
-                        OutlinedTextField(
-                            value = uiState.confirmPassword,
-                            onValueChange = {
-                                viewModel.updateConfirmPassword(it)
-                                viewModel.clearErrors()
-                            },
-                            label = { Text("确认密码") },
-                            placeholder = { Text("请再次输入密码") },
-                            isError = uiState.confirmPasswordError != null,
-                            supportingText = uiState.confirmPasswordError?.let { { Text(it) } },
-                            visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                            trailingIcon = {
-                                AnimatedIconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
-                                    Icon(
-                                        imageVector = if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                        contentDescription = if (confirmPasswordVisible) "隐藏密码" else "显示密码"
-                                    )
-                                }
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Password,
-                                imeAction = ImeAction.Next
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                            ),
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-                        
-                        // Invitation code field
-                        OutlinedTextField(
-                            value = uiState.invitationCode,
-                            onValueChange = {
-                                viewModel.updateInvitationCode(it)
-                                viewModel.clearErrors()
-                            },
-                            label = { Text("邀请码") },
-                            placeholder = { Text("请输入邀请码") },
-                            isError = uiState.invitationCodeError != null,
-                            supportingText = uiState.invitationCodeError?.let { { Text(it) } },
-                            keyboardOptions = KeyboardOptions(
-                                imeAction = ImeAction.Done
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onDone = {
-                                    focusManager.clearFocus()
-                                    viewModel.signup()
-                                }
-                            ),
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        // Submit button
-                        AnimatedButton(
-                            onClick = { viewModel.signup() },
-                            enabled = !uiState.isLoading,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            if (uiState.isLoading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp
+                            
+                            // Password field
+                            OutlinedTextField(
+                                value = uiState.password,
+                                onValueChange = {
+                                    viewModel.updatePassword(it)
+                                    viewModel.clearErrors()
+                                },
+                                label = { Text("密码") },
+                                placeholder = { Text("请输入密码（至少6位）") },
+                                isError = uiState.passwordError != null,
+                                supportingText = uiState.passwordError?.let { { Text(it) } },
+                                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                trailingIcon = {
+                                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                        Icon(
+                                            imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                            contentDescription = if (passwordVisible) "隐藏密码" else "显示密码"
+                                        )
+                                    }
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Password,
+                                    imeAction = ImeAction.Next
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            
+                            // Confirm password field
+                            OutlinedTextField(
+                                value = uiState.confirmPassword,
+                                onValueChange = {
+                                    viewModel.updateConfirmPassword(it)
+                                    viewModel.clearErrors()
+                                },
+                                label = { Text("确认密码") },
+                                placeholder = { Text("请再次输入密码") },
+                                isError = uiState.confirmPasswordError != null,
+                                supportingText = uiState.confirmPasswordError?.let { { Text(it) } },
+                                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                trailingIcon = {
+                                    IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                                        Icon(
+                                            imageVector = if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                            contentDescription = if (confirmPasswordVisible) "隐藏密码" else "显示密码"
+                                        )
+                                    }
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Password,
+                                    imeAction = ImeAction.Next
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            
+                            // Invitation code field
+                            OutlinedTextField(
+                                value = uiState.invitationCode,
+                                onValueChange = {
+                                    viewModel.updateInvitationCode(it)
+                                    viewModel.clearErrors()
+                                },
+                                label = { Text("邀请码") },
+                                placeholder = { Text("请输入邀请码") },
+                                isError = uiState.invitationCodeError != null,
+                                supportingText = uiState.invitationCodeError?.let { { Text(it) } },
+                                keyboardOptions = KeyboardOptions(
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        focusManager.clearFocus()
+                                        viewModel.signup()
+                                    }
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // Submit button
+                            Button(
+                                onClick = { viewModel.signup() },
+                                enabled = !uiState.isLoading,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(50.dp),
+                                shape = RoundedCornerShape(25.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
+                            ) {
+                                if (uiState.isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
+                                Text(
+                                    "提交申请",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
-                            Text("提交申请")
                         }
                     }
                 }
@@ -386,5 +412,4 @@ fun SignupScreen(
             .padding(top = 16.dp)
     )
     }
-}
 }

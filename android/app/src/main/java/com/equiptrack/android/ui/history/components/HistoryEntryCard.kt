@@ -156,7 +156,7 @@ fun HistoryEntryCard(
                             overflow = TextOverflow.Ellipsis
                         )
                         
-                        if (entry.borrowerName != entry.operatorName && entry.operatorName.isNotEmpty() && entry.operatorName != "系统记录") {
+                        if (entry.borrowerName != entry.operatorName && !entry.operatorName.isNullOrEmpty() && entry.operatorName != "系统记录") {
                             Column {
                                 Text(
                                     text = "借用人: ${entry.borrowerName} (${entry.borrowerContact})",
@@ -174,7 +174,7 @@ fun HistoryEntryCard(
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Column {
                                         Text(
-                                            text = "审批人: ${entry.operatorName}",
+                                            text = "审批人: ${entry.operatorName ?: "未知"}",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
                                         )
@@ -189,7 +189,7 @@ fun HistoryEntryCard(
                                                 tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                                             )
                                             Text(
-                                                text = entry.operatorContact.takeIf { it.isNotBlank() } ?: "无联系方式",
+                                                text = entry.operatorContact?.takeIf { it.isNotBlank() } ?: "无联系方式",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                                             )
