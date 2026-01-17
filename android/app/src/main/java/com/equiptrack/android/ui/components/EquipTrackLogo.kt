@@ -15,9 +15,9 @@ import androidx.compose.material3.MaterialTheme
 @Composable
 fun EquipTrackLogo(
     modifier: Modifier = Modifier,
-    backgroundColor: Color = Color(0xFF6200EE),
+    backgroundColor: Color = Color(0xFF03DAC5),
     outerTriangleColor: Color = Color.White,
-    innerTriangleColor: Color = Color(0xFF03DAC5)
+    innerTriangleColor: Color = Color(0xFF018786)
 ) {
     Canvas(modifier = modifier.aspectRatio(1f)) {
         val w = size.width
