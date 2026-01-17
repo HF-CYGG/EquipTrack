@@ -292,5 +292,6 @@ data class AppVersion(
     val updateContent: String,
     val downloadUrl: String,
     val forceUpdate: Boolean,
-    val releaseDate: String
+    val releaseDate: String,
+    val updateType: String = "normal" // urgent, major, feature, normal, patch
 ) : Parcelable

@@ -1,18 +1,21 @@
 package com.equiptrack.android.ui.components
 
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.equiptrack.android.data.model.AppVersion
-
-import androidx.compose.material3.ExperimentalMaterial3Api
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,23 +52,27 @@ fun UpdateDialog(
                     fontWeight = FontWeight.Bold
                 )
                 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Badge(containerColor = MaterialTheme.colorScheme.secondaryContainer) {
-                        Text(
-                            text = "v${version.versionName}",
-                            modifier = Modifier.padding(4.dp),
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
+                    UpdateTag(type = version.updateType)
+                    
                     Spacer(modifier = Modifier.width(8.dp))
+                    
                     Text(
-                        text = version.releaseDate.take(10), // Show only YYYY-MM-DD
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "v${version.versionName}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "发布于 ${version.releaseDate.take(10)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -111,5 +118,73 @@ fun UpdateDialog(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun UpdateTag(type: String) {
+    val (containerColor, contentColor, label) = when (type.lowercase()) {
+        "urgent" -> Triple(
+            MaterialTheme.colorScheme.errorContainer,
+            MaterialTheme.colorScheme.onErrorContainer,
+            "紧急更新"
+        )
+        "major" -> Triple(
+            MaterialTheme.colorScheme.primaryContainer,
+            MaterialTheme.colorScheme.onPrimaryContainer,
+            "重大更新"
+        )
+        "feature" -> Triple(
+            MaterialTheme.colorScheme.tertiaryContainer,
+            MaterialTheme.colorScheme.onTertiaryContainer,
+            "功能更新"
+        )
+        "patch" -> Triple(
+            MaterialTheme.colorScheme.surfaceVariant, // Outline style simulation
+            MaterialTheme.colorScheme.onSurfaceVariant,
+            "补丁修复"
+        )
+        else -> Triple(
+            MaterialTheme.colorScheme.secondaryContainer,
+            MaterialTheme.colorScheme.onSecondaryContainer,
+            "常规更新"
+        )
+    }
+
+    val isUrgent = type.lowercase() == "urgent"
+    
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .background(containerColor, CircleShape) // Pill shape
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        if (isUrgent) {
+            val infiniteTransition = rememberInfiniteTransition(label = "UrgentIndicator")
+            val scale by infiniteTransition.animateFloat(
+                initialValue = 0.8f,
+                targetValue = 1.2f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1000),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "Scale"
+            )
+            
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .scale(scale)
+                    .background(contentColor, CircleShape)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+        }
+        
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = contentColor,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
