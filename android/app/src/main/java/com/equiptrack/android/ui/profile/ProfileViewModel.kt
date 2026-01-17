@@ -34,6 +34,9 @@ class ProfileViewModel @Inject constructor(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
+    private val _currentUser = MutableStateFlow(authRepository.getCurrentUser())
+    val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
+
     fun updateAvatar(context: Context, uri: Uri) {
         viewModelScope.launch {
             _isRefreshing.value = true
@@ -46,7 +49,14 @@ class ProfileViewModel @Inject constructor(
                     return@launch
                 }
 
-                // 2. Upload to server
+                // 2. Update local user avatar (Local only)
+                val localAvatarUrl = android.net.Uri.fromFile(file).toString()
+                authRepository.updateLocalUserAvatar(localAvatarUrl)
+                _currentUser.value = authRepository.getCurrentUser()
+                _avatarUpdateMessage.value = "头像已更新（仅本地生效）"
+
+                /* 预留接口：上传到服务器
+                // 3. Upload to server
                 userRepository.uploadAvatar(file).collect { result ->
                     when (result) {
                         is NetworkResult.Success -> {
@@ -76,6 +86,7 @@ class ProfileViewModel @Inject constructor(
                         }
                     }
                 }
+                */
             } catch (e: Exception) {
                 _avatarUpdateMessage.value = "头像更新异常: ${e.message}"
             } finally {
@@ -109,7 +120,7 @@ class ProfileViewModel @Inject constructor(
     fun getCurrentUser(): User? = authRepository.getCurrentUser()
     
     fun refreshProfile(isUserRefresh: Boolean = false) {
-        val user = getCurrentUser() ?: return
+        val user = _currentUser.value ?: return
         viewModelScope.launch {
             try {
                 if (isUserRefresh) {
@@ -121,6 +132,7 @@ class ProfileViewModel @Inject constructor(
                             if (isUserRefresh) {
                                 _refreshMessage.value = "刷新成功"
                             }
+                            _currentUser.value = result.data
                         }
                         is NetworkResult.Error -> {
                             // Optionally handle error message

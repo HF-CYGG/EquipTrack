@@ -1,52 +1,50 @@
 package com.equiptrack.android.ui.profile
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.background
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.foundation.Image
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import coil.compose.AsyncImage
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import com.equiptrack.android.data.repository.AuthRepository
-import com.equiptrack.android.ui.navigation.NavigationViewModel
-import com.equiptrack.android.ui.profile.ProfileViewModel
-import com.equiptrack.android.ui.components.ToastMessage
-import com.equiptrack.android.ui.components.ToastType
-import com.equiptrack.android.ui.components.rememberToastState
-import com.equiptrack.android.data.model.UserRole
-import com.equiptrack.android.ui.components.AnimatedButton
-import com.equiptrack.android.ui.components.AnimatedOutlinedButton
-import com.equiptrack.android.ui.components.AnimatedTextButton
 import com.equiptrack.android.BuildConfig
-import com.equiptrack.android.viewmodel.MainViewModel
+import com.equiptrack.android.data.model.UserRole
+import com.equiptrack.android.data.repository.AuthRepository
+import com.equiptrack.android.ui.components.*
+import com.equiptrack.android.ui.navigation.NavigationViewModel
 import com.equiptrack.android.utils.UpdateStatus
+import com.equiptrack.android.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
@@ -57,7 +55,7 @@ fun ProfileScreen(
     val authRepository: AuthRepository = hiltViewModel<NavigationViewModel>().authRepository
     val profileViewModel: ProfileViewModel = hiltViewModel()
     val mainViewModel: MainViewModel = hiltViewModel()
-    val currentUser = authRepository.getCurrentUser()
+    val currentUser by profileViewModel.currentUser.collectAsState()
     val context = LocalContext.current
     val avatarMessage by profileViewModel.avatarUpdateMessage.collectAsState(initial = null)
     val passwordMessage by profileViewModel.passwordUpdateMessage.collectAsState(initial = null)
@@ -76,9 +74,7 @@ fun ProfileScreen(
         if (isCheckingUpdate) {
             when (updateStatus) {
                 is UpdateStatus.NoUpdate -> {
-                    // Show current version details
                     val remoteVersion = (updateStatus as UpdateStatus.NoUpdate).version
-                    // If remote version is older than local, show local version info with generic message
                     if (remoteVersion.versionCode < BuildConfig.VERSION_CODE) {
                         versionInfo = com.equiptrack.android.data.model.AppVersion(
                             versionCode = BuildConfig.VERSION_CODE,
@@ -96,7 +92,6 @@ fun ProfileScreen(
                     isCheckingUpdate = false
                 }
                 is UpdateStatus.Available -> {
-                    // UpdateDialog is handled in MainScreen, just reset flag
                     isCheckingUpdate = false
                 }
                 is UpdateStatus.Error -> {
@@ -113,7 +108,7 @@ fun ProfileScreen(
         onRefresh = { profileViewModel.refreshProfile(true) }
     )
     
-    // Auto refresh on entry and resume
+    // Auto refresh
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -127,26 +122,22 @@ fun ProfileScreen(
         }
     }
     
-    // Handle password update messages
+    // Handle messages
     LaunchedEffect(passwordMessage) {
-        passwordMessage?.let { message ->
-            toastState.showSuccess(message)
+        passwordMessage?.let { 
+            toastState.showSuccess(it)
             profileViewModel.clearPasswordMessage()
         }
     }
-    
-    // Handle avatar update messages
     LaunchedEffect(avatarMessage) {
-        avatarMessage?.let { message ->
-            toastState.showSuccess(message)
+        avatarMessage?.let { 
+            toastState.showSuccess(it)
             profileViewModel.clearAvatarMessage()
         }
     }
-    
-    // Handle refresh messages
     LaunchedEffect(refreshMessage) {
-        refreshMessage?.let { message ->
-            toastState.showSuccess(message)
+        refreshMessage?.let { 
+            toastState.showSuccess(it)
             profileViewModel.clearRefreshMessage()
         }
     }
@@ -160,235 +151,122 @@ fun ProfileScreen(
             .fillMaxSize()
             .pullRefresh(pullRefreshState)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 24.dp)
         ) {
-            // User info card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
+            // 1. 顶部个人信息卡片
+            item {
+                ProfileHeader(
+                    user = currentUser,
+                    onAvatarClick = { imagePicker.launch("image/*") },
+                    onEditClick = { showEditDialog = true }
+                )
+            }
+
+            // 2. 详细信息
+            item {
                 Column(
-                    modifier = Modifier.padding(20.dp),
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // 头像：使用 AsyncImage 优化加载
-                        if (currentUser?.avatarUrl != null) {
-                            AsyncImage(
-                                model = currentUser.avatarUrl,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape)
-                                    .clickable { imagePicker.launch("image/*") },
-                                contentScale = ContentScale.Crop,
-                                error = rememberVectorPainter(Icons.Default.Person),
-                                placeholder = rememberVectorPainter(Icons.Default.Person)
-                            )
-                        } else {
-                            Icon(
-                                Icons.Default.Person,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape)
-                                    .clickable { imagePicker.launch("image/*") },
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = currentUser?.name ?: "未知用户",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = currentUser?.role?.displayName ?: "未知角色",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        Spacer(modifier = Modifier.weight(1f))
-                        AnimatedOutlinedButton(onClick = { showEditDialog = true }) {
-                            Icon(Icons.Default.Edit, contentDescription = null)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("编辑")
-                        }
-                    }
+                    InfoCard(
+                        icon = Icons.Default.Email,
+                        label = "联系方式",
+                        value = currentUser?.contact ?: "未设置"
+                    )
                     
-                    Divider()
+                    InfoCard(
+                        icon = Icons.Default.Business,
+                        label = "所属部门",
+                        value = currentUser?.departmentName ?: "未分配"
+                    )
                     
-                    // 显示头像更新消息
-                    avatarMessage?.let { message ->
-                        LaunchedEffect(message) {
-                            // 显示消息后清除
-                            kotlinx.coroutines.delay(2000)
-                            profileViewModel.clearAvatarMessage()
-                        }
-                        Text(
-                            text = message,
-                            color = if (message.contains("失败")) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                    
-                    // Contact info
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Email,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = currentUser?.contact ?: "未知联系方式",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                    
-                    // Department info
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Business,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = currentUser?.departmentName ?: "未知部门",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-
-                    // Invitation Code info (Only for Admins/Super Admins/Advanced Users)
                     if (currentUser?.role == UserRole.SUPER_ADMIN || currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.ADVANCED_USER) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.VpnKey,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Column {
-                                Text(
-                                    text = "个人邀请码",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = currentUser?.invitationCode ?: "无邀请码",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
+                        InfoCard(
+                            icon = Icons.Default.VpnKey,
+                            label = "个人邀请码",
+                            value = currentUser?.invitationCode ?: "无",
+                            isCopyable = true,
+                            onCopy = { toastState.showSuccess("已复制邀请码") }
+                        )
                     }
                 }
             }
             
-            // Settings section
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(4.dp)
+            // 3. 功能列表
+            item {
+                Text(
+                    text = "系统",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 24.dp, top = 24.dp, bottom = 8.dp)
+                )
+                
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
-                    // 设置入口已移除，根据需求仅保留关于内容
-                    // 已根据需求移除"注册审批"、"用户管理"和"物资管理"入口
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("关于", style = MaterialTheme.typography.labelLarge)
-                        }
-                        Text("EquipTrack 现代化智能物资管理系统", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "版本：",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = BuildConfig.VERSION_NAME,
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .clickable {
-                                        if (!isCheckingUpdate) {
-                                            toastState.showSuccess("正在检查更新...")
-                                            isCheckingUpdate = true
-                                            mainViewModel.checkForUpdates()
-                                        }
-                                    }
-                                    .padding(horizontal = 4.dp, vertical = 2.dp)
-                            )
-                        }
-                        Text("说明：支持多部门、角色权限、带拍照的借还流程、借用审批与历史审计。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(
-                            text = "开发者：夜喵cats（https://github.com/HF-CYGG）",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clickable {
-                                mainViewModel.startDownload("https://github.com/HF-CYGG")
+                    Column {
+                        ProfileMenuItem(
+                            icon = Icons.Default.Update,
+                            title = "检查更新",
+                            subtitle = "当前版本: ${BuildConfig.VERSION_NAME}",
+                            onClick = {
+                                if (!isCheckingUpdate) {
+                                    toastState.showSuccess("正在检查更新...")
+                                    isCheckingUpdate = true
+                                    mainViewModel.checkForUpdates()
+                                }
                             }
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        AnimatedOutlinedButton(onClick = onNavigateToSystemInfo, modifier = Modifier.fillMaxWidth()) {
-                            Icon(Icons.Default.Info, contentDescription = null)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("系统说明")
-                        }
+                        Divider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        ProfileMenuItem(
+                            icon = Icons.Default.Info,
+                            title = "系统说明",
+                            subtitle = "了解 EquipTrack",
+                            onClick = onNavigateToSystemInfo
+                        )
+                        Divider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        ProfileMenuItem(
+                            icon = Icons.Default.Code,
+                            title = "开发者",
+                            subtitle = "夜喵cats (GitHub)",
+                            onClick = { mainViewModel.startDownload("https://github.com/HF-CYGG") }
+                        )
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.weight(1f))
-            
-            // Logout button
-            AnimatedButton(
-                onClick = {
-                    authRepository.logout()
-                    onNavigateToLogin()
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                )
-            ) {
-                Icon(
-                    Icons.Default.Logout,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("退出登录")
+
+            // 4. 退出登录
+            item {
+                Spacer(modifier = Modifier.height(32.dp))
+                AnimatedButton(
+                    onClick = {
+                        authRepository.logout()
+                        onNavigateToLogin()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                ) {
+                    Icon(Icons.Default.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("退出登录")
+                }
             }
         }
         
-        PullRefreshIndicator(
+        MD3PullRefreshIndicator(
             refreshing = isRefreshing,
             state = pullRefreshState,
             modifier = Modifier.align(Alignment.TopCenter)
@@ -404,7 +282,6 @@ fun ProfileScreen(
         )
     }
     
-    // 编辑对话框
     if (showEditDialog) {
         EditProfileDialog(
             onDismiss = { showEditDialog = false },
@@ -417,7 +294,6 @@ fun ProfileScreen(
         )
     }
     
-    // Toast message overlay
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.TopCenter
@@ -426,6 +302,227 @@ fun ProfileScreen(
             toastData = toastState.currentToast,
             onDismiss = { toastState.dismiss() },
             modifier = Modifier.padding(top = 16.dp)
+        )
+    }
+}
+
+@Composable
+fun ProfileHeader(
+    user: com.equiptrack.android.data.model.User?,
+    onAvatarClick: () -> Unit,
+    onEditClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(240.dp)
+    ) {
+        // 背景
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.surface
+                        )
+                    )
+                )
+        )
+        
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 48.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // 头像
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .clickable(onClick = onAvatarClick)
+                    .padding(4.dp) // Border effect
+            ) {
+                if (user?.avatarUrl != null) {
+                    AsyncImage(
+                        model = user.avatarUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop,
+                        error = rememberVectorPainter(Icons.Default.Person),
+                        placeholder = rememberVectorPainter(Icons.Default.Person)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                
+                // 编辑角标
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary)
+                        .clickable(onClick = onEditClick),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
+            
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = user?.name ?: "未登录",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text(
+                        text = user?.role?.displayName ?: "游客",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun InfoCard(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    isCopyable: Boolean = false,
+    onCopy: () -> Unit = {}
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            
+            if (isCopyable) {
+                IconButton(onClick = onCopy) {
+                    Icon(
+                        Icons.Default.ContentCopy,
+                        contentDescription = "复制",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ProfileMenuItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String? = null,
+    onClick: () -> Unit
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(if (isPressed) 0.98f else 1f, label = "scale")
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(scale)
+            .clickable { onClick() }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        
+        Icon(
+            Icons.Default.ChevronRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )
     }
 }
@@ -474,9 +571,9 @@ fun EditProfileDialog(
                     
                     // 头像更新按钮
                     AnimatedOutlinedButton(
-                        onClick = { },
+                        onClick = onUpdateAvatar,
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = false
+                        enabled = true
                     ) {
                         Icon(Icons.Default.Person, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))

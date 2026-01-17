@@ -266,4 +266,7 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    fun updateLocalUserAvatar(avatarUrl: String) {
+        sharedPreferences.edit().putString(KEY_USER_AVATAR_URL, avatarUrl).apply()
+    }
 }
