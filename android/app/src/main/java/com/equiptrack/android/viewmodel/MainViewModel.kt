@@ -5,17 +5,21 @@ import androidx.lifecycle.viewModelScope
 import com.equiptrack.android.BuildConfig
 import com.equiptrack.android.data.remote.api.EquipTrackApiService
 import com.equiptrack.android.utils.UpdateManager
+import com.equiptrack.android.data.settings.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val apiService: EquipTrackApiService,
-    private val updateManager: UpdateManager
+    private val updateManager: UpdateManager,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     val updateStatus = updateManager.updateStatus
+    val themeOverrides = settingsRepository.themeOverridesFlow
 
     fun checkForUpdates() {
         viewModelScope.launch {

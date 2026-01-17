@@ -65,10 +65,12 @@ fun ProfileScreen(
     val profileViewModel: ProfileViewModel = hiltViewModel()
     val mainViewModel: MainViewModel = hiltViewModel()
     val currentUser by profileViewModel.currentUser.collectAsState()
+    val themeOverrides by mainViewModel.themeOverrides.collectAsState()
     val context = LocalContext.current
     
-    // 样式状态 (实际项目中可从 ViewModel 或 DataStore 读取)
-    var profileStyle by remember { mutableStateOf(ProfileStyle.Default) }
+    // 自动适配样式：如果有自定义背景，则使用 Immersive 风格
+    val hasCustomBackground = !themeOverrides.backgroundUri.isNullOrEmpty()
+    val profileStyle = if (hasCustomBackground) ProfileStyle.Immersive else ProfileStyle.Default
     
     val avatarMessage by profileViewModel.avatarUpdateMessage.collectAsState(initial = null)
     val passwordMessage by profileViewModel.passwordUpdateMessage.collectAsState(initial = null)
@@ -164,6 +166,22 @@ fun ProfileScreen(
             .fillMaxSize()
             .pullRefresh(pullRefreshState)
     ) {
+        // 自定义背景渲染
+        if (hasCustomBackground && !themeOverrides.backgroundUri.isNullOrEmpty()) {
+            AsyncImage(
+                model = themeOverrides.backgroundUri,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            // 添加轻微遮罩以确保文字可读性，但不要太重
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.2f))
+            )
+        }
+
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 24.dp)
@@ -174,10 +192,7 @@ fun ProfileScreen(
                     user = currentUser,
                     style = profileStyle,
                     onAvatarClick = { imagePicker.launch("image/*") },
-                    onEditClick = { showEditDialog = true },
-                    onStyleSwitch = {
-                        profileStyle = if (profileStyle == ProfileStyle.Default) ProfileStyle.Immersive else ProfileStyle.Default
-                    }
+                    onEditClick = { showEditDialog = true }
                 )
             }
 
@@ -336,29 +351,13 @@ fun ProfileHeader(
     user: com.equiptrack.android.data.model.User?,
     style: ProfileStyle,
     onAvatarClick: () -> Unit,
-    onEditClick: () -> Unit,
-    onStyleSwitch: () -> Unit
+    onEditClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(240.dp)
     ) {
-        // 样式切换按钮 (右上角)
-        IconButton(
-            onClick = onStyleSwitch,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
-                .statusBarsPadding()
-        ) {
-            Icon(
-                imageVector = if (style == ProfileStyle.Default) Icons.Default.Wallpaper else Icons.Default.Palette,
-                contentDescription = "Switch Style",
-                tint = if (style == ProfileStyle.Immersive) Color.White else MaterialTheme.colorScheme.onSurface
-            )
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
