@@ -1,12 +1,15 @@
 package com.equiptrack.android.notifications
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import com.equiptrack.android.MainActivity
 import com.equiptrack.android.R
 import android.app.PendingIntent
@@ -19,6 +22,14 @@ object ApprovalNotificationHelper {
 
     private const val NOTIFICATION_ID_BORROW = 1001
     private const val NOTIFICATION_ID_REGISTRATION = 1002
+
+    private fun canPostNotifications(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+    }
 
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -44,6 +55,7 @@ object ApprovalNotificationHelper {
     }
 
     fun showBorrowApprovalNotification(context: Context) {
+        if (!canPostNotifications(context)) return
         ensureChannel(context)
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -65,11 +77,15 @@ object ApprovalNotificationHelper {
             .setAutoCancel(true)
 
         with(NotificationManagerCompat.from(context)) {
-            notify(NOTIFICATION_ID_BORROW, builder.build())
+            try {
+                notify(NOTIFICATION_ID_BORROW, builder.build())
+            } catch (_: SecurityException) {
+            }
         }
     }
 
     fun showRegistrationApprovalNotification(context: Context) {
+        if (!canPostNotifications(context)) return
         ensureChannel(context)
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -100,6 +116,7 @@ object ApprovalNotificationHelper {
     }
 
     fun showBorrowApprovedNotification(context: Context, itemName: String) {
+        if (!canPostNotifications(context)) return
         ensureChannel(context)
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP

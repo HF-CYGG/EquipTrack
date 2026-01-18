@@ -38,14 +38,54 @@ class AuthRepository @Inject constructor(
         private const val KEY_IS_LOGGED_IN = "is_logged_in"
         private const val KEY_AUTH_TOKEN = "auth_token"
         private const val KEY_FCM_TOKEN = "fcm_token"
+        private const val KEY_FCM_TOKEN_REGISTERED = "fcm_token_registered"
+        private const val KEY_FCM_TOKEN_REGISTERED_AT = "fcm_token_registered_at"
+        private const val KEY_FCM_TOKEN_REGISTERED_USER_ID = "fcm_token_registered_user_id"
+        private const val KEY_FCM_TOKEN_LAST_ATTEMPT_AT = "fcm_token_last_attempt_at"
+        private const val KEY_FCM_TOKEN_LAST_ATTEMPT_TOKEN = "fcm_token_last_attempt_token"
+        private const val KEY_FCM_TOKEN_LAST_ATTEMPT_USER_ID = "fcm_token_last_attempt_user_id"
         private const val TAG = "AuthRepository"
     }
     
     suspend fun registerDeviceToken(token: String) {
+        if (token.isBlank()) return
+        saveFCMToken(token)
+        if (!isLoggedIn()) return
+
+        val userId = sharedPreferences.getString(KEY_USER_ID, null) ?: return
+        val now = System.currentTimeMillis()
+
+        val lastAttemptAt = sharedPreferences.getLong(KEY_FCM_TOKEN_LAST_ATTEMPT_AT, 0L)
+        val lastAttemptToken = sharedPreferences.getString(KEY_FCM_TOKEN_LAST_ATTEMPT_TOKEN, null)
+        val lastAttemptUserId = sharedPreferences.getString(KEY_FCM_TOKEN_LAST_ATTEMPT_USER_ID, null)
+        if (lastAttemptUserId == userId && lastAttemptToken == token && now - lastAttemptAt < 10 * 60 * 1000L) {
+            return
+        }
+
+        val lastRegisteredToken = sharedPreferences.getString(KEY_FCM_TOKEN_REGISTERED, null)
+        val lastRegisteredUserId = sharedPreferences.getString(KEY_FCM_TOKEN_REGISTERED_USER_ID, null)
+        val lastRegisteredAt = sharedPreferences.getLong(KEY_FCM_TOKEN_REGISTERED_AT, 0L)
+        if (lastRegisteredUserId == userId && lastRegisteredToken == token && now - lastRegisteredAt < 7 * 24 * 60 * 60 * 1000L) {
+            return
+        }
+
+        sharedPreferences.edit().apply {
+            putLong(KEY_FCM_TOKEN_LAST_ATTEMPT_AT, now)
+            putString(KEY_FCM_TOKEN_LAST_ATTEMPT_TOKEN, token)
+            putString(KEY_FCM_TOKEN_LAST_ATTEMPT_USER_ID, userId)
+            apply()
+        }
+
         try {
             val response = apiService.registerDeviceToken(mapOf("token" to token, "platform" to "android"))
             if (response.isSuccessful && response.body()?.success == true) {
                 Log.d(TAG, "FCM Token registered successfully")
+                sharedPreferences.edit().apply {
+                    putString(KEY_FCM_TOKEN_REGISTERED, token)
+                    putLong(KEY_FCM_TOKEN_REGISTERED_AT, now)
+                    putString(KEY_FCM_TOKEN_REGISTERED_USER_ID, userId)
+                    apply()
+                }
             } else {
                 Log.e(TAG, "Failed to register FCM token: ${response.errorBody()?.string()}")
             }

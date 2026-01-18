@@ -7,6 +7,7 @@ import com.equiptrack.android.data.repository.AuthRepository
 import com.equiptrack.android.data.settings.SettingsRepository
 import com.equiptrack.android.utils.NetworkResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -22,6 +23,8 @@ class LoginViewModel @Inject constructor(
     
     private val _loginResult = MutableSharedFlow<NetworkResult<User>>()
     val loginResult: SharedFlow<NetworkResult<User>> = _loginResult.asSharedFlow()
+
+    private var loginJob: Job? = null
     
     fun updateContact(contact: String) {
         _uiState.value = _uiState.value.copy(contact = contact)
@@ -33,6 +36,7 @@ class LoginViewModel @Inject constructor(
     
     fun login() {
         val currentState = _uiState.value
+        if (currentState.isLoading) return
         
         if (currentState.contact.isBlank()) {
             _uiState.value = currentState.copy(contactError = "请输入联系方式")
@@ -65,7 +69,8 @@ class LoginViewModel @Inject constructor(
             isLoading = true
         )
         
-        viewModelScope.launch {
+        loginJob?.cancel()
+        loginJob = viewModelScope.launch {
             authRepository.login(currentState.contact.trim(), currentState.password.trim())
                 .collect { result ->
                     when (result) {

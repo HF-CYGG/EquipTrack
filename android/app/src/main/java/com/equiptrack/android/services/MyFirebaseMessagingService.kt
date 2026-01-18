@@ -9,16 +9,12 @@ import android.media.RingtoneManager
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.workDataOf
 import com.equiptrack.android.MainActivity
 import com.equiptrack.android.R
 import com.equiptrack.android.data.repository.AuthRepository
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -51,10 +47,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     private fun sendRegistrationToServer(token: String) {
-        // TODO: Implement this method to send token to your app server.
-        // Since we are in a Service, we should probably use WorkManager or a Repository.
-        // For now, we just log it. The UI layer can also retrieve the token.
-        Log.d(TAG, "Token to send: $token")
+        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+            authRepository.registerDeviceToken(token)
+        }
     }
 
     private fun sendNotification(title: String, messageBody: String) {

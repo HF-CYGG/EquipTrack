@@ -112,7 +112,7 @@ fun BorrowItemDialog(
     
     var showTimePicker by remember { mutableStateOf(false) }
     val timePickerState = rememberTimePickerState(is24Hour = true)
-    var tempSelectedDate by remember { mutableStateOf<java.time.LocalDate?>(null) }
+    var tempSelectedCalendar by remember { mutableStateOf<Calendar?>(null) }
     
     // Auto-fill logic
     LaunchedEffect(isPersonalBorrow, currentUser) {
@@ -138,18 +138,32 @@ fun BorrowItemDialog(
         }
     }
     
-    val today = java.time.LocalDate.now()
+    val todayStartMillis = remember {
+        Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+    }
     var showDatePicker by remember { mutableStateOf(false) }
+    val defaultSelectedDateMillis = expectedReturnDate?.let { date ->
+        Calendar.getInstance().apply {
+            time = date
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+    } ?: Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+        add(Calendar.DAY_OF_MONTH, 1)
+    }.timeInMillis
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = expectedReturnDate?.let {
-            val zone = java.time.ZoneId.systemDefault()
-            val instant = it.toInstant()
-            java.time.LocalDateTime.ofInstant(instant, zone)
-                .toLocalDate()
-                .atStartOfDay(zone)
-                .toInstant()
-                .toEpochMilli()
-        } ?: today.plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
+        initialSelectedDateMillis = defaultSelectedDateMillis,
         yearRange = DatePickerDefaults.YearRange
     )
 
@@ -159,7 +173,7 @@ fun BorrowItemDialog(
             onDismissRequest = { 
                 showDatePicker = false 
                 showTimePicker = false
-                tempSelectedDate = null
+                tempSelectedCalendar = null
             },
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
@@ -216,11 +230,7 @@ fun BorrowItemDialog(
                                 },
                                 showModeToggle = true,
                                 dateValidator = { millis ->
-                                    val date = java.time.Instant
-                                        .ofEpochMilli(millis)
-                                        .atZone(java.time.ZoneId.systemDefault())
-                                        .toLocalDate()
-                                    !date.isBefore(today)
+                                    millis >= todayStartMillis
                                 }
                             )
                             
@@ -232,7 +242,7 @@ fun BorrowItemDialog(
                             ) {
                                 TextButton(onClick = { 
                                     showDatePicker = false 
-                                    tempSelectedDate = null
+                                    tempSelectedCalendar = null
                                 }) {
                                     Text("取消")
                                 }
@@ -240,11 +250,13 @@ fun BorrowItemDialog(
                                     onClick = {
                                         val millis = datePickerState.selectedDateMillis
                                         if (millis != null) {
-                                            val selectedLocalDate = java.time.Instant
-                                                .ofEpochMilli(millis)
-                                                .atZone(java.time.ZoneId.systemDefault())
-                                                .toLocalDate()
-                                            tempSelectedDate = selectedLocalDate
+                                            tempSelectedCalendar = Calendar.getInstance().apply {
+                                                timeInMillis = millis
+                                                set(Calendar.HOUR_OF_DAY, 0)
+                                                set(Calendar.MINUTE, 0)
+                                                set(Calendar.SECOND, 0)
+                                                set(Calendar.MILLISECOND, 0)
+                                            }
                                             showTimePicker = true
                                         }
                                     }
@@ -287,9 +299,13 @@ fun BorrowItemDialog(
                                 }
                                 TextButton(
                                     onClick = {
-                                        tempSelectedDate?.let { date ->
-                                            val calendar = Calendar.getInstance()
-                                            calendar.set(date.year, date.monthValue - 1, date.dayOfMonth, timePickerState.hour, timePickerState.minute)
+                                        tempSelectedCalendar?.let { selected ->
+                                            val calendar = (selected.clone() as Calendar).apply {
+                                                set(Calendar.HOUR_OF_DAY, timePickerState.hour)
+                                                set(Calendar.MINUTE, timePickerState.minute)
+                                                set(Calendar.SECOND, 0)
+                                                set(Calendar.MILLISECOND, 0)
+                                            }
                                             expectedReturnDate = calendar.time
                                             dateError = null
                                         }
