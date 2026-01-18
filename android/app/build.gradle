@@ -15,8 +15,8 @@ android {
         applicationId "com.equiptrack.android"
         minSdk 24
         targetSdk 34
-        versionCode 12
-        versionName "0.5.4_24430a9"
+        versionCode 13
+        versionName "0.6.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
