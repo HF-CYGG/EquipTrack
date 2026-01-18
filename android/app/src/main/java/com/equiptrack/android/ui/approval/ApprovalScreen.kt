@@ -903,7 +903,7 @@ fun BorrowApprovalScreen(
                     .padding(bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                FloatingActionButton(
+                AnimatedFloatingActionButton(
                     onClick = { showSearch = !showSearch },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,

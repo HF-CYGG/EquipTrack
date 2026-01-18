@@ -28,7 +28,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import com.equiptrack.android.data.model.Category
 import com.equiptrack.android.data.model.EquipmentItem
@@ -38,6 +37,7 @@ import com.equiptrack.android.ui.components.AnimatedButton
 import com.equiptrack.android.ui.components.AnimatedOutlinedButton
 import com.equiptrack.android.ui.components.AnimatedTextButton
 import com.equiptrack.android.ui.components.AnimatedIconButton
+import com.equiptrack.android.ui.components.CameraCapture
 import java.io.File
 import java.util.*
 
@@ -78,6 +78,7 @@ fun AddEditItemDialog(
     var requiresApproval by remember { mutableStateOf(item?.requiresApproval ?: true) }
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var showImageOptions by remember { mutableStateOf(false) }
+    var showCamera by remember { mutableStateOf(false) }
     
     var nameError by remember { mutableStateOf<String?>(null) }
     var categoryError by remember { mutableStateOf<String?>(null) }
@@ -87,35 +88,30 @@ fun AddEditItemDialog(
     
     val isEditing = item != null
     
-    // 创建临时文件用于相机拍照
-    val tempImageFile = remember {
-        File(context.cacheDir, "temp_image_${System.currentTimeMillis()}.jpg")
-    }
-    
-    val tempImageUri = remember {
-        FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            tempImageFile
-        )
-    }
-    
-    // 相机拍照启动器
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success) {
-            imageUri = tempImageUri
-        }
-        showImageOptions = false
-    }
-    
     // 相册选择启动器
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let { imageUri = it }
         showImageOptions = false
+    }
+
+    if (showCamera) {
+        Dialog(
+            onDismissRequest = { showCamera = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            CameraCapture(
+                onImageCaptured = { uri ->
+                    imageUri = uri
+                    showCamera = false
+                },
+                onError = { exc ->
+                    toastState.showError("拍照失败: ${exc.message}")
+                },
+                onClose = { showCamera = false }
+            )
+        }
     }
     
     if (showAddCategoryDialog && onAddCategory != null) {
@@ -163,7 +159,10 @@ fun AddEditItemDialog(
                         
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             AnimatedTextButton(
-                                onClick = { cameraLauncher.launch(tempImageUri) },
+                                onClick = { 
+                                    showImageOptions = false
+                                    showCamera = true
+                                },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Icon(Icons.Default.CameraAlt, contentDescription = null)

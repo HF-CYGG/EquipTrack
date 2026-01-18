@@ -16,6 +16,7 @@ import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -62,6 +63,7 @@ fun HistoryScreen(
     val lowPerformanceMode = themeOverrides.lowPerformanceMode ?: settingsRepository.isLowPerformanceMode()
     var showConfetti by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
     
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
@@ -75,6 +77,10 @@ fun HistoryScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.syncHistory(isUserRefresh = false)
                 viewModel.updateOverdueStatus()
+                // 每次进入页面时自动滚动到顶部，确保显示最新记录
+                scope.launch {
+                    listState.scrollToItem(0)
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
