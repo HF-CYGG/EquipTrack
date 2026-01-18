@@ -1,6 +1,7 @@
 package com.equiptrack.android.ui.equipment.components
 
 import android.net.Uri
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -98,7 +99,7 @@ fun ReturnItemDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.6f))
@@ -109,10 +110,13 @@ fun ReturnItemDialog(
                 ),
             contentAlignment = Alignment.Center
         ) {
+            val cardMaxHeight = maxHeight * 0.78f
+            val contentMaxHeight = (cardMaxHeight - 148.dp).coerceAtLeast(240.dp)
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth(0.92f)
-                    .fillMaxHeight(0.8f) // Reduced height from 0.85f
+                    .heightIn(max = cardMaxHeight)
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
                 shape = RoundedCornerShape(20.dp), // Reduced corner radius from 28.dp
                 colors = CardDefaults.cardColors(
@@ -122,8 +126,9 @@ fun ReturnItemDialog(
             ) {
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .wrapContentHeight()
                         .padding(16.dp) // Reduced padding from 24.dp
+                        .animateContentSize()
                 ) {
                     // Header
                     Row(
@@ -153,17 +158,17 @@ fun ReturnItemDialog(
                     }
 
                     Divider(
-                        modifier = Modifier.padding(top = 16.dp, bottom = 0.dp), // Reduced padding
+                        modifier = Modifier.padding(top = 12.dp, bottom = 0.dp),
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
 
                     // Scrollable Content
                     Column(
                         modifier = Modifier
-                            .weight(1f)
                             .verticalScroll(rememberScrollState())
-                            .padding(vertical = 16.dp), // Reduced padding
-                        verticalArrangement = Arrangement.spacedBy(16.dp) // Reduced spacing
+                            .heightIn(max = contentMaxHeight)
+                            .padding(vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         // 1. Item Info Card
                         Column(
@@ -321,7 +326,7 @@ fun ReturnItemDialog(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(120.dp) // Reduced height
+                                        .height(104.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                 ) {
                                     val bitmap = CameraUtils.base64ToBitmap(photoBase64!!)
@@ -352,7 +357,7 @@ fun ReturnItemDialog(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(80.dp) // Reduced height
+                                        .height(72.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .drawBehind {
                                             drawRoundRect(color = color, style = stroke, cornerRadius = CornerRadius(12.dp.toPx()))
