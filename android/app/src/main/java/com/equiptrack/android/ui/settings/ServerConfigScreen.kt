@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.equiptrack.android.ui.components.*
 import android.Manifest
 import android.content.pm.PackageManager
@@ -26,6 +27,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.ExperimentalComposeUiApi
+import com.equiptrack.android.ui.navigation.NavigationViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -35,6 +37,11 @@ fun ServerConfigScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
     showFluidBackground: Boolean = true
 ) {
+    val navVm: NavigationViewModel = hiltViewModel()
+    val themeOverrides by navVm.settingsRepository.themeOverridesFlow.collectAsStateWithLifecycle()
+    val isImmersive = !themeOverrides.backgroundUri.isNullOrEmpty()
+    val effectiveShowFluidBackground = showFluidBackground && !isImmersive
+
     val context = LocalContext.current
     var serverUrl by remember { mutableStateOf(viewModel.getServerUrl()) }
     var isLocalDebug by remember { mutableStateOf(viewModel.isLocalDebug()) }
@@ -74,13 +81,14 @@ fun ServerConfigScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (showFluidBackground) Color.Transparent else MaterialTheme.colorScheme.surface)
+            .background(if (effectiveShowFluidBackground || isImmersive) Color.Transparent else MaterialTheme.colorScheme.surface)
     ) {
-        if (showFluidBackground) {
+        if (effectiveShowFluidBackground) {
             FluidLoginBackground(modifier = Modifier.fillMaxSize())
         }
         
         Scaffold(
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 TopAppBar(
                     title = { 
@@ -134,7 +142,7 @@ fun ServerConfigScreen(
                 // 1. 服务设置
                 ConfigSection(
                     title = "服务设置",
-                    useDeepColor = !showFluidBackground
+                    useDeepColor = !effectiveShowFluidBackground && !isImmersive
                 ) {
                     // Auto Start Permission Guide
                     if (showAutoStart) {
@@ -210,7 +218,7 @@ fun ServerConfigScreen(
                 // 2. 服务器连接
                 ConfigSection(
                     title = "服务器连接",
-                    useDeepColor = !showFluidBackground
+                    useDeepColor = !effectiveShowFluidBackground && !isImmersive
                 ) {
                     // Local Debug Switch
                     Row(
@@ -321,7 +329,7 @@ fun ServerConfigScreen(
                 // 3. 高级选项
                 ConfigSection(
                     title = "高级选项",
-                    useDeepColor = !showFluidBackground
+                    useDeepColor = !effectiveShowFluidBackground && !isImmersive
                 ) {
                     // Log Level
                     Row(

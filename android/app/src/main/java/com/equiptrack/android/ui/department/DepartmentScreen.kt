@@ -16,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -33,12 +34,18 @@ import com.equiptrack.android.ui.components.MD3PullRefreshIndicator
 import com.equiptrack.android.ui.components.AnimatedListItem
 import com.equiptrack.android.ui.components.EmptyStateCard
 import com.equiptrack.android.ui.components.AnimatedIconButton
+import com.equiptrack.android.ui.navigation.NavigationViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class, ExperimentalAnimationApi::class)
 @Composable
 fun DepartmentScreen(
     viewModel: DepartmentViewModel = hiltViewModel()
 ) {
+    val navVm: NavigationViewModel = hiltViewModel()
+    val settingsRepository = navVm.settingsRepository
+    val themeOverrides by settingsRepository.themeOverridesFlow.collectAsStateWithLifecycle()
+    val isImmersive = !themeOverrides.backgroundUri.isNullOrEmpty()
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val filteredDepartments by viewModel.filteredDepartments.collectAsStateWithLifecycle()
@@ -76,6 +83,8 @@ fun DepartmentScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        containerColor = if (isImmersive) Color.Transparent else MaterialTheme.colorScheme.background,
         floatingActionButton = {
             if (viewModel.canManageDepartments()) {
                 FloatingActionButton(
@@ -101,7 +110,7 @@ fun DepartmentScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface)
+                        .background(if (isImmersive) Color.Transparent else MaterialTheme.colorScheme.surface)
                         .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)
                 ) {
                     Row(
@@ -181,7 +190,7 @@ fun DepartmentScreen(
                 // Tab Row
                 TabRow(
                     selectedTabIndex = currentTab,
-                    containerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = if (isImmersive) MaterialTheme.colorScheme.surface.copy(alpha = 0.35f) else MaterialTheme.colorScheme.surface,
                     contentColor = MaterialTheme.colorScheme.primary,
                     indicator = { tabPositions ->
                         TabRowDefaults.Indicator(
@@ -290,6 +299,7 @@ fun DepartmentScreen(
                                             DepartmentCard(
                                                 department = department,
                                                 canManage = viewModel.canManageDepartments(),
+                                                isImmersive = isImmersive,
                                                 onEdit = { viewModel.showEditDialog(department) },
                                                 onDelete = { viewModel.showDeleteDialog(department) },
                                                 onClick = {
@@ -310,6 +320,7 @@ fun DepartmentScreen(
                             users = departmentUsers,
                             items = departmentItems,
                             canManage = viewModel.canManageDepartments(),
+                            isImmersive = isImmersive,
                             onSelectDepartment = { viewModel.selectDepartment(it) },
                             onUpdateUserRole = { userId, role ->
                                 viewModel.updateUserRole(userId, role)

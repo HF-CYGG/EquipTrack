@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -24,6 +27,7 @@ import com.equiptrack.android.ui.components.AnimatedIconButton
 fun DepartmentCard(
     department: Department,
     canManage: Boolean,
+    isImmersive: Boolean = false,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onClick: (() -> Unit)? = null
@@ -34,12 +38,22 @@ fun DepartmentCard(
     ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
+            .then(
+                if (isImmersive) {
+                    Modifier.border(
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+                        RoundedCornerShape(16.dp)
+                    )
+                } else {
+                    Modifier
+                }
+            )
             .let { base -> if (onClick != null) base.clickable { onClick() } else base },
         colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = if (isImmersive) MaterialTheme.colorScheme.surface.copy(alpha = 0.85f) else MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface
         ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (isImmersive) 0.dp else 2.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),

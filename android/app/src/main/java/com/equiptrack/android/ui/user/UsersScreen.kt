@@ -75,6 +75,7 @@ fun UsersScreen(
     val lowPerformanceMode = themeOverrides.lowPerformanceMode ?: settingsRepository.isLowPerformanceMode()
     val listAnimationType = themeOverrides.listAnimationType ?: settingsRepository.getListAnimationType()
     val listState = rememberLazyListState()
+    val isImmersive = !themeOverrides.backgroundUri.isNullOrEmpty()
 
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
@@ -108,6 +109,7 @@ fun UsersScreen(
     var showSearch by remember { mutableStateOf(false) }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
             if (canManage) {
                 FloatingActionButton(
@@ -133,7 +135,7 @@ fun UsersScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface)
+                        .background(if (isImmersive) Color.Transparent else MaterialTheme.colorScheme.surface)
                         .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)
                 ) {
                     Row(
@@ -302,6 +304,7 @@ fun UsersScreen(
                                         user = user,
                                         departments = departments,
                                         canManage = canManageUser,
+                                        isImmersive = isImmersive,
                                         onEdit = { viewModel.showEditDialog(user) },
                                         onResetPassword = { viewModel.showPasswordDialog(user) },
                                         onToggleStatus = {
@@ -396,6 +399,7 @@ fun UserCard(
     user: User,
     departments: List<Department>,
     canManage: Boolean,
+    isImmersive: Boolean = false,
     onEdit: () -> Unit,
     onResetPassword: () -> Unit,
     onToggleStatus: () -> Unit,
@@ -410,10 +414,21 @@ fun UserCard(
     }
 
     ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (isImmersive) {
+                    Modifier.border(
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+                        RoundedCornerShape(16.dp)
+                    )
+                } else {
+                    Modifier
+                }
+            ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (isImmersive) 0.dp else 2.dp),
         colors = CardDefaults.elevatedCardColors(
-            containerColor = if (isBanned) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface
+            containerColor = if (isBanned) MaterialTheme.colorScheme.errorContainer.copy(alpha = if (isImmersive) 0.25f else 0.1f) else MaterialTheme.colorScheme.surface.copy(alpha = if (isImmersive) 0.85f else 1f)
         ),
         shape = RoundedCornerShape(16.dp)
     ) {

@@ -150,39 +150,13 @@ fun ApprovalScreen(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // 1. 背景层
-        if (isImmersive) {
-            AsyncImage(
-                model = themeOverrides.backgroundUri,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-            // 添加遮罩以提高可读性
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.3f))
-            )
-        } else {
-            // 默认背景
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-            )
-        }
-
-        // 2. 主内容层
+        // 1. 主内容层
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding() // 避免状态栏遮挡
                 .padding(horizontal = 16.dp)
+                .padding(top = 16.dp)
         ) {
-            // 顶部操作行 (用于视觉平衡的间隔)
-            Spacer(modifier = Modifier.height(16.dp))
-
             // 主内容区域 (支持下拉刷新)
             Box(
                 modifier = Modifier
@@ -349,7 +323,7 @@ fun ApprovalScreen(
             }
         }
         
-            // 3. 悬浮操作按钮层
+        // 2. 悬浮操作按钮层
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)

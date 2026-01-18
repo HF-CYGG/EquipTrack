@@ -168,22 +168,6 @@ fun ProfileScreen(
             .fillMaxSize()
             .pullRefresh(pullRefreshState)
     ) {
-        // 自定义背景渲染
-        if (hasCustomBackground && !themeOverrides.backgroundUri.isNullOrEmpty()) {
-            AsyncImage(
-                model = themeOverrides.backgroundUri,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-            // 添加轻微遮罩以确保文字可读性，但不要太重
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.2f))
-            )
-        }
-
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 24.dp)

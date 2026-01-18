@@ -36,6 +36,7 @@ fun DepartmentDetailsView(
     users: List<User>,
     items: List<EquipmentItem>,
     canManage: Boolean,
+    isImmersive: Boolean = false,
     onSelectDepartment: (String) -> Unit,
     onUpdateUserRole: (String, UserRole) -> Unit
 ) {
@@ -53,8 +54,9 @@ fun DepartmentDetailsView(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            colors = CardDefaults.cardColors(containerColor = if (isImmersive) MaterialTheme.colorScheme.surface.copy(alpha = 0.85f) else MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = if (isImmersive) 0.dp else 2.dp),
+            border = if (isImmersive) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)) else null
         ) {
             Row(
                 modifier = Modifier
@@ -145,8 +147,9 @@ fun DepartmentDetailsView(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                colors = CardDefaults.cardColors(containerColor = if (isImmersive) MaterialTheme.colorScheme.surface.copy(alpha = 0.85f) else MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = if (isImmersive) 0.dp else 2.dp),
+                border = if (isImmersive) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)) else null
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -191,8 +194,9 @@ fun DepartmentDetailsView(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                colors = CardDefaults.cardColors(containerColor = if (isImmersive) MaterialTheme.colorScheme.surface.copy(alpha = 0.85f) else MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = if (isImmersive) 0.dp else 2.dp),
+                border = if (isImmersive) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)) else null
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
