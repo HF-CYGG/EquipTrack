@@ -233,6 +233,8 @@ fun HistoryScreen(
                                                     entry = entry,
                                                     canForceReturn = viewModel.canForceReturn(),
                                                     serverUrl = serverUrl,
+                                                    currentUserRole = currentUser?.role,
+                                                    currentUserContact = currentUser?.contact,
                                                     onReturn = {
                                                         viewModel.showReturnDialog(entry, isForced = false)
                                                     },
@@ -246,6 +248,8 @@ fun HistoryScreen(
                                                 entry = entry,
                                                 canForceReturn = viewModel.canForceReturn(),
                                                 serverUrl = serverUrl,
+                                                currentUserRole = currentUser?.role,
+                                                currentUserContact = currentUser?.contact,
                                                 onReturn = {
                                                     viewModel.showReturnDialog(entry, isForced = false)
                                                 },
@@ -372,6 +376,7 @@ fun HistoryScreen(
                 isForced = uiState.isForceReturn,
                 adminName = if (uiState.isForceReturn) viewModel.getCurrentUserName() else null,
                 currentUserRole = viewModel.getCurrentUser()?.role,
+                currentUserContact = viewModel.getCurrentUser()?.contact,
                 onDismiss = { viewModel.hideReturnDialog() },
                 onConfirm = { returnRequest ->
                     viewModel.returnItem(

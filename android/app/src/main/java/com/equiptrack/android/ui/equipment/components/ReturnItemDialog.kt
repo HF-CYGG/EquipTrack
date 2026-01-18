@@ -1,7 +1,12 @@
 package com.equiptrack.android.ui.equipment.components
 
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -53,6 +58,7 @@ fun ReturnItemDialog(
     isForced: Boolean = false,
     adminName: String? = null,
     currentUserRole: com.equiptrack.android.data.model.UserRole? = null,
+    currentUserContact: String? = null,
     onDismiss: () -> Unit,
     onConfirm: (ReturnRequest) -> Unit
 ) {
@@ -67,6 +73,11 @@ fun ReturnItemDialog(
     
     val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
     val isOverdue = Date().after(historyEntry.expectedReturnDate)
+    val isNonSelfBorrow = remember(currentUserContact, historyEntry.borrowerContact) {
+        val current = currentUserContact?.trim().orEmpty()
+        val borrower = historyEntry.borrowerContact.trim()
+        current.isNotBlank() && borrower.isNotBlank() && current != borrower
+    }
 
     // Determine if photo is mandatory
     val isPhotoRequired = remember(isForced, currentUserRole) {
@@ -199,6 +210,37 @@ fun ReturnItemDialog(
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
+                            }
+
+                            AnimatedVisibility(
+                                visible = isNonSelfBorrow,
+                                enter = fadeIn() + expandVertically(),
+                                exit = fadeOut() + shrinkVertically()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(
+                                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.45f),
+                                            RoundedCornerShape(12.dp)
+                                        )
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text(
+                                        text = "非本人借用",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
                             }
                             
                             Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))

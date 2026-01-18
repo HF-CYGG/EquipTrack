@@ -1,5 +1,10 @@
 package com.equiptrack.android.ui.history.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
@@ -24,6 +29,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import com.equiptrack.android.data.model.BorrowHistoryEntry
 import com.equiptrack.android.data.model.BorrowStatus
+import com.equiptrack.android.data.model.UserRole
 import com.equiptrack.android.ui.theme.*
 import com.equiptrack.android.ui.components.AnimatedButton
 import com.equiptrack.android.ui.components.AnimatedOutlinedButton
@@ -40,6 +46,8 @@ fun HistoryEntryCard(
     entry: BorrowHistoryEntry,
     canForceReturn: Boolean,
     serverUrl: String,
+    currentUserRole: UserRole? = null,
+    currentUserContact: String? = null,
     onReturn: () -> Unit,
     onForceReturn: () -> Unit
 ) {
@@ -53,6 +61,18 @@ fun HistoryEntryCard(
     } else 0
     val canReturn = entry.status in listOf(BorrowStatus.BORROWING, BorrowStatus.OVERDUE_NOT_RETURNED)
     var showImageDialog by remember { mutableStateOf(false) }
+    val isPrivilegedUser = currentUserRole != null && currentUserRole != UserRole.NORMAL_USER
+    val isSelfBorrow = remember(currentUserContact, entry.borrowerContact) {
+        val current = currentUserContact?.trim().orEmpty()
+        val borrower = entry.borrowerContact.trim()
+        current.isNotBlank() && borrower.isNotBlank() && current == borrower
+    }
+    val isNonSelfBorrowForNormalUser = remember(currentUserRole, currentUserContact, entry.borrowerContact) {
+        if (currentUserRole != UserRole.NORMAL_USER) return@remember false
+        val current = currentUserContact?.trim().orEmpty()
+        val borrower = entry.borrowerContact.trim()
+        current.isNotBlank() && borrower.isNotBlank() && current != borrower
+    }
     
     if (showImageDialog && entry.returnPhoto != null) {
         Dialog(
@@ -156,53 +176,88 @@ fun HistoryEntryCard(
                             overflow = TextOverflow.Ellipsis
                         )
                         
-                        if (entry.borrowerName != entry.operatorName && !entry.operatorName.isNullOrEmpty() && entry.operatorName != "系统记录") {
+                        if (isPrivilegedUser) {
                             Column {
                                 Text(
                                     text = "借用人: ${entry.borrowerName} (${entry.borrowerContact})",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Default.Person, 
-                                        contentDescription = null,
-                                        modifier = Modifier.size(12.dp),
-                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
+                                AnimatedVisibility(
+                                    visible = !isSelfBorrow,
+                                    enter = fadeIn() + expandVertically(),
+                                    exit = fadeOut() + shrinkVertically()
+                                ) {
                                     Column {
-                                        Text(
-                                            text = "审批人: ${entry.operatorName ?: "未知"}",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                                         ) {
+                                            Icon(
+                                                Icons.Default.AdminPanelSettings,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(14.dp),
+                                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                                            )
+                                            Text(
+                                                text = "经办人: ${entry.operatorName?.takeIf { it.isNotBlank() } ?: "未知"}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
                                             Icon(
                                                 Icons.Default.Phone,
                                                 contentDescription = null,
-                                                modifier = Modifier.size(10.dp),
-                                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                                                modifier = Modifier.size(12.dp),
+                                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
                                             )
                                             Text(
                                                 text = entry.operatorContact?.takeIf { it.isNotBlank() } ?: "无联系方式",
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
                                             )
                                         }
                                     }
                                 }
                             }
                         } else {
-                            Text(
-                                text = "借用人: ${entry.borrowerName}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    text = "借用人: ${entry.borrowerName}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                AnimatedVisibility(
+                                    visible = isNonSelfBorrowForNormalUser,
+                                    enter = fadeIn() + expandVertically(),
+                                    exit = fadeOut() + shrinkVertically()
+                                ) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Warning,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(14.dp),
+                                                tint = MaterialTheme.colorScheme.error
+                                            )
+                                            Text(
+                                                text = "非本人借用",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
