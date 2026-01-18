@@ -67,11 +67,26 @@ fun HistoryEntryCard(
         val borrower = entry.borrowerContact.trim()
         current.isNotBlank() && borrower.isNotBlank() && current == borrower
     }
+    val isAutoApproval = remember(entry.operatorName, entry.remark) {
+        val operatorName = entry.operatorName?.trim().orEmpty()
+        val remark = entry.remark?.trim().orEmpty()
+        operatorName == "自动审批" ||
+            Regex("auto-?approved", RegexOption.IGNORE_CASE).containsMatchIn(operatorName) ||
+            remark.contains("自动免审批") ||
+            remark.contains("自动审批")
+    }
     val isNonSelfBorrowForNormalUser = remember(currentUserRole, currentUserContact, entry.borrowerContact) {
         if (currentUserRole != UserRole.NORMAL_USER) return@remember false
         val current = currentUserContact?.trim().orEmpty()
         val borrower = entry.borrowerContact.trim()
         current.isNotBlank() && borrower.isNotBlank() && current != borrower
+    }
+    val operatorNameText = remember(isAutoApproval, entry.operatorName) {
+        if (isAutoApproval) {
+            "自动审批"
+        } else {
+            entry.operatorName?.takeIf { it.isNotBlank() } ?: "未知"
+        }
     }
     
     if (showImageDialog && entry.returnPhoto != null) {
@@ -201,22 +216,24 @@ fun HistoryEntryCard(
                                                 tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
                                             )
                                             Text(
-                                                text = "经办人: ${entry.operatorName?.takeIf { it.isNotBlank() } ?: "未知"}",
+                                                text = "经办人: $operatorNameText",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
                                             )
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Icon(
-                                                Icons.Default.Phone,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(12.dp),
-                                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
-                                            )
-                                            Text(
-                                                text = entry.operatorContact?.takeIf { it.isNotBlank() } ?: "无联系方式",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
-                                            )
+                                            if (!isAutoApproval) {
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Icon(
+                                                    Icons.Default.Phone,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(12.dp),
+                                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
+                                                )
+                                                Text(
+                                                    text = entry.operatorContact?.takeIf { it.isNotBlank() } ?: "无联系方式",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
+                                                )
+                                            }
                                         }
                                     }
                                 }
