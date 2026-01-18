@@ -118,7 +118,7 @@ fun ApprovalScreen(
         }
     }
 
-    // Show toast for messages
+    // 显示错误/成功消息 Toast
     LaunchedEffect(uiState.errorMessage, uiState.successMessage) {
         uiState.errorMessage?.let { message ->
             toastState.showError(message)
@@ -144,13 +144,13 @@ fun ApprovalScreen(
         viewModel.updateSearchQuery(searchQuery)
     }
     
-    // Detect immersive mode (custom background)
+    // 检测沉浸式模式（是否设置了自定义背景）
     val isImmersive = !themeOverrides.backgroundUri.isNullOrEmpty()
     
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // 1. Background Layer
+        // 1. 背景层
         if (isImmersive) {
             AsyncImage(
                 model = themeOverrides.backgroundUri,
@@ -158,14 +158,14 @@ fun ApprovalScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-            // Add scrim for readability
+            // 添加遮罩以提高可读性
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.3f))
             )
         } else {
-            // Default background
+            // 默认背景
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -173,17 +173,17 @@ fun ApprovalScreen(
             )
         }
 
-        // 2. Main Content Layer
+        // 2. 主内容层
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding() // Avoid status bar overlap
+                .statusBarsPadding() // 避免状态栏遮挡
                 .padding(horizontal = 16.dp)
         ) {
-            // 顶部操作行 (Spacer for visual balance)
+            // 顶部操作行 (用于视觉平衡的间隔)
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 主内容区域 (with PullRefresh)
+            // 主内容区域 (支持下拉刷新)
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -349,7 +349,7 @@ fun ApprovalScreen(
             }
         }
         
-        // 3. Floating Action Buttons Layer
+            // 3. 悬浮操作按钮层
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -357,7 +357,7 @@ fun ApprovalScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.End
         ) {
-            // Search FAB
+            // 搜索按钮
             AnimatedFloatingActionButton(
                 onClick = { showSearch = !showSearch },
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -372,7 +372,7 @@ fun ApprovalScreen(
     }
 
     
-    // Approve dialog
+    // 批准对话框
     if (uiState.showApproveDialog && uiState.selectedRequest != null) {
         Dialog(onDismissRequest = { viewModel.hideApproveDialog() }) {
             ElevatedCard(
@@ -468,7 +468,7 @@ fun ApprovalScreen(
         }
     }
     
-    // Reject dialog
+    // 驳回对话框
     if (uiState.showRejectDialog && uiState.selectedRequest != null) {
         Dialog(onDismissRequest = { viewModel.hideRejectDialog() }) {
             ElevatedCard(
@@ -567,22 +567,22 @@ fun ApprovalScreen(
         }
     }
     
-    // Error/Success messages
+    // 错误/成功消息处理
     uiState.errorMessage?.let { message ->
         LaunchedEffect(message) {
-            // Show snackbar or handle error
+            // 显示 Snackbar 或处理错误
             viewModel.clearMessages()
         }
     }
     
     uiState.successMessage?.let { message ->
         LaunchedEffect(message) {
-            // Show snackbar or handle success
+            // 显示 Snackbar 或处理成功消息
             viewModel.clearMessages()
         }
     }
     
-    // Toast message overlay
+    // Toast 消息覆盖层
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.TopCenter

@@ -65,6 +65,10 @@ val themePresets = listOf(
     ThemePreset("赛博粉", "#D81B60", "#FF4081", "前卫潮流")
 )
 
+/**
+ * 主题与背景自定义页面
+ * 允许用户修改应用的主题色、背景壁纸、卡片样式、动画效果等
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThemeCustomizeScreen(
@@ -73,23 +77,36 @@ fun ThemeCustomizeScreen(
 ) {
     val navVm: NavigationViewModel = hiltViewModel()
     val repo = navVm.settingsRepository
+    // 从 Repository 收集实时主题覆盖配置
     val overrides by repo.themeOverridesFlow.collectAsState()
 
+    // ----------------------------------------------------------------
+    // 本地 UI 状态 (Local UI State)
+    // ----------------------------------------------------------------
+    // 为了性能优化，滑块和输入框的值使用本地状态管理，仅在操作结束时写入 Repository
+    // 避免频繁触发全应用重组 (Recomposition)
+
+    // 颜色配置
     var colorText by remember(overrides.primaryColorHex) { mutableStateOf(TextFieldValue(overrides.primaryColorHex ?: "#006493")) }
     var previewColor by remember(overrides.primaryColorHex) { mutableStateOf(parseHexColorOrNull(overrides.primaryColorHex ?: "#006493") ?: Color(0xFF006493)) }
     
     var accentText by remember(overrides.accentColorHex) { mutableStateOf(TextFieldValue(overrides.accentColorHex ?: "#006493")) }
     var previewAccent by remember(overrides.accentColorHex) { mutableStateOf(parseHexColorOrNull(overrides.accentColorHex ?: "#006493") ?: Color(0xFF006493)) }
     
+    // 背景配置
     var bgUri by remember(overrides.backgroundUri) { mutableStateOf(overrides.backgroundUri) }
     var dimAlpha by remember(overrides.backgroundDimAlpha) { mutableStateOf(overrides.backgroundDimAlpha ?: 0.25f) }
     var contentScale by remember(overrides.backgroundContentScale) { mutableStateOf(overrides.backgroundContentScale ?: "Crop") }
     var blurRadius by remember(overrides.backgroundBlurRadius) { mutableStateOf((overrides.backgroundBlurRadius ?: 0).toFloat()) }
+    
+    // UI 样式配置
     var cardOpacity by remember(overrides.cardOpacity) { mutableStateOf(overrides.cardOpacity ?: 1f) }
     var isCompactList by remember { mutableStateOf(repo.isEquipmentListCompact()) }
     var cardMaterial by remember(overrides.cardMaterial) { mutableStateOf(overrides.cardMaterial ?: repo.getCardMaterial()) }
     var noiseEnabled by remember(overrides.noiseEnabled) { mutableStateOf(overrides.noiseEnabled ?: repo.isNoiseEnabled()) }
     var cornerRadius by remember(overrides.cornerRadius) { mutableStateOf(overrides.cornerRadius ?: repo.getCornerRadius()) }
+    
+    // 系统与性能配置
     var dynamicColorEnabled by remember(overrides.dynamicColorEnabled) { mutableStateOf(overrides.dynamicColorEnabled ?: repo.isDynamicColorEnabled()) }
     var darkModeStrategy by remember(overrides.darkModeStrategy) { mutableStateOf(overrides.darkModeStrategy ?: repo.getDarkModeStrategy()) }
     var equipmentImageRatio by remember(overrides.equipmentImageRatio) { mutableStateOf(overrides.equipmentImageRatio ?: repo.getEquipmentImageRatio()) }
@@ -105,9 +122,11 @@ fun ThemeCustomizeScreen(
     var lastClickTime by remember { mutableLongStateOf(0L) }
 
     val context = LocalContext.current
+    // 图片选择器
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             try {
+                // 获取持久化 URI 权限，防止重启后无法访问图片
                 val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
                 context.contentResolver.takePersistableUriPermission(uri, flags)
             } catch (e: Exception) {
