@@ -115,31 +115,6 @@ class EquipmentRepository @Inject constructor(
                 }
                 equipmentItemDao.replaceItems(items, departmentId)
                 
-                // Sync borrow history
-                val histories = items.flatMap { item ->
-                    item.borrowHistory.map { historyDto ->
-                        BorrowHistoryEntry(
-                            id = historyDto.id,
-                            itemId = historyDto.itemId,
-                            itemName = item.name,
-                            departmentId = item.departmentId,
-                            borrowerName = historyDto.borrower?.name ?: "未知",
-                            borrowerContact = historyDto.borrower?.phone ?: "未知",
-                            operatorUserId = historyDto.operator?.id ?: "",
-                            operatorName = historyDto.operator?.name ?: "",
-                            operatorContact = historyDto.operator?.phone ?: "",
-                            borrowDate = historyDto.borrowDate,
-                            expectedReturnDate = historyDto.expectedReturnDate,
-                            returnDate = historyDto.returnDate,
-                            status = historyDto.status,
-                            forcedReturnBy = historyDto.forcedReturnBy,
-                            photo = historyDto.photo,
-                            returnPhoto = historyDto.returnPhoto
-                        )
-                    }
-                }
-                borrowHistoryDao.replaceHistory(histories, departmentId)
-                
                 emit(NetworkResult.Success(items))
             }
             is NetworkResult.Error -> {

@@ -419,6 +419,11 @@ class BorrowRepository @Inject constructor(
             emit(NetworkResult.Success(snapshot))
             return@flow
         }
+        val localSnapshot = if (departmentId != null) {
+            borrowHistoryDao.getHistoryByDepartment(departmentId).first()
+        } else {
+            borrowHistoryDao.getAllHistory().first()
+        }
         val token = authRepository.getAuthToken()
         if (token.isNullOrBlank()) {
             emit(NetworkResult.Error("登录状态缺少令牌，请退出后重新登录"))
@@ -454,9 +459,22 @@ class BorrowRepository @Inject constructor(
                 
                 // Use replaceHistory to clear old data and insert new data in a single transaction
                 // This prevents UI flicker and ensures clean state (no duplicates)
-                borrowHistoryDao.replaceHistory(sanitizedHistories, departmentId)
-                
-                emit(NetworkResult.Success(sanitizedHistories))
+                val localMax = localSnapshot.maxOfOrNull { it.borrowDate.time } ?: 0L
+                val remoteMax = sanitizedHistories.maxOfOrNull { it.borrowDate.time } ?: 0L
+
+                if (sanitizedHistories.isEmpty()) {
+                    if (localSnapshot.isEmpty()) {
+                        borrowHistoryDao.replaceHistory(sanitizedHistories, departmentId)
+                        emit(NetworkResult.Success(sanitizedHistories))
+                    } else {
+                        emit(NetworkResult.Success(localSnapshot))
+                    }
+                } else if (localMax > 0L && remoteMax > 0L && remoteMax < localMax) {
+                    emit(NetworkResult.Success(localSnapshot))
+                } else {
+                    borrowHistoryDao.replaceHistory(sanitizedHistories, departmentId)
+                    emit(NetworkResult.Success(sanitizedHistories))
+                }
             }
             is NetworkResult.Error -> {
                 emit(NetworkResult.Error(result.message ?: "同步失败"))

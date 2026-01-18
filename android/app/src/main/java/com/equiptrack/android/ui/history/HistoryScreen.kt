@@ -5,9 +5,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -36,7 +37,7 @@ import com.equiptrack.android.ui.equipment.components.ReturnItemDialog
 import com.equiptrack.android.ui.history.components.HistoryEntryCard
 import com.equiptrack.android.ui.navigation.NavigationViewModel
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun HistoryScreen(
     viewModel: HistoryViewModel = hiltViewModel()
@@ -62,8 +63,22 @@ fun HistoryScreen(
     val confettiEnabled = themeOverrides.confettiEnabled ?: settingsRepository.isConfettiEnabled()
     val lowPerformanceMode = themeOverrides.lowPerformanceMode ?: settingsRepository.isLowPerformanceMode()
     var showConfetti by remember { mutableStateOf(false) }
-    val listState = rememberLazyListState()
+    val listState = remember { LazyListState() }
     val scope = rememberCoroutineScope()
+    val newRecordsCount by viewModel.newRecordsCount.collectAsState()
+    
+    // 监听用户滚动到顶部，自动清除新消息计数
+    val isAtTop by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+        }
+    }
+    
+    LaunchedEffect(isAtTop) {
+        if (isAtTop) {
+            viewModel.clearNewRecordsCount()
+        }
+    }
     
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
@@ -77,10 +92,6 @@ fun HistoryScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.syncHistory(isUserRefresh = false)
                 viewModel.updateOverdueStatus()
-                // 每次进入页面时自动滚动到顶部，确保显示最新记录
-                scope.launch {
-                    listState.scrollToItem(0)
-                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -173,70 +184,113 @@ fun HistoryScreen(
                                     bottom = 12.dp
                                 )
                             ) {
-                            if (historyEntries.isEmpty()) {
-                                item {
-                                    Card(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                        )
-                                    ) {
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(24.dp),
-                                            horizontalAlignment = Alignment.CenterHorizontally
+                                if (historyEntries.isEmpty()) {
+                                    item {
+                                        Card(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                            )
                                         ) {
-                                            Icon(
-                                                Icons.Default.History,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(48.dp),
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                            Spacer(modifier = Modifier.height(16.dp))
-                                            Text(
-                                                text = if (filterStatus != null) "没有符合条件的记录" else "暂无借用记录",
-                                                style = MaterialTheme.typography.bodyLarge,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                            if (filterStatus != null) {
-                                                Spacer(modifier = Modifier.height(8.dp))
-                                                AnimatedTextButton(
-                                                    onClick = { viewModel.filterByStatus(null) }
-                                                ) {
-                                                    Text("查看全部记录")
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(24.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.History,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(48.dp),
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Spacer(modifier = Modifier.height(16.dp))
+                                                Text(
+                                                    text = if (filterStatus != null) "没有符合条件的记录" else "暂无借用记录",
+                                                    style = MaterialTheme.typography.bodyLarge,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                if (filterStatus != null) {
+                                                    Spacer(modifier = Modifier.height(8.dp))
+                                                    AnimatedTextButton(
+                                                        onClick = { viewModel.filterByStatus(null) }
+                                                    ) {
+                                                        Text("清除筛选")
+                                                    }
                                                 }
                                             }
                                         }
                                     }
-                                }
-                            } else {
-                                itemsIndexed(
-                                    items = historyEntries,
-                                    key = { _, entry -> entry.id },
-                                    contentType = { _, _ -> "borrow_history_entry" }
-                                ) { index, entry ->
-                                    AnimatedListItem(
-                                        enabled = enableAnimations,
-                                        listAnimationType = listAnimationType,
-                                        index = index
-                                    ) {
-                                        HistoryEntryCard(
-                                            entry = entry,
-                                            canForceReturn = viewModel.canForceReturn(),
-                                            serverUrl = serverUrl,
-                                            onReturn = {
-                                                viewModel.showReturnDialog(entry, isForced = false)
-                                            },
-                                            onForceReturn = {
-                                                viewModel.showReturnDialog(entry, isForced = true)
+                                } else {
+                                    itemsIndexed(
+                                        items = historyEntries,
+                                        key = { _, item -> item.id }
+                                    ) { index, entry ->
+                                        // Use Box for animation to avoid crash when modifying LazyListScope directly
+                                        if (enableAnimations) {
+                                            Box(modifier = Modifier.animateItemPlacement()) {
+                                                HistoryEntryCard(
+                                                    entry = entry,
+                                                    canForceReturn = viewModel.canForceReturn(),
+                                                    serverUrl = serverUrl,
+                                                    onReturn = {
+                                                        viewModel.showReturnDialog(entry, isForced = false)
+                                                    },
+                                                    onForceReturn = {
+                                                        viewModel.showReturnDialog(entry, isForced = true)
+                                                    }
+                                                )
                                             }
-                                        )
+                                        } else {
+                                            HistoryEntryCard(
+                                                entry = entry,
+                                                canForceReturn = viewModel.canForceReturn(),
+                                                serverUrl = serverUrl,
+                                                onReturn = {
+                                                    viewModel.showReturnDialog(entry, isForced = false)
+                                                },
+                                                onForceReturn = {
+                                                    viewModel.showReturnDialog(entry, isForced = true)
+                                                }
+                                            )
+                                        }
                                     }
                                 }
                             }
+                            
+                            // 新记录提示按钮 (悬浮在列表上方)
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = newRecordsCount > 0 && !isAtTop,
+                                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically(initialOffsetY = { -it }),
+                                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically(targetOffsetY = { -it }),
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .padding(top = 16.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        scope.launch {
+                                            listState.animateScrollToItem(0)
+                                            viewModel.clearNewRecordsCount()
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    ),
+                                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.ArrowUpward,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(text = "$newRecordsCount 条新记录")
+                                }
+                            }
                         }
-                    }
                     }
                 }
             }

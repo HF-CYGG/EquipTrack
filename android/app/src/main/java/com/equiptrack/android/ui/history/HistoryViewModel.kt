@@ -48,6 +48,13 @@ class HistoryViewModel @Inject constructor(
     
     private val currentUser = authRepository.getCurrentUser()
     
+    // Track new records count
+    private val _newRecordsCount = MutableStateFlow(0)
+    val newRecordsCount: StateFlow<Int> = _newRecordsCount.asStateFlow()
+
+    // Keep track of the latest record timestamp seen by the user
+    private var lastSeenTimestamp: Long = settingsRepository.getLastSeenHistoryTimestamp()
+
     // Get history based on user role and filter
     val historyEntries: StateFlow<List<BorrowHistoryEntry>> = combine(
         when (currentUser?.role) {
@@ -65,23 +72,48 @@ class HistoryViewModel @Inject constructor(
         val validRequests = requests.filter { 
             it.status == BorrowStatus.PENDING || it.status == BorrowStatus.REJECTED 
         }
-        
-        var result = entries + validRequests
-        // Sort by date descending
-        result = result.sortedByDescending { it.borrowDate }
 
-        if (status != null) {
-            result = result.filter { it.status == status }
-        }
+        var result = entries + validRequests
         if (deptId != null && currentUser?.role == UserRole.SUPER_ADMIN) {
             result = result.filter { it.departmentId == deptId }
         }
+
+        result = result
+            .let { list -> if (status != null) list.filter { it.status == status } else list }
+            .sortedByDescending { it.borrowDate }
+
+        if (result.isNotEmpty()) {
+            val latestTimestamp = result.first().borrowDate.time
+            if (lastSeenTimestamp > 0 && latestTimestamp > lastSeenTimestamp) {
+                _newRecordsCount.value = result.count { it.borrowDate.time > lastSeenTimestamp }
+            } else {
+                _newRecordsCount.value = 0
+                if (lastSeenTimestamp == 0L) {
+                    lastSeenTimestamp = latestTimestamp
+                    settingsRepository.setLastSeenHistoryTimestamp(latestTimestamp)
+                }
+            }
+        } else {
+            _newRecordsCount.value = 0
+        }
+
         result
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+
+    fun clearNewRecordsCount() {
+        _newRecordsCount.value = 0
+        // Update lastSeenTimestamp to the current latest
+        val currentList = historyEntries.value
+        if (currentList.isNotEmpty()) {
+            val newTimestamp = currentList.first().borrowDate.time
+            lastSeenTimestamp = newTimestamp
+            settingsRepository.setLastSeenHistoryTimestamp(newTimestamp)
+        }
+    }
 
     val departments: StateFlow<List<Department>> = departmentRepository.getAllDepartments()
         .stateIn(

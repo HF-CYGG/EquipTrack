@@ -191,11 +191,21 @@ class SettingsRepository @Inject constructor(
         private const val KEY_BACKUP_USER_CONTACT = "backup_user_contact"
         private const val KEY_BACKUP_USER_DEPT_ID = "backup_user_dept_id"
         private const val KEY_BACKUP_USER_DEPT_NAME = "backup_user_dept_name"
+        
+        // History State Keys
+        private const val KEY_LAST_SEEN_HISTORY_TIMESTAMP = "last_seen_history_timestamp"
     }
 
     fun isNotificationServiceEnabled(): Boolean = prefs.getBoolean(KEY_NOTIFICATION_SERVICE_ENABLED, false)
     fun setNotificationServiceEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_NOTIFICATION_SERVICE_ENABLED, enabled).apply()
+    }
+    
+    // History State Methods
+    fun getLastSeenHistoryTimestamp(): Long = prefs.getLong(KEY_LAST_SEEN_HISTORY_TIMESTAMP, 0L)
+    
+    fun setLastSeenHistoryTimestamp(timestamp: Long) {
+        prefs.edit().putLong(KEY_LAST_SEEN_HISTORY_TIMESTAMP, timestamp).apply()
     }
     
     // Session Backup Methods
