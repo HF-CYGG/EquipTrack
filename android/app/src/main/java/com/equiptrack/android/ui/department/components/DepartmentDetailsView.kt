@@ -1,5 +1,11 @@
 package com.equiptrack.android.ui.department.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,6 +48,7 @@ fun DepartmentDetailsView(
 ) {
     val selectedDepartment = departments.find { it.id == selectedDepartmentId }
     var expanded by remember { mutableStateOf(false) }
+    var showAllMembers by remember(selectedDepartmentId) { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -162,29 +169,53 @@ fun DepartmentDetailsView(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
-                        AnimatedTextButton(onClick = { /* TODO: View All or Add Member */ }) {
-                            Text("查看全部")
+                        if (users.size > 5) {
+                            AnimatedTextButton(onClick = { showAllMembers = !showAllMembers }) {
+                                Text(if (showAllMembers) "收起" else "查看全部")
+                            }
                         }
                     }
                     
                     Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-                    if (users.isEmpty()) {
+                    AnimatedVisibility(
+                        visible = users.isEmpty(),
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(24.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("暂无成员", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    Icons.Default.People,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(36.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("暂无成员", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
-                    } else {
-                        users.take(5).forEach { user ->
-                            UserItem(
-                                user = user,
-                                canManage = canManage && canManageDepartment(selectedDepartmentId), // Simplified check
-                                onUpdateRole = { role -> onUpdateUserRole(user.id, role) }
-                            )
+                    }
+
+                    AnimatedVisibility(
+                        visible = users.isNotEmpty(),
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Column(modifier = Modifier.animateContentSize()) {
+                            val visibleUsers = if (showAllMembers) users else users.take(5)
+                            visibleUsers.forEach { user ->
+                                UserItem(
+                                    user = user,
+                                    canManage = canManage && canManageDepartment(selectedDepartmentId), // Simplified check
+                                    onUpdateRole = { role -> onUpdateUserRole(user.id, role) }
+                                )
+                            }
                         }
                     }
                 }
