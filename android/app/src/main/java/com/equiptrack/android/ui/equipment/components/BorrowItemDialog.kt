@@ -101,6 +101,7 @@ fun BorrowItemDialog(
     var phoneError by rememberSaveable { mutableStateOf<String?>(null) }
     var dateError by rememberSaveable { mutableStateOf<String?>(null) }
     var photoError by rememberSaveable { mutableStateOf<String?>(null) }
+    var quantityError by rememberSaveable { mutableStateOf<String?>(null) }
     
     // State for manual quantity input dialog
     var showQuantityDialog by remember { mutableStateOf(false) }
@@ -135,6 +136,12 @@ fun BorrowItemDialog(
             val base64 = CameraUtils.imageUriToBase64(context, uri)
             photoBase64 = base64
             photoError = null
+        }
+    }
+    
+    LaunchedEffect(borrowQuantity, item.availableQuantity) {
+        if (borrowQuantity > 0 && borrowQuantity <= item.availableQuantity) {
+            quantityError = null
         }
     }
     
@@ -515,6 +522,27 @@ fun BorrowItemDialog(
                                     Icon(Icons.Default.Add, contentDescription = "Increase", modifier = Modifier.size(20.dp))
                                 }
                             }
+                            
+                            AnimatedVisibility(
+                                visible = quantityError != null || item.availableQuantity == 0,
+                                enter = fadeIn(),
+                                exit = fadeOut()
+                            ) {
+                                val message = quantityError ?: "当前库存不足，无法借用"
+                                Text(
+                                    text = message,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                            
+                            if (item.availableQuantity > 0) {
+                                Text(
+                                    text = "最多可借 ${item.availableQuantity}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
 
                         Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -852,6 +880,12 @@ fun BorrowItemDialog(
                         AnimatedButton(
                             onClick = {
                                 var hasError = false
+                                if (borrowQuantity <= 0 || borrowQuantity > item.availableQuantity) {
+                                    quantityError = "借用数量超出可用库存"
+                                    hasError = true
+                                } else {
+                                    quantityError = null
+                                }
                                 if (borrowerName.isBlank()) {
                                     nameError = "请输入姓名"
                                     hasError = true

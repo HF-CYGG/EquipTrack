@@ -256,6 +256,38 @@ fun UsersScreen(
                                         )
                                     }
                                 }
+                                
+                                AnimatedVisibility(
+                                    visible = searchQuery.isNotEmpty() || roleFilter != null || statusFilter != null || (viewModel.getCurrentUser()?.role == UserRole.SUPER_ADMIN && filterDepartmentId != null),
+                                    enter = slideInVertically() + fadeIn(),
+                                    exit = slideOutVertically() + fadeOut()
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 4.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "已应用筛选",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        AnimatedTextButton(
+                                            onClick = {
+                                                viewModel.updateSearchQuery("")
+                                                viewModel.filterByRole(null)
+                                                viewModel.filterByStatus(null)
+                                                if (viewModel.getCurrentUser()?.role == UserRole.SUPER_ADMIN) {
+                                                    viewModel.filterByDepartment(null)
+                                                }
+                                            }
+                                        ) {
+                                            Text("清除筛选")
+                                        }
+                                    }
+                                }
                             }
                         }
 
@@ -279,7 +311,7 @@ fun UsersScreen(
                     ) {
                         if (filteredUsers.isEmpty()) {
                             item {
-                                com.equiptrack.android.ui.components.EmptyStateCard(
+                                EmptyStateCard(
                                     message = if (searchQuery.isNotEmpty()) "未找到匹配用户" else "暂无用户数据",
                                     icon = Icons.Outlined.PersonSearch,
                                     onRetry = if (searchQuery.isNotEmpty()) { { viewModel.updateSearchQuery("") } } else null,

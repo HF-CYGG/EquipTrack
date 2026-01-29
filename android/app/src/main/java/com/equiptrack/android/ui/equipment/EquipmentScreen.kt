@@ -66,6 +66,8 @@ import com.equiptrack.android.ui.components.AnimatedIconButton
 import com.equiptrack.android.ui.components.AnimatedSmallFloatingActionButton
 import com.equiptrack.android.ui.components.EquipmentListSkeleton
 import com.equiptrack.android.ui.components.AnimatedListItem
+import com.equiptrack.android.ui.components.AnimatedTextButton
+import com.equiptrack.android.ui.components.EmptyStateCard
 import com.equiptrack.android.ui.components.verticalFadingEdge
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -249,6 +251,7 @@ fun EquipmentScreen(
     val confettiEnabled = themeOverrides.confettiEnabled ?: settingsRepository.isConfettiEnabled()
     val lowPerformanceMode = themeOverrides.lowPerformanceMode ?: settingsRepository.isLowPerformanceMode()
     var showConfetti by remember { mutableStateOf(false) }
+    val hasFilter = searchQuery.isNotEmpty() || selectedCategoryId != null || filterDepartmentId != null
     
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
@@ -399,6 +402,36 @@ fun EquipmentScreen(
                 selectedDepartmentId = filterDepartmentId,
                 onDepartmentSelected = { viewModel.filterByDepartment(it) }
             )
+
+            AnimatedVisibility(
+                visible = hasFilter,
+                enter = slideInVertically() + fadeIn(),
+                exit = slideOutVertically() + fadeOut()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "已应用筛选",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    AnimatedTextButton(
+                        onClick = {
+                            viewModel.updateSearchQuery("")
+                            viewModel.selectCategory(null)
+                            viewModel.filterByDepartment(null)
+                        }
+                    ) {
+                        Text("清除筛选")
+                    }
+                }
+            }
             
             if (uiState.isLoading && filteredItems.isEmpty()) {
                 EquipmentListSkeleton(
@@ -429,45 +462,25 @@ fun EquipmentScreen(
                     contentPadding = PaddingValues(vertical = 12.dp)
                 ) {
                     if (filteredItems.isEmpty() && !uiState.isLoading) {
+                        val emptyMessage = when {
+                            searchQuery.isNotEmpty() -> "没有找到匹配的物资"
+                            selectedCategoryId != null -> "该分类下暂无物资"
+                            canManageItems -> "暂无物资\n点击右下角 + 添加"
+                            else -> "暂无物资"
+                        }
                         item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                )
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(24.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Icon(
-                                        Icons.Default.Inventory,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(48.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Text(
-                                        text = when {
-                                            searchQuery.isNotEmpty() -> "没有找到匹配的物资"
-                                            selectedCategoryId != null -> "该分类下暂无物资"
-                                            else -> "暂无物资"
-                                        },
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    if (searchQuery.isEmpty() && selectedCategoryId == null && canManageItems) {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = "点击右上角的 + 按钮添加物资",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                            EmptyStateCard(
+                                message = emptyMessage,
+                                icon = Icons.Default.Inventory,
+                                onRetry = if (hasFilter) {
+                                    {
+                                        viewModel.updateSearchQuery("")
+                                        viewModel.selectCategory(null)
+                                        viewModel.filterByDepartment(null)
                                     }
-                                }
-                            }
+                                } else null,
+                                retryText = "清除筛选"
+                            )
                         }
                     } else {
                         itemsIndexed(

@@ -46,6 +46,7 @@ import com.equiptrack.android.ui.components.AnimatedTextButton
 import com.equiptrack.android.ui.components.AnimatedFloatingActionButton
 import com.equiptrack.android.ui.components.ApprovalListSkeleton
 import com.equiptrack.android.ui.components.AnimatedListItem
+import com.equiptrack.android.ui.components.EmptyStateCard
 import com.equiptrack.android.ui.navigation.NavigationViewModel
 
 @Composable
@@ -248,44 +249,18 @@ fun ApprovalScreen(
                         ) {
                             if (filteredRequests.isEmpty()) {
                                 item {
-                                    // Empty State
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .padding(top = 40.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Column(
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                                        ) {
-                                            Surface(
-                                                shape = CircleShape,
-                                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                                modifier = Modifier.size(80.dp)
-                                            ) {
-                                                Box(contentAlignment = Alignment.Center) {
-                                                    Icon(
-                                                        Icons.Default.Assignment,
-                                                        contentDescription = null,
-                                                        modifier = Modifier.size(40.dp),
-                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                                    )
-                                                }
-                                            }
-                                            
-                                            Text(
-                                                text = if (searchQuery.isNotEmpty()) "未找到匹配的申请" else "暂无待审批申请",
-                                                style = MaterialTheme.typography.titleMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                            
-                                            if (searchQuery.isNotEmpty()) {
-                                                AnimatedTextButton(onClick = { searchQuery = "" }) {
-                                                    Text("查看全部申请")
-                                                }
-                                            }
-                                        }
+                                        EmptyStateCard(
+                                            message = if (searchQuery.isNotEmpty()) "未找到匹配的申请" else "暂无待审批申请",
+                                            icon = Icons.Default.Assignment,
+                                            onRetry = if (searchQuery.isNotEmpty()) { { searchQuery = "" } } else null,
+                                            retryText = "查看全部申请"
+                                        )
                                     }
                                 }
                             } else {
@@ -798,51 +773,17 @@ fun BorrowApprovalScreen(
                                         .padding(top = 40.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                                    ) {
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                            modifier = Modifier.size(80.dp)
-                                        ) {
-                                            Box(contentAlignment = Alignment.Center) {
-                                                Icon(
-                                                    if (selectedTab == BorrowApprovalTab.PENDING) Icons.Default.AssignmentTurnedIn else Icons.Default.History,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(40.dp),
-                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                                )
-                                            }
-                                        }
-                                        
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Text(
-                                                text = if (selectedTab == BorrowApprovalTab.PENDING) {
-                                                    if (searchQuery.isNotEmpty()) "未找到匹配的申请" else "暂无待审批申请"
-                                                } else {
-                                                    if (searchQuery.isNotEmpty()) "未找到匹配的记录" else "暂无审批历史"
-                                                },
-                                                style = MaterialTheme.typography.titleMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                            Text(
-                                                text = if (selectedTab == BorrowApprovalTab.PENDING) "所有申请都已处理完毕" else "审批记录将显示在这里",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                            )
-                                        }
-
-                                        if (searchQuery.isNotEmpty()) {
-                                            OutlinedButton(
-                                                onClick = { searchQuery = "" },
-                                                shape = RoundedCornerShape(20.dp)
-                                            ) {
-                                                Text("清除搜索")
-                                            }
-                                        }
+                                    val emptyMessage = if (selectedTab == BorrowApprovalTab.PENDING) {
+                                        if (searchQuery.isNotEmpty()) "未找到匹配的申请" else "暂无待审批申请\n所有申请都已处理完毕"
+                                    } else {
+                                        if (searchQuery.isNotEmpty()) "未找到匹配的记录" else "暂无审批历史\n审批记录将显示在这里"
                                     }
+                                    EmptyStateCard(
+                                        message = emptyMessage,
+                                        icon = if (selectedTab == BorrowApprovalTab.PENDING) Icons.Default.AssignmentTurnedIn else Icons.Default.History,
+                                        onRetry = if (searchQuery.isNotEmpty()) { { searchQuery = "" } } else null,
+                                        retryText = "清除搜索"
+                                    )
                                 }
                             }
                         } else {

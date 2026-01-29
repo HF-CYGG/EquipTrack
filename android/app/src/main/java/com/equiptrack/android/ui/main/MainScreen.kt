@@ -1,6 +1,8 @@
 package com.equiptrack.android.ui.main
 
 import androidx.compose.animation.*
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -10,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -93,10 +96,31 @@ fun MainScreen(
                     }
 
                     drawerItems.forEach { item ->
+                        val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
+                        val targetContainer = if (selected) {
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
+                        } else {
+                            Color.Transparent
+                        }
+                        val containerColor by animateColorAsState(
+                            targetValue = targetContainer,
+                            animationSpec = tween(220),
+                            label = "drawerContainer"
+                        )
+                        val contentColor by animateColorAsState(
+                            targetValue = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                            animationSpec = tween(220),
+                            label = "drawerContent"
+                        )
+                        val scale by animateFloatAsState(
+                            targetValue = if (selected) 1.02f else 1f,
+                            animationSpec = tween(220),
+                            label = "drawerScale"
+                        )
                         NavigationDrawerItem(
                             icon = { Icon(item.icon, contentDescription = item.title) },
                             label = { Text(item.title) },
-                            selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
+                            selected = selected,
                             onClick = {
                                 navController.navigate(item.route) {
                                     popUpTo(navController.graph.findStartDestination().id) {
@@ -107,7 +131,14 @@ fun MainScreen(
                                 }
                                 scope.launch { drawerState.close() }
                             },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                            colors = NavigationDrawerItemDefaults.colors(
+                                selectedContainerColor = containerColor,
+                                selectedIconColor = contentColor,
+                                selectedTextColor = contentColor
+                            ),
+                            modifier = Modifier
+                                .padding(NavigationDrawerItemDefaults.ItemPadding)
+                                .graphicsLayer(scaleX = scale, scaleY = scale)
                         )
                     }
                     

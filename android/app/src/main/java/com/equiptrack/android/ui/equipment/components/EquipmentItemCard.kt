@@ -1,5 +1,10 @@
 package com.equiptrack.android.ui.equipment.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.animation.animateColorAsState
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.equiptrack.android.data.model.Category
@@ -130,6 +136,17 @@ fun EquipmentItemCard(
             item.availableQuantity == 0 -> Error
             item.availableQuantity < item.quantity -> Warning
             else -> Available
+        }
+        val statusContainerColor by animateColorAsState(statusColor, tween(220), label = "equipmentStatusColor")
+        val statusText = when {
+            item.availableQuantity == 0 -> "已借完"
+            item.availableQuantity < item.quantity -> "库存紧张"
+            else -> "可借用"
+        }
+        val statusIcon = when {
+            item.availableQuantity == 0 -> Icons.Default.Block
+            item.availableQuantity < item.quantity -> Icons.Default.Warning
+            else -> Icons.Default.CheckCircle
         }
 
         Column(
@@ -297,36 +314,44 @@ fun EquipmentItemCard(
                 }
                 
                 // Enhanced status badge
-                Row(
-                    modifier = Modifier
-                        .background(
-                            statusColor,
-                            RoundedCornerShape(16.dp)
-                        )
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                Surface(
+                    color = statusContainerColor,
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Icon(
-                        when {
-                            item.availableQuantity == 0 -> Icons.Default.Block
-                            item.availableQuantity < item.quantity -> Icons.Default.Warning
-                            else -> Icons.Default.CheckCircle
-                        },
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = White
-                    )
-                    Text(
-                        text = when {
-                            item.availableQuantity == 0 -> "已借完"
-                            item.availableQuantity < item.quantity -> "部分借出"
-                            else -> "可借用"
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = White,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            statusIcon,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = White
+                        )
+                        AnimatedContent(
+                            targetState = statusText,
+                            transitionSpec = { fadeIn(tween(150)) togetherWith fadeOut(tween(150)) },
+                            label = "equipmentStatusText"
+                        ) { text ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = text,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = White,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                if (item.pendingApprovalQuantity > 0) {
+                                    Text(
+                                        text = "·审批中${item.pendingApprovalQuantity}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = White.copy(alpha = 0.85f),
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
 

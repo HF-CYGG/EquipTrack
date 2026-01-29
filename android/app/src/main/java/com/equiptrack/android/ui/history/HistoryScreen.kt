@@ -163,6 +163,36 @@ fun HistoryScreen(
                                 .padding(bottom = 8.dp)
                         )
                     }
+                    
+                    AnimatedVisibility(
+                        visible = filterStatus != null || (isSuperAdmin && filterDepartmentId != null),
+                        enter = fadeIn() + slideInVertically(),
+                        exit = fadeOut() + slideOutVertically()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "已应用筛选",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            AnimatedTextButton(
+                                onClick = {
+                                    viewModel.filterByStatus(null)
+                                    if (isSuperAdmin) {
+                                        viewModel.filterByDepartment(null)
+                                    }
+                                }
+                            ) {
+                                Text("清除筛选")
+                            }
+                        }
+                    }
 
                     // Loading indicator - only show skeleton if list is empty
                     if (uiState.isLoading && historyEntries.isEmpty()) {
@@ -186,40 +216,17 @@ fun HistoryScreen(
                             ) {
                                 if (historyEntries.isEmpty()) {
                                     item {
-                                        Card(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            colors = CardDefaults.cardColors(
-                                                containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                            )
-                                        ) {
-                                            Column(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(24.dp),
-                                                horizontalAlignment = Alignment.CenterHorizontally
-                                            ) {
-                                                Icon(
-                                                    Icons.Default.History,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(48.dp),
-                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                                Spacer(modifier = Modifier.height(16.dp))
-                                                Text(
-                                                    text = if (filterStatus != null) "没有符合条件的记录" else "暂无借用记录",
-                                                    style = MaterialTheme.typography.bodyLarge,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                                if (filterStatus != null) {
-                                                    Spacer(modifier = Modifier.height(8.dp))
-                                                    AnimatedTextButton(
-                                                        onClick = { viewModel.filterByStatus(null) }
-                                                    ) {
-                                                        Text("清除筛选")
-                                                    }
-                                                }
-                                            }
+                                        val emptyMessage = if (filterStatus != null) {
+                                            "没有符合条件的记录"
+                                        } else {
+                                            "暂无借用记录\n记录将显示在这里"
                                         }
+                                        EmptyStateCard(
+                                            message = emptyMessage,
+                                            icon = Icons.Default.History,
+                                            onRetry = if (filterStatus != null) { { viewModel.filterByStatus(null) } } else null,
+                                            retryText = "清除筛选"
+                                        )
                                     }
                                 } else {
                                     itemsIndexed(

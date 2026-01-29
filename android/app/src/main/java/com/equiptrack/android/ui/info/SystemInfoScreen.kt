@@ -1,6 +1,9 @@
 package com.equiptrack.android.ui.info
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -42,6 +45,7 @@ import kotlinx.coroutines.delay
 private fun ExpandableSectionCard(
     title: String,
     icon: ImageVector,
+    subtitle: String? = null,
     initialExpanded: Boolean = false,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     titleTint: Color? = null,
@@ -77,12 +81,21 @@ private fun ExpandableSectionCard(
                         tint = titleTint ?: MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = titleTint ?: MaterialTheme.colorScheme.onSurface
-                    )
+                    Column {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = titleTint ?: MaterialTheme.colorScheme.onSurface
+                        )
+                        if (subtitle != null) {
+                            Text(
+                                text = subtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
                 Icon(
                     imageVector = Icons.Default.ArrowDropDown,
@@ -94,8 +107,8 @@ private fun ExpandableSectionCard(
 
             AnimatedVisibility(
                 visible = expanded,
-                enter = expandVertically(animationSpec = spring(stiffness = Spring.StiffnessLow)) + fadeIn(),
-                exit = shrinkVertically(animationSpec = spring(stiffness = Spring.StiffnessLow)) + fadeOut()
+                enter = expandVertically(animationSpec = spring(stiffness = Spring.StiffnessLow)) + fadeIn() + scaleIn(initialScale = 0.98f),
+                exit = shrinkVertically(animationSpec = spring(stiffness = Spring.StiffnessLow)) + fadeOut() + scaleOut(targetScale = 0.98f)
             ) {
                 Column(
                     modifier = Modifier.padding(top = 8.dp),
@@ -114,9 +127,24 @@ fun SystemInfoScreen() {
     val scrollState = rememberScrollState()
     // Staggered animation state
     var isVisible by remember { mutableStateOf(false) }
+    var section1Visible by remember { mutableStateOf(false) }
+    var section2Visible by remember { mutableStateOf(false) }
+    var section3Visible by remember { mutableStateOf(false) }
+    var section4Visible by remember { mutableStateOf(false) }
+    var section5Visible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         isVisible = true
+        delay(80)
+        section1Visible = true
+        delay(80)
+        section2Visible = true
+        delay(80)
+        section3Visible = true
+        delay(80)
+        section4Visible = true
+        delay(80)
+        section5Visible = true
     }
 
     Column(
@@ -172,44 +200,74 @@ fun SystemInfoScreen() {
         // 由于Compose重组特性，这里直接按顺序排列，ExpandableSectionCard自带展开动画
 
         // 权限系统说明区块
-        ExpandableSectionCard(
-            title = "权限与角色体系",
-            icon = Icons.Default.Security,
-            initialExpanded = true
+        AnimatedVisibility(
+            visible = section1Visible,
+            enter = fadeIn() + expandVertically()
         ) {
-            PermissionSystemSection()
+            ExpandableSectionCard(
+                title = "权限与角色体系",
+                subtitle = "角色定义与权限矩阵",
+                icon = Icons.Default.Security,
+                initialExpanded = true
+            ) {
+                PermissionSystemSection()
+            }
         }
 
         // 邀请码注册机制区块
-        ExpandableSectionCard(
-            title = "注册与准入机制",
-            icon = Icons.Default.VpnKey
+        AnimatedVisibility(
+            visible = section2Visible,
+            enter = fadeIn() + expandVertically()
         ) {
-            InviteCodeSection()
+            ExpandableSectionCard(
+                title = "注册与准入机制",
+                subtitle = "邀请码与审批流程",
+                icon = Icons.Default.VpnKey
+            ) {
+                InviteCodeSection()
+            }
         }
 
         // 使用指南区块
-        ExpandableSectionCard(
-            title = "核心功能指南",
-            icon = Icons.Default.Build
+        AnimatedVisibility(
+            visible = section3Visible,
+            enter = fadeIn() + expandVertically()
         ) {
-            UsageGuideSection()
+            ExpandableSectionCard(
+                title = "核心功能指南",
+                subtitle = "关键操作说明",
+                icon = Icons.Default.Build
+            ) {
+                UsageGuideSection()
+            }
         }
 
         // 常见问题（FAQ）区块
-        ExpandableSectionCard(
-            title = "常见问题解答 (FAQ)",
-            icon = Icons.Default.Help
+        AnimatedVisibility(
+            visible = section4Visible,
+            enter = fadeIn() + expandVertically()
         ) {
-            FAQSection()
+            ExpandableSectionCard(
+                title = "常见问题解答 (FAQ)",
+                subtitle = "高频疑问与说明",
+                icon = Icons.Default.Help
+            ) {
+                FAQSection()
+            }
         }
 
         // 数据同步策略区块
-        ExpandableSectionCard(
-            title = "数据同步与安全",
-            icon = Icons.Default.Sync
+        AnimatedVisibility(
+            visible = section5Visible,
+            enter = fadeIn() + expandVertically()
         ) {
-            DataSyncSection()
+            ExpandableSectionCard(
+                title = "数据同步与安全",
+                subtitle = "同步策略与安全实践",
+                icon = Icons.Default.Sync
+            ) {
+                DataSyncSection()
+            }
         }
         
         Spacer(modifier = Modifier.height(32.dp))
@@ -336,7 +394,8 @@ private fun FAQSection() {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         FAQItem(
             q = "我看不到“审批”或“管理”入口？",
-            a = "功能入口受严格的权限控制。如需相关权限，请联系上级管理员申请提升职级。"
+            a = "功能入口受严格的权限控制。如需相关权限，请联系上级管理员申请提升职级。",
+            initialExpanded = true
         )
         FAQItem(
             q = "修改服务器地址后为何被登出？",
@@ -354,15 +413,51 @@ private fun FAQSection() {
 }
 
 @Composable
-private fun FAQItem(q: String, a: String) {
+private fun FAQItem(q: String, a: String, initialExpanded: Boolean = false) {
+    var expanded by remember { mutableStateOf(initialExpanded) }
+    val rotationState by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "FaqArrowRotation"
+    )
+
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize()
+            .clickable { expanded = !expanded }
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(text = "Q: $q", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = a, style = MaterialTheme.typography.bodyMedium)
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Q: $q",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    modifier = Modifier.rotate(rotationState),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(text = a, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
         }
     }
 }

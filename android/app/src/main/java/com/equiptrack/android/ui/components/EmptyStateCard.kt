@@ -6,10 +6,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.AnimatedVisibility
 
 @Composable
 fun EmptyStateCard(
@@ -18,11 +25,13 @@ fun EmptyStateCard(
     onRetry: (() -> Unit)? = null,
     retryText: String = "清除搜索条件"
 ) {
+    val containerTarget = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    val containerColor by animateColorAsState(containerTarget, tween(220), label = "emptyContainer")
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
@@ -44,10 +53,12 @@ fun EmptyStateCard(
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            if (onRetry != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                TextButton(onClick = onRetry) {
-                    Text(retryText)
+            AnimatedVisibility(visible = onRetry != null, enter = fadeIn(), exit = fadeOut()) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(onClick = { onRetry?.invoke() }) {
+                        Text(retryText)
+                    }
                 }
             }
         }

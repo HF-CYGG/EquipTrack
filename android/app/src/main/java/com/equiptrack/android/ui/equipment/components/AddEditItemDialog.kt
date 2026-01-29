@@ -82,6 +82,8 @@ fun AddEditItemDialog(
     
     var nameError by remember { mutableStateOf<String?>(null) }
     var categoryError by remember { mutableStateOf<String?>(null) }
+    var quantityError by remember { mutableStateOf<String?>(null) }
+    var availableError by remember { mutableStateOf<String?>(null) }
     
     var expandedCategory by remember { mutableStateOf(false) }
     var showAddCategoryDialog by remember { mutableStateOf(false) }
@@ -398,16 +400,41 @@ fun AddEditItemDialog(
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             OutlinedTextField(
                                 value = quantity,
-                                onValueChange = { if (it.all { c -> c.isDigit() }) quantity = it },
+                                onValueChange = {
+                                    if (it.all { c -> c.isDigit() }) {
+                                        quantity = it
+                                        quantityError = null
+                                        val qtyValue = it.toIntOrNull()
+                                        val availableValue = availableQuantity.toIntOrNull()
+                                        if (qtyValue != null && availableValue != null && it.isNotEmpty() && availableValue > qtyValue) {
+                                            availableQuantity = it
+                                            availableError = null
+                                        }
+                                    }
+                                },
                                 label = { Text("总数量") },
+                                isError = quantityError != null,
+                                supportingText = quantityError?.let { { Text(it) } },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(12.dp)
                             )
                             OutlinedTextField(
                                 value = availableQuantity,
-                                onValueChange = { if (it.all { c -> c.isDigit() }) availableQuantity = it },
+                                onValueChange = {
+                                    if (it.all { c -> c.isDigit() }) {
+                                        availableQuantity = it
+                                        availableError = null
+                                        val availableValue = it.toIntOrNull()
+                                        val qtyValue = quantity.toIntOrNull()
+                                        if (availableValue != null && qtyValue != null && availableValue > qtyValue) {
+                                            availableError = "可用数量不能超过总数量"
+                                        }
+                                    }
+                                },
                                 label = { Text("可用数量") },
+                                isError = availableError != null,
+                                supportingText = availableError?.let { { Text(it) } },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(12.dp)
@@ -457,12 +484,26 @@ fun AddEditItemDialog(
                         }
                         AnimatedButton(
                             onClick = {
+                                val qtyValue = quantity.toIntOrNull() ?: 0
+                                val availableValue = availableQuantity.toIntOrNull() ?: -1
                                 if (name.isBlank()) {
                                     nameError = "请输入物资名称"
                                     return@AnimatedButton
                                 }
                                 if (selectedCategoryId.isBlank()) {
                                     categoryError = "请选择类别"
+                                    return@AnimatedButton
+                                }
+                                if (quantity.isBlank() || qtyValue <= 0) {
+                                    quantityError = "总数量需大于 0"
+                                    return@AnimatedButton
+                                }
+                                if (availableQuantity.isBlank() || availableValue < 0) {
+                                    availableError = "请输入可用数量"
+                                    return@AnimatedButton
+                                }
+                                if (availableValue > qtyValue) {
+                                    availableError = "可用数量不能超过总数量"
                                     return@AnimatedButton
                                 }
                                 
@@ -472,8 +513,8 @@ fun AddEditItemDialog(
                                     description = description,
                                     categoryId = selectedCategoryId,
                                     departmentId = item?.departmentId ?: departmentId,
-                                    quantity = quantity.toIntOrNull() ?: 0,
-                                    availableQuantity = availableQuantity.toIntOrNull() ?: 0,
+                                    quantity = qtyValue,
+                                    availableQuantity = availableValue,
                                     requiresApproval = requiresApproval,
                                     image = imageUri?.toString() ?: item?.image ?: "",
                                     imageFull = if (imageUri != null) null else item?.imageFull
