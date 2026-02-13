@@ -1,0 +1,36 @@
+﻿# Dependencies
+node_modules/
+
+# Android build outputs
+android/app/build/
+android/build/
+android/.gradle/
+android/app/release/
+
+# Android error logs
+android/hs_err_pid*.log
+
+# Server build outputs
+server/dist/
+server/boot.log
+
+# IDE / Editor
+.idea/
+.trae/
+.vscode/
+*.iml
+
+# Git internals
+.git/
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Environment / Secrets
+.env
+.env.*
+
+# Misc
+*.log
