@@ -49,6 +49,13 @@ import com.equiptrack.android.ui.components.AnimatedListItem
 import com.equiptrack.android.ui.components.EmptyStateCard
 import com.equiptrack.android.ui.navigation.NavigationViewModel
 
+/**
+ * 访问级别说明组件
+ * 
+ * 用于在屏幕顶部显示当前用户的权限级别说明。
+ * 
+ * @param description 权限描述文本
+ */
 @Composable
 fun AccessLevelContent(description: String) {
     Row(
@@ -58,6 +65,7 @@ fun AccessLevelContent(description: String) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // 权限图标背景
         Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
@@ -73,6 +81,7 @@ fun AccessLevelContent(description: String) {
             }
         }
 
+        // 权限描述文本
         Column(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -91,21 +100,38 @@ fun AccessLevelContent(description: String) {
     }
 }
 
+/**
+ * 注册审批屏幕
+ *
+ * 此屏幕用于管理员查看和处理新用户的注册申请。
+ * 
+ * 主要功能：
+ * 1. 列表展示：显示所有待审批的注册请求。
+ * 2. 搜索过滤：支持按姓名搜索。
+ * 3. 审批操作：支持批准或拒绝申请。
+ * 4. 下拉刷新：支持手动刷新列表数据。
+ * 
+ * @param viewModel 注入的 ApprovalViewModel，负责业务逻辑
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun ApprovalScreen(
     viewModel: ApprovalViewModel = hiltViewModel()
 ) {
+    // 获取导航 ViewModel 以访问全局设置
     val navVm: NavigationViewModel = hiltViewModel()
+    // 收集 UI 状态流
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    // 管理 Toast 消息状态
     val toastState = rememberToastState()
     
+    // 配置下拉刷新状态
     val pullRefreshState = rememberPullRefreshState(
         refreshing = uiState.isRefreshing,
         onRefresh = { viewModel.syncRequests(isRefresh = true) }
     )
     
-    // 页面进入和返回时自动同步数据
+    // 页面生命周期监听：进入和返回时自动同步数据
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -119,7 +145,7 @@ fun ApprovalScreen(
         }
     }
 
-    // 显示错误/成功消息 Toast
+    // 监听 ViewModel 中的一次性事件（错误/成功消息）并显示 Toast
     LaunchedEffect(uiState.errorMessage, uiState.successMessage) {
         uiState.errorMessage?.let { message ->
             toastState.showError(message)
@@ -130,17 +156,22 @@ fun ApprovalScreen(
             viewModel.clearMessages()
         }
     }
+    
+    // 收集过滤后的请求列表
     val filteredRequests by viewModel.filteredRequests.collectAsStateWithLifecycle()
+    // 获取应用设置和主题覆盖
     val settingsRepository = navVm.settingsRepository
     val themeOverrides by settingsRepository.themeOverridesFlow.collectAsStateWithLifecycle()
+    // 性能模式和动画设置
     val lowPerformanceMode = themeOverrides.lowPerformanceMode ?: settingsRepository.isLowPerformanceMode()
     val listAnimationType = themeOverrides.listAnimationType ?: settingsRepository.getListAnimationType()
     val listState = rememberLazyListState()
     
+    // 搜索状态管理
     var showSearch by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     
-    // 更新搜索查询
+    // 监听搜索查询变化，更新 ViewModel
     LaunchedEffect(searchQuery) {
         viewModel.updateSearchQuery(searchQuery)
     }
@@ -167,9 +198,9 @@ fun ApprovalScreen(
                 Column(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // 访问级别信息卡片 (Header)
+                    // 访问级别信息卡片 (Header) - 根据沉浸式模式调整样式
                     if (isImmersive) {
-                        // 沉浸模式：无阴影，半透明背景，边框
+                        // 沉浸模式：无阴影，半透明背景，带边框
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -202,7 +233,7 @@ fun ApprovalScreen(
                         }
                     }
 
-                    // 搜索栏（条件显示）
+                    // 搜索栏区域（支持展开/收起动画）
                     AnimatedVisibility(
                         visible = showSearch,
                         enter = expandVertically() + fadeIn(),
@@ -236,18 +267,21 @@ fun ApprovalScreen(
                         )
                     }
 
-                    // 申请列表
+                    // 申请列表区域
                     if (uiState.isLoading && filteredRequests.isEmpty()) {
+                        // 加载中且无数据时显示骨架屏
                         ApprovalListSkeleton()
                     } else {
+                        // 根据性能模式决定是否启用列表项动画
                         val enableAnimations = !lowPerformanceMode && listAnimationType != "None"
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(bottom = 80.dp), // Space for FAB
+                            contentPadding = PaddingValues(bottom = 80.dp), // 为悬浮按钮留出底部空间
                             state = listState
                         ) {
                             if (filteredRequests.isEmpty()) {
+                                // 空状态展示
                                 item {
                                     Box(
                                         modifier = Modifier
@@ -264,6 +298,7 @@ fun ApprovalScreen(
                                     }
                                 }
                             } else {
+                                // 渲染申请列表项
                                 itemsIndexed(
                                     items = filteredRequests,
                                     key = { _, request -> request.id },
@@ -288,6 +323,7 @@ fun ApprovalScreen(
                     }
                 }
                 
+                // 下拉刷新指示器
                 PullRefreshIndicator(
                     refreshing = uiState.isRefreshing,
                     state = pullRefreshState,
@@ -298,7 +334,7 @@ fun ApprovalScreen(
             }
         }
         
-        // 2. 悬浮操作按钮层
+        // 2. 悬浮操作按钮层 (FAB)
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -306,7 +342,7 @@ fun ApprovalScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.End
         ) {
-            // 搜索按钮
+            // 搜索按钮 (切换搜索栏显示状态)
             AnimatedFloatingActionButton(
                 onClick = { showSearch = !showSearch },
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -321,7 +357,7 @@ fun ApprovalScreen(
     }
 
     
-    // 批准对话框
+    // 批准确认对话框
     if (uiState.showApproveDialog && uiState.selectedRequest != null) {
         Dialog(onDismissRequest = { viewModel.hideApproveDialog() }) {
             ElevatedCard(
@@ -339,6 +375,7 @@ fun ApprovalScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    // 对话框图标
                     Surface(
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.primaryContainer,
@@ -354,6 +391,7 @@ fun ApprovalScreen(
                         }
                     }
 
+                    // 对话框内容
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -380,6 +418,7 @@ fun ApprovalScreen(
                         )
                     }
                     
+                    // 操作按钮
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -417,7 +456,7 @@ fun ApprovalScreen(
         }
     }
     
-    // 驳回对话框
+    // 驳回确认对话框
     if (uiState.showRejectDialog && uiState.selectedRequest != null) {
         Dialog(onDismissRequest = { viewModel.hideRejectDialog() }) {
             ElevatedCard(
@@ -435,6 +474,7 @@ fun ApprovalScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    // 驳回图标
                     Surface(
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.errorContainer,
@@ -450,6 +490,7 @@ fun ApprovalScreen(
                         }
                     }
 
+                    // 驳回内容说明
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -476,6 +517,7 @@ fun ApprovalScreen(
                         )
                     }
                     
+                    // 操作按钮
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -544,25 +586,43 @@ fun ApprovalScreen(
     }
 }
 
+/**
+ * 借用审批屏幕
+ * 
+ * 用于管理员或部门负责人查看和处理物资借用申请。
+ * 
+ * 主要功能：
+ * 1. 分页展示：分为“待审批”和“审批历史”两个标签页。
+ * 2. 搜索功能：支持搜索借用人。
+ * 3. 审批操作：支持批准（需扣减库存）或驳回申请。
+ * 4. 下拉刷新：同步最新申请数据。
+ * 
+ * @param viewModel 注入的 BorrowApprovalViewModel
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun BorrowApprovalScreen(
     viewModel: BorrowApprovalViewModel = hiltViewModel()
 ) {
     val navVm: NavigationViewModel = hiltViewModel()
+    // UI 状态
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    // 当前选中的标签页（待审批/历史）
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
     val toastState = rememberToastState()
     
+    // 下拉刷新状态配置
     val pullRefreshState = rememberPullRefreshState(
         refreshing = uiState.isRefreshing,
         onRefresh = { viewModel.refresh() }
     )
 
+    // 初始加载数据
     LaunchedEffect(Unit) {
         viewModel.fetchRequests()
     }
 
+    // 监听全局消息
     LaunchedEffect(uiState.errorMessage, uiState.successMessage) {
         uiState.errorMessage?.let { message ->
             toastState.showError(message)
@@ -573,6 +633,8 @@ fun BorrowApprovalScreen(
             viewModel.clearMessages()
         }
     }
+    
+    // 数据流收集
     val filteredRequests by viewModel.filteredRequests.collectAsStateWithLifecycle()
     val historyRequests by viewModel.historyFilteredRequests.collectAsStateWithLifecycle()
     val settingsRepository = navVm.settingsRepository
@@ -582,9 +644,11 @@ fun BorrowApprovalScreen(
     val listState = rememberLazyListState()
     val serverUrl by viewModel.serverUrl.collectAsStateWithLifecycle()
     
+    // 搜索状态
     var showSearch by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     
+    // 搜索联动
     LaunchedEffect(searchQuery) {
         viewModel.updateSearchQuery(searchQuery)
     }
@@ -605,7 +669,7 @@ fun BorrowApprovalScreen(
                     .fillMaxSize()
                     .padding(bottom = if (showSearch) 80.dp else 0.dp)
             ) {
-                // Header Card
+                // 顶部说明卡片 (Header Card)
                 ElevatedCard(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -652,7 +716,7 @@ fun BorrowApprovalScreen(
                     }
                 }
 
-                // Custom Tab Row
+                // 标签页切换栏 (Tab Row)
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                     shape = RoundedCornerShape(16.dp),
@@ -667,6 +731,7 @@ fun BorrowApprovalScreen(
                             .padding(4.dp),
                         containerColor = Color.Transparent,
                         indicator = { tabPositions ->
+                            // 自定义指示器逻辑（此处隐藏默认指示器，使用背景色切换）
                             if (selectedTab == BorrowApprovalTab.PENDING) {
                                 TabRowDefaults.Indicator(
                                     modifier = Modifier.tabIndicatorOffset(tabPositions[0]),
@@ -697,6 +762,7 @@ fun BorrowApprovalScreen(
                                     val newTab = if (index == 0) BorrowApprovalTab.PENDING else BorrowApprovalTab.HISTORY
                                     if (selectedTab != newTab) {
                                         viewModel.selectTab(newTab)
+                                        // 切换 Tab 时如果数据为空则自动加载
                                         if (newTab == BorrowApprovalTab.PENDING) {
                                             if (filteredRequests.isEmpty() && !uiState.isLoading && !uiState.isRefreshing) {
                                                 viewModel.fetchRequests()
@@ -724,6 +790,7 @@ fun BorrowApprovalScreen(
                     }
                 }
 
+                // 搜索栏 (Animated Visibility)
                 AnimatedVisibility(
                     visible = showSearch,
                     enter = slideInVertically() + fadeIn(),
@@ -754,6 +821,7 @@ fun BorrowApprovalScreen(
                     )
                 }
 
+                // 列表内容区域
                 if (uiState.isLoading) {
                     ApprovalListSkeleton()
                 } else {
@@ -766,6 +834,7 @@ fun BorrowApprovalScreen(
                     ) {
                         val currentList = if (selectedTab == BorrowApprovalTab.PENDING) filteredRequests else historyRequests
                         if (currentList.isEmpty()) {
+                            // 空状态
                             item {
                                 Box(
                                     modifier = Modifier
@@ -787,6 +856,7 @@ fun BorrowApprovalScreen(
                                 }
                             }
                         } else {
+                            // 列表项
                             itemsIndexed(
                                 items = currentList,
                                 key = { _, request -> request.id },
@@ -811,6 +881,7 @@ fun BorrowApprovalScreen(
                 }
             }
 
+            // 悬浮搜索按钮
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -831,6 +902,7 @@ fun BorrowApprovalScreen(
                 }
             }
             
+            // 顶部下拉刷新指示器
             MD3PullRefreshIndicator(
                 refreshing = uiState.isRefreshing,
                 state = pullRefreshState,
@@ -839,6 +911,7 @@ fun BorrowApprovalScreen(
         }
     }
     
+    // 借用审批通过对话框
     if (uiState.showApproveDialog && uiState.selectedRequest != null) {
         Dialog(onDismissRequest = { viewModel.hideApproveDialog() }) {
             Card(
