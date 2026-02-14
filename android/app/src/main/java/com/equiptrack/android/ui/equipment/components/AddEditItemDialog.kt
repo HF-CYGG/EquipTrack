@@ -22,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -60,7 +59,6 @@ fun AddEditItemDialog(
     onAddCategory: ((Category) -> Unit)? = null,
     onDeleteCategory: ((String) -> Unit)? = null
 ) {
-    val context = LocalContext.current
     val toastState = rememberToastState()
     
     // Show toast when error message changes
