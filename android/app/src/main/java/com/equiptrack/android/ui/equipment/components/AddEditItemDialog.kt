@@ -406,8 +406,8 @@ fun AddEditItemDialog(
                                         quantityError = null
                                         val qtyValue = it.toIntOrNull()
                                         val availableValue = availableQuantity.toIntOrNull()
-                                        if (qtyValue != null && availableValue != null && it.isNotEmpty() && availableValue > qtyValue) {
-                                            availableQuantity = it
+                                        if (qtyValue != null && availableValue != null && availableValue > qtyValue) {
+                                            availableQuantity = qtyValue.toString()
                                             availableError = null
                                         }
                                     }

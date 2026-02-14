@@ -18,6 +18,19 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.AnimatedVisibility
 
+/**
+ * 通用空状态卡片组件
+ *
+ * 用于列表为空时展示占位提示，支持：
+ * - 自定义图标和提示文案
+ * - 可选的操作按钮（如"清除搜索条件"），通过 AnimatedVisibility 实现淡入淡出
+ * - 卡片背景颜色动画过渡 + 内容尺寸变化动画（animateContentSize）
+ *
+ * @param message  提示文案，支持 \n 换行
+ * @param icon     顶部图标，默认为搜索无结果图标
+ * @param onRetry  操作按钮回调，为 null 时隐藏按钮
+ * @param retryText 操作按钮文案
+ */
 @Composable
 fun EmptyStateCard(
     message: String,
@@ -25,12 +38,13 @@ fun EmptyStateCard(
     onRetry: (() -> Unit)? = null,
     retryText: String = "清除搜索条件"
 ) {
+    // 背景色动画：主题切换时平滑过渡
     val containerTarget = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     val containerColor by animateColorAsState(containerTarget, tween(220), label = "emptyContainer")
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(),
+            .animateContentSize(), // 按钮显示/隐藏时卡片高度平滑变化
         colors = CardDefaults.cardColors(containerColor = containerColor),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -53,6 +67,7 @@ fun EmptyStateCard(
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            // 操作按钮区域：仅在 onRetry 非空时淡入显示
             AnimatedVisibility(visible = onRetry != null, enter = fadeIn(), exit = fadeOut()) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Spacer(modifier = Modifier.height(8.dp))

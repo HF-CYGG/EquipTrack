@@ -1,0 +1,7 @@
+---
+alwaysApply: true
+---
+
+Always generate Git commit messages in Simplified Chinese. 
+The format should be: <type>(<scope>): <subject in Chinese>
+例如：fix(AddEditItemDialog): 修复数量验证逻辑以确保可用数量设置正确

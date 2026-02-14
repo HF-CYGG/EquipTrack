@@ -48,6 +48,7 @@ fun DepartmentDetailsView(
 ) {
     val selectedDepartment = departments.find { it.id == selectedDepartmentId }
     var expanded by remember { mutableStateOf(false) }
+    // 成员列表展开/收起状态，切换部门时自动重置为收起（key = selectedDepartmentId）
     var showAllMembers by remember(selectedDepartmentId) { mutableStateOf(false) }
 
     Column(
@@ -169,6 +170,7 @@ fun DepartmentDetailsView(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
+                        // 成员超过 5 人时显示"查看全部/收起"切换按钮
                         if (users.size > 5) {
                             AnimatedTextButton(onClick = { showAllMembers = !showAllMembers }) {
                                 Text(if (showAllMembers) "收起" else "查看全部")
@@ -178,6 +180,7 @@ fun DepartmentDetailsView(
                     
                     Divider(modifier = Modifier.padding(vertical = 8.dp))
 
+                    // 空成员状态：带淡入/展开动画的占位提示
                     AnimatedVisibility(
                         visible = users.isEmpty(),
                         enter = fadeIn() + expandVertically(),
@@ -202,6 +205,7 @@ fun DepartmentDetailsView(
                         }
                     }
 
+                    // 成员列表：默认显示前 5 人，展开后显示全部；animateContentSize 实现高度平滑过渡
                     AnimatedVisibility(
                         visible = users.isNotEmpty(),
                         enter = fadeIn() + expandVertically(),

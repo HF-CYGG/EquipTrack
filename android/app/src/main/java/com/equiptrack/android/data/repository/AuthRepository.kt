@@ -38,15 +38,24 @@ class AuthRepository @Inject constructor(
         private const val KEY_IS_LOGGED_IN = "is_logged_in"
         private const val KEY_AUTH_TOKEN = "auth_token"
         private const val KEY_FCM_TOKEN = "fcm_token"
-        private const val KEY_FCM_TOKEN_REGISTERED = "fcm_token_registered"
-        private const val KEY_FCM_TOKEN_REGISTERED_AT = "fcm_token_registered_at"
-        private const val KEY_FCM_TOKEN_REGISTERED_USER_ID = "fcm_token_registered_user_id"
-        private const val KEY_FCM_TOKEN_LAST_ATTEMPT_AT = "fcm_token_last_attempt_at"
-        private const val KEY_FCM_TOKEN_LAST_ATTEMPT_TOKEN = "fcm_token_last_attempt_token"
-        private const val KEY_FCM_TOKEN_LAST_ATTEMPT_USER_ID = "fcm_token_last_attempt_user_id"
+        // ---- FCM Token 注册去重相关键 ----
+        private const val KEY_FCM_TOKEN_REGISTERED = "fcm_token_registered"           // 上次成功注册的 Token
+        private const val KEY_FCM_TOKEN_REGISTERED_AT = "fcm_token_registered_at"     // 上次成功注册的时间戳
+        private const val KEY_FCM_TOKEN_REGISTERED_USER_ID = "fcm_token_registered_user_id" // 上次成功注册时的用户 ID
+        private const val KEY_FCM_TOKEN_LAST_ATTEMPT_AT = "fcm_token_last_attempt_at"       // 上次尝试注册的时间戳
+        private const val KEY_FCM_TOKEN_LAST_ATTEMPT_TOKEN = "fcm_token_last_attempt_token" // 上次尝试注册的 Token
+        private const val KEY_FCM_TOKEN_LAST_ATTEMPT_USER_ID = "fcm_token_last_attempt_user_id" // 上次尝试注册时的用户 ID
         private const val TAG = "AuthRepository"
     }
     
+    /**
+     * 向服务端注册 FCM 推送 Token
+     *
+     * 去重策略（避免频繁重复请求）：
+     * 1. 同一用户 + 同一 Token，10 分钟内不重复尝试（防止短时间内多次触发）
+     * 2. 同一用户 + 同一 Token，已成功注册且未超过 7 天，不重复注册
+     * 3. 注册成功后记录状态，失败则仅记录尝试时间（下次仍可重试）
+     */
     suspend fun registerDeviceToken(token: String) {
         if (token.isBlank()) return
         saveFCMToken(token)
@@ -55,6 +64,7 @@ class AuthRepository @Inject constructor(
         val userId = sharedPreferences.getString(KEY_USER_ID, null) ?: return
         val now = System.currentTimeMillis()
 
+        // 去重检查 1：同用户 + 同 Token，10 分钟内已尝试过则跳过
         val lastAttemptAt = sharedPreferences.getLong(KEY_FCM_TOKEN_LAST_ATTEMPT_AT, 0L)
         val lastAttemptToken = sharedPreferences.getString(KEY_FCM_TOKEN_LAST_ATTEMPT_TOKEN, null)
         val lastAttemptUserId = sharedPreferences.getString(KEY_FCM_TOKEN_LAST_ATTEMPT_USER_ID, null)
@@ -62,6 +72,7 @@ class AuthRepository @Inject constructor(
             return
         }
 
+        // 去重检查 2：同用户 + 同 Token，7 天内已成功注册则跳过
         val lastRegisteredToken = sharedPreferences.getString(KEY_FCM_TOKEN_REGISTERED, null)
         val lastRegisteredUserId = sharedPreferences.getString(KEY_FCM_TOKEN_REGISTERED_USER_ID, null)
         val lastRegisteredAt = sharedPreferences.getLong(KEY_FCM_TOKEN_REGISTERED_AT, 0L)
@@ -69,6 +80,7 @@ class AuthRepository @Inject constructor(
             return
         }
 
+        // 记录本次尝试时间（无论成功与否）
         sharedPreferences.edit().apply {
             putLong(KEY_FCM_TOKEN_LAST_ATTEMPT_AT, now)
             putString(KEY_FCM_TOKEN_LAST_ATTEMPT_TOKEN, token)
@@ -80,6 +92,7 @@ class AuthRepository @Inject constructor(
             val response = apiService.registerDeviceToken(mapOf("token" to token, "platform" to "android"))
             if (response.isSuccessful && response.body()?.success == true) {
                 Log.d(TAG, "FCM Token registered successfully")
+                // 注册成功，记录成功状态（用于 7 天去重）
                 sharedPreferences.edit().apply {
                     putString(KEY_FCM_TOKEN_REGISTERED, token)
                     putLong(KEY_FCM_TOKEN_REGISTERED_AT, now)

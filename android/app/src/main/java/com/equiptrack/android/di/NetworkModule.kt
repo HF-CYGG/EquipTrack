@@ -97,18 +97,21 @@ object NetworkModule {
         fileLoggingInterceptor: FileLoggingInterceptor,
         settingsRepository: SettingsRepository
     ): OkHttpClient {
+        // Release 构建强制关闭 HTTP 日志，避免泄露敏感信息；Debug 构建由用户设置控制日志级别
         loggingInterceptor.level = if (BuildConfig.DEBUG) {
             settingsRepository.getHttpLogLevel()
         } else {
             HttpLoggingInterceptor.Level.NONE
         }
 
+        // 拦截器执行顺序：URL 重写 → 认证注入 → 文件日志 → 控制台日志
         val builder = OkHttpClient.Builder()
-            .addInterceptor(baseUrlInterceptor) // Add BaseUrlInterceptor first to rewrite URL
-            .addInterceptor(authInterceptor)
-            .addInterceptor(fileLoggingInterceptor) // Add File Logger
-            .addInterceptor(loggingInterceptor)
+            .addInterceptor(baseUrlInterceptor) // 1. 动态替换 Base URL（支持运行时切换服务器地址）
+            .addInterceptor(authInterceptor)    // 2. 注入 JWT Token + 监听会话过期
+            .addInterceptor(fileLoggingInterceptor) // 3. 请求/响应写入本地日志文件
+            .addInterceptor(loggingInterceptor) // 4. Logcat 控制台日志输出
 
+        // 本地调试模式使用较短超时（5s），正式环境使用较长超时（30s）
         if (settingsRepository.isLocalDebug()) {
             builder
                 .connectTimeout(5, TimeUnit.SECONDS)

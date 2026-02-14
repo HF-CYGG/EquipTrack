@@ -19,6 +19,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * Firebase Cloud Messaging 服务
+ *
+ * 职责：
+ * 1. 接收远程推送消息并展示本地通知
+ * 2. 当 FCM Token 刷新时，自动向服务端重新注册（通过 AuthRepository 的去重机制避免冗余请求）
+ */
 @AndroidEntryPoint
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
@@ -28,24 +35,25 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         Log.d(TAG, "From: ${remoteMessage.from}")
 
-        // Check if message contains a data payload.
+        // 处理 data 类型消息（静默推送）
         if (remoteMessage.data.isNotEmpty()) {
             Log.d(TAG, "Message data payload: ${remoteMessage.data}")
-            // Handle data payload if needed.
         }
 
-        // Check if message contains a notification payload.
+        // 处理 notification 类型消息（展示通知）
         remoteMessage.notification?.let {
             Log.d(TAG, "Message Notification Body: ${it.body}")
             sendNotification(it.title ?: "Notification", it.body ?: "")
         }
     }
 
+    /** FCM Token 刷新回调，需要将新 Token 注册到服务端以保持推送可达 */
     override fun onNewToken(token: String) {
         Log.d(TAG, "Refreshed token: $token")
         sendRegistrationToServer(token)
     }
 
+    /** 在 IO 协程中调用 AuthRepository 注册 Token（内部含去重逻辑） */
     private fun sendRegistrationToServer(token: String) {
         kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
             authRepository.registerDeviceToken(token)

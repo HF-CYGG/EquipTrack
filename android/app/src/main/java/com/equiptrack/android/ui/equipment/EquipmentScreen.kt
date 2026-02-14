@@ -251,6 +251,7 @@ fun EquipmentScreen(
     val confettiEnabled = themeOverrides.confettiEnabled ?: settingsRepository.isConfettiEnabled()
     val lowPerformanceMode = themeOverrides.lowPerformanceMode ?: settingsRepository.isLowPerformanceMode()
     var showConfetti by remember { mutableStateOf(false) }
+    // 是否有任何筛选条件生效（搜索关键词、分类、部门），用于控制筛选提示条和空状态按钮的显示
     val hasFilter = searchQuery.isNotEmpty() || selectedCategoryId != null || filterDepartmentId != null
     
     val pullRefreshState = rememberPullRefreshState(
@@ -403,6 +404,7 @@ fun EquipmentScreen(
                 onDepartmentSelected = { viewModel.filterByDepartment(it) }
             )
 
+            // 筛选状态提示条：当有任何筛选条件时从顶部滑入，提供一键清除入口
             AnimatedVisibility(
                 visible = hasFilter,
                 enter = slideInVertically() + fadeIn(),
@@ -461,6 +463,7 @@ fun EquipmentScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(vertical = 12.dp)
                 ) {
+                    // 空状态：根据当前筛选条件显示不同提示，有筛选时提供"清除筛选"按钮
                     if (filteredItems.isEmpty() && !uiState.isLoading) {
                         val emptyMessage = when {
                             searchQuery.isNotEmpty() -> "没有找到匹配的物资"

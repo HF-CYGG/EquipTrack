@@ -24,6 +24,7 @@ class LoginViewModel @Inject constructor(
     private val _loginResult = MutableSharedFlow<NetworkResult<User>>()
     val loginResult: SharedFlow<NetworkResult<User>> = _loginResult.asSharedFlow()
 
+    /** 当前登录协程任务引用，用于防止重复提交和取消旧请求 */
     private var loginJob: Job? = null
     
     fun updateContact(contact: String) {
@@ -34,8 +35,14 @@ class LoginViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(password = password)
     }
     
+    /**
+     * 执行登录操作
+     * - 防重复提交：isLoading 状态下直接返回
+     * - 取消旧请求：每次登录前取消上一次未完成的 loginJob，避免并发竞态
+     */
     fun login() {
         val currentState = _uiState.value
+        // 防止用户快速多次点击登录按钮
         if (currentState.isLoading) return
         
         if (currentState.contact.isBlank()) {
@@ -69,6 +76,7 @@ class LoginViewModel @Inject constructor(
             isLoading = true
         )
         
+        // 取消上一次登录请求（如果仍在进行中），然后发起新请求
         loginJob?.cancel()
         loginJob = viewModelScope.launch {
             authRepository.login(currentState.contact.trim(), currentState.password.trim())
@@ -81,7 +89,8 @@ class LoginViewModel @Inject constructor(
                         is NetworkResult.Error -> {
                             var msg = result.message ?: "登录失败"
                             
-                            // 修正 Login 接口返回 401 时的误导性提示
+                            // 修正：Login 接口返回 401 时，全局拦截器会将其映射为"登录已过期"，
+                            // 但在登录场景下实际含义是"账号或密码错误"
                             if (msg == "登录已过期，请重新登录") {
                                 msg = "账号或密码错误"
                             }

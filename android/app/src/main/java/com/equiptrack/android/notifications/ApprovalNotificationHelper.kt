@@ -14,6 +14,18 @@ import com.equiptrack.android.MainActivity
 import com.equiptrack.android.R
 import android.app.PendingIntent
 
+/**
+ * 审批通知工具类
+ *
+ * 负责发送本地通知提醒，包括：
+ * - 新的借用审批申请（面向管理员）
+ * - 新的注册审批申请（面向管理员）
+ * - 借用申请通过通知（面向申请人）
+ *
+ * 安全措施：
+ * - Android 13+ (TIRAMISU) 需要 POST_NOTIFICATIONS 运行时权限，发送前主动检查
+ * - 所有 notify() 调用均包裹 try-catch 以防止 SecurityException 崩溃
+ */
 object ApprovalNotificationHelper {
 
     const val CHANNEL_ID = "approval_updates"
@@ -23,6 +35,10 @@ object ApprovalNotificationHelper {
     private const val NOTIFICATION_ID_BORROW = 1001
     private const val NOTIFICATION_ID_REGISTRATION = 1002
 
+    /**
+     * 检查是否拥有通知发送权限
+     * Android 13 以下默认允许；Android 13+ 需要运行时权限 POST_NOTIFICATIONS
+     */
     private fun canPostNotifications(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
         return ContextCompat.checkSelfPermission(
@@ -54,6 +70,7 @@ object ApprovalNotificationHelper {
         }
     }
 
+    /** 发送"新借用审批"通知（面向管理员） */
     fun showBorrowApprovalNotification(context: Context) {
         if (!canPostNotifications(context)) return
         ensureChannel(context)
@@ -84,6 +101,7 @@ object ApprovalNotificationHelper {
         }
     }
 
+    /** 发送"新注册审批"通知（面向管理员） */
     fun showRegistrationApprovalNotification(context: Context) {
         if (!canPostNotifications(context)) return
         ensureChannel(context)
@@ -115,6 +133,7 @@ object ApprovalNotificationHelper {
         }
     }
 
+    /** 发送"借用申请已通过"通知（面向申请人），使用时间戳作为通知 ID 以支持多条并存 */
     fun showBorrowApprovedNotification(context: Context, itemName: String) {
         if (!canPostNotifications(context)) return
         ensureChannel(context)
